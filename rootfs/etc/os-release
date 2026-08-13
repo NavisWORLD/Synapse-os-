@@ -1,0 +1,10 @@
+NAME="Synapse OS"
+PRETTY_NAME="Synapse OS 0.1 Nebula"
+ID=synapseos
+ID_LIKE=debian
+VERSION_ID="0.1"
+VERSION="0.1 Nebula"
+VERSION_CODENAME=nebula
+HOME_URL="https://github.com/NavisWORLD/Synapse-os-"
+SUPPORT_URL="https://github.com/NavisWORLD/Synapse-os-/issues"
+BUG_REPORT_URL="https://github.com/NavisWORLD/Synapse-os-/issues"

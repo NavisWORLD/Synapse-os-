@@ -1,0 +1,2 @@
+export SYNAPSE_OS=1
+export SYNAPSE_CODENAME=Nebula

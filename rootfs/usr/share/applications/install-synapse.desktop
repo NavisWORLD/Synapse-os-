@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Install Synapse OS
+Comment=Install Synapse OS to this computer
+Exec=calamares
+Icon=system-software-install
+Terminal=false
+Categories=System;

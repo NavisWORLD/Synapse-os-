@@ -1,0 +1,13 @@
+[project]
+name = "synapse-os-control"
+version = "0.1.0a1"
+description = "Synapse OS local control plane"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+[project.scripts]
+synapse = "synapse.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

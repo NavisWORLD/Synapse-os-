@@ -1,0 +1,4 @@
+SYNAPSE/1
+# Battery-friendly laptop mode
+profile quiet
+service check NetworkManager

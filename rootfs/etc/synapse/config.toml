@@ -1,0 +1,14 @@
+[agent]
+interval_seconds = 5
+
+[performance]
+default_profile = "balanced"
+auto_change_profile = false
+
+[cosmos]
+ollama = 11434
+helper = 11435
+native_bridge = 11501
+sensory_api = 8765
+web = 8081
+web_fallback = 8090

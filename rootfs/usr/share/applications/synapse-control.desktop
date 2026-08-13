@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Synapse Control
+Comment=Open the Synapse OS control plane
+Exec=konsole -e synapse status
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;

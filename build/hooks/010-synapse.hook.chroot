@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+chmod 0755 /usr/local/bin/synapse
+mkdir -p /run/synapse
+systemctl enable synapse-agent.service
+systemctl enable NetworkManager.service || true
+systemctl enable sddm.service || true
+systemctl enable power-profiles-daemon.service || true
+mkdir -p /etc/skel/Desktop
+cp /usr/share/applications/install-synapse.desktop /etc/skel/Desktop/Install-Synapse-OS.desktop
+chmod +x /etc/skel/Desktop/Install-Synapse-OS.desktop

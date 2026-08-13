@@ -1,0 +1,5 @@
+SYNAPSE/1
+# High-response workstation check
+profile pulse
+cosmos probe
+service check NetworkManager
