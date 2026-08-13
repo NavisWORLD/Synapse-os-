@@ -20,8 +20,10 @@ Synapse OS is a reproducible Debian-based live/installable operating-system proj
 - Safe `pulse`, `balanced`, `quiet`, and `auto` performance profiles
 - Synapse Flow `.syn` declarative control language
 - Python, C++, and Rust SDK surfaces
-- CI validation plus ISO artifact/release workflow
+- Local validation via `make check`
 - Recovery, hardware, architecture, install, and performance manuals
+
+> Hosted GitHub Actions automation is **not included in this commit**. The OS source and local validation are present; the hosted CI/release workflow remains a separate follow-up.
 
 ## One-command developer validation
 
@@ -110,7 +112,6 @@ sdk/         Python / C++ / Rust integration surfaces
 tests/       unit tests
 scripts/     repository validation helpers
 docs/        engineering and user manuals
-.github/     validation + ISO CI workflows
 ```
 
 ## Performance philosophy
