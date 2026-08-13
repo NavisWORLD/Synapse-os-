@@ -1,7 +1,7 @@
 [project]
 name = "synapse-os-control"
-version = "0.2.0a1"
-description = "Synapse OS local control plane and Synapse Flow language runtime"
+version = "0.2.1a1"
+description = "Synapse OS local control plane, Synapse Flow runtime, and guarded USB writer"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 
@@ -9,6 +9,7 @@ license = {text = "MIT"}
 synapse = "synapse.cli:main"
 synflow = "synapse.flow_cli:main"
 synlsp = "synapse.lsp:serve"
+synapse-usb = "synapse.usb_writer:main"
 
 [build-system]
 requires = ["setuptools>=68"]
