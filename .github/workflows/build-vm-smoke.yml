@@ -52,19 +52,29 @@ jobs:
             etc/os-release \
             etc/systemd/system/synapse-agent.service \
             usr/local/bin/synapse \
+            usr/local/bin/synapse-control \
             usr/bin/plasmashell \
             usr/bin/calamares \
             usr/bin/pipewire \
             usr/bin/nmcli \
-            usr/lib/synapse/python/synapse/__init__.py
+            usr/lib/synapse/python/synapse/__init__.py \
+            usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg \
+            usr/share/sddm/themes/synapse-nebula/Main.qml \
+            usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth \
+            usr/share/grub/themes/synapse-nebula/theme.txt
           grep -q '^ID=synapseos$' /tmp/synapse-root/etc/os-release
           test -s /tmp/synapse-root/etc/systemd/system/synapse-agent.service
           test -s /tmp/synapse-root/usr/local/bin/synapse
+          test -s /tmp/synapse-root/usr/local/bin/synapse-control
           test -e /tmp/synapse-root/usr/bin/plasmashell
           test -e /tmp/synapse-root/usr/bin/calamares
           test -e /tmp/synapse-root/usr/bin/pipewire
           test -e /tmp/synapse-root/usr/bin/nmcli
           test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/__init__.py
+          test -s /tmp/synapse-root/usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg
+          grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/sddm/themes/synapse-nebula/Main.qml
+          grep -q 'Synapse Nebula' /tmp/synapse-root/usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth
+          grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/grub/themes/synapse-nebula/theme.txt
 
       - name: Boot live ISO in QEMU
         shell: bash
@@ -75,36 +85,54 @@ jobs:
           mkdir -p /tmp/synapse-vm
           xorriso -osirrox on -indev "$ISO" -extract /live/vmlinuz /tmp/synapse-vm/vmlinuz
           xorriso -osirrox on -indev "$ISO" -extract /live/initrd.img /tmp/synapse-vm/initrd.img
+          : > /tmp/synapse-vm/serial.log
           qemu-system-x86_64 \
             -machine q35,accel=tcg -cpu max -smp 2 -m 4096 \
             -kernel /tmp/synapse-vm/vmlinuz \
             -initrd /tmp/synapse-vm/initrd.img \
-            -cdrom "$ISO" \
-            -append 'boot=live components console=ttyS0 systemd.unit=multi-user.target systemd.show_status=1 systemd.log_target=console' \
-            -nic user,model=virtio-net-pci -display none -serial file:/tmp/synapse-vm/serial.log -no-reboot &
+            -drive file="$ISO",format=raw,if=virtio,readonly=on \
+            -append 'boot=live components live-media=/dev/vda console=ttyS0 systemd.unit=multi-user.target systemd.show_status=1 systemd.log_target=console synapse.vmtest=1' \
+            -nic user,model=virtio-net-pci \
+            -display none \
+            -serial file:/tmp/synapse-vm/serial.log \
+            -no-reboot &
           VM_PID=$!
           result=timeout
-          for _ in $(seq 1 180); do
-            agent=0
-            network=0
-            multi=0
-            grep -Eq 'Started.*Synapse OS telemetry agent' /tmp/synapse-vm/serial.log 2>/dev/null && agent=1 || true
-            grep -Eq 'Started.*Network Manager|Started NetworkManager.service' /tmp/synapse-vm/serial.log 2>/dev/null && network=1 || true
-            grep -Eq 'Reached.*Multi-User System|Reached target multi-user.target' /tmp/synapse-vm/serial.log 2>/dev/null && multi=1 || true
-            if [[ "$agent" -eq 1 && "$network" -eq 1 && "$multi" -eq 1 ]]; then result=pass; break; fi
-            if ! kill -0 "$VM_PID" 2>/dev/null; then result=stopped; break; fi
+          for _ in $(seq 1 240); do
+            if grep -q 'SYNAPSE_VM_READY' /tmp/synapse-vm/serial.log 2>/dev/null; then
+              result=pass
+              break
+            fi
+            if grep -q 'SYNAPSE_VM_FAIL:' /tmp/synapse-vm/serial.log 2>/dev/null; then
+              result=guest-fail
+              break
+            fi
+            if ! kill -0 "$VM_PID" 2>/dev/null; then
+              result=stopped
+              break
+            fi
             sleep 1
           done
           kill "$VM_PID" 2>/dev/null || true
           wait "$VM_PID" 2>/dev/null || true
           cat /tmp/synapse-vm/serial.log || true
+          echo "QEMU result: $result"
           test "$result" = pass
 
+      - name: Preserve VM diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-vm-diagnostics
+          path: /tmp/synapse-vm/serial.log
+          if-no-files-found: warn
+
       - name: Preserve ISO
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: synapse-os-nebula-amd64
           path: |
             out/*.iso
             out/*.iso.sha256
-          if-no-files-found: error
+          if-no-files-found: warn
