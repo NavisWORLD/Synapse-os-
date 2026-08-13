@@ -1,0 +1,67 @@
+name: Build and VM smoke test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build and VM tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y live-build debootstrap rsync xorriso squashfs-tools qemu-system-x86
+
+      - name: Validate source
+        run: make check
+
+      - name: Build Synapse OS ISO
+        run: sudo ./build/build.sh
+
+      - name: Verify ISO checksum
+        run: sha256sum -c out/*.iso.sha256
+
+      - name: Boot ISO kernel in QEMU and run guest probe
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*.iso' -print -quit)"
+          test -n "$ISO"
+          mkdir -p /tmp/synapse-vm
+          xorriso -osirrox on -indev "$ISO" -extract /live/vmlinuz /tmp/synapse-vm/vmlinuz
+          xorriso -osirrox on -indev "$ISO" -extract /live/initrd.img /tmp/synapse-vm/initrd.img
+          qemu-system-x86_64 \
+            -machine q35,accel=tcg -cpu max -smp 2 -m 4096 \
+            -kernel /tmp/synapse-vm/vmlinuz \
+            -initrd /tmp/synapse-vm/initrd.img \
+            -append 'boot=live components console=ttyS0 synapse.vmtest=1 systemd.unit=multi-user.target' \
+            -nic user,model=virtio-net-pci -display none -serial file:/tmp/synapse-vm/serial.log -no-reboot &
+          VM_PID=$!
+          result=timeout
+          for _ in $(seq 1 180); do
+            if grep -q 'SYNAPSE_VM_READY' /tmp/synapse-vm/serial.log 2>/dev/null; then result=pass; break; fi
+            if grep -q 'SYNAPSE_VM_FAIL:' /tmp/synapse-vm/serial.log 2>/dev/null; then result=fail; break; fi
+            if ! kill -0 "$VM_PID" 2>/dev/null; then result=stopped; break; fi
+            sleep 1
+          done
+          kill "$VM_PID" 2>/dev/null || true
+          wait "$VM_PID" 2>/dev/null || true
+          cat /tmp/synapse-vm/serial.log || true
+          test "$result" = pass
+
+      - name: Preserve ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-os-nebula-amd64
+          path: |
+            out/*.iso
+            out/*.iso.sha256
+          if-no-files-found: error
