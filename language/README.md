@@ -1,21 +1,27 @@
 # Synapse Flow (`.syn`)
 
-Synapse Flow is a deliberately small declarative language for expressing safe workstation intent.
+Synapse Flow is the state-oriented language layer of Synapse OS.
 
-## Version 1 grammar
+Version 1 supports bindings and state, expressions and math helpers, conditional blocks, bounded repetition, named procedures, relative modules, structured output, assertions, and the original Synapse OS control statements.
+
+Every program begins with:
 
 ```text
-file        := "SYNAPSE/1" NEWLINE instruction*
-instruction := profile | cosmos | service
-profile     := "profile" ("pulse" | "balanced" | "quiet" | "auto")
-cosmos      := "cosmos probe"
-service     := "service check" SERVICE_NAME
+SYNAPSE/1
 ```
 
-Comments start with `#`. There is no shell escape, no arbitrary command execution, and no filesystem mutation instruction in version 1.
+Example:
 
-Run a plan with:
-
-```bash
-synapse apply language/examples/pulse.syn
+```text
+SYNAPSE/1
+state coherence = 0.4
+let gain = phi
+repeat 4
+    set coherence = clamp(coherence + 0.1 * gain, 0, 1)
+end
+emit round(coherence, 4)
 ```
+
+Existing programs using `profile`, `cosmos probe`, and `service check` remain compatible.
+
+See `V1.md` for the quickstart and `SPEC.md` for the complete v1 contract.
