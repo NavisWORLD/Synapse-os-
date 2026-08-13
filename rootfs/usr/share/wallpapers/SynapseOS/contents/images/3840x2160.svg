@@ -1,1 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160"><defs><radialGradient id="g" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#16223f"/><stop offset="0.5" stop-color="#090d1c"/><stop offset="1" stop-color="#020309"/></radialGradient><filter id="glow"><feGaussianBlur stdDeviation="18" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="3840" height="2160" fill="url(#g)"/><g fill="none" stroke="#78d7ff" stroke-opacity="0.28" stroke-width="3"><path d="M340 1660 C880 840 1280 1780 1900 880 S3000 700 3500 1460"/><path d="M380 1080 C980 400 1480 1540 2110 760 S3010 1300 3500 620"/></g><g fill="#d7f7ff" filter="url(#glow)"><circle cx="1900" cy="880" r="18"/><circle cx="2110" cy="760" r="14"/><circle cx="1280" cy="1320" r="11"/><circle cx="3000" cy="995" r="12"/></g><text x="1920" y="1875" text-anchor="middle" fill="#e8fbff" font-family="sans-serif" font-size="74" letter-spacing="20">SYNAPSE OS</text><text x="1920" y="1960" text-anchor="middle" fill="#78d7ff" font-family="sans-serif" font-size="28" letter-spacing="8">NEBULA // HUMAN-LATENCY ENGINEERING</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160">
+  <defs>
+    <radialGradient id="space" cx="52%" cy="46%" r="72%">
+      <stop offset="0" stop-color="#173a73"/>
+      <stop offset="0.30" stop-color="#161f50"/>
+      <stop offset="0.58" stop-color="#0b102b"/>
+      <stop offset="1" stop-color="#02040d"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff6cf" stop-opacity="0.95"/>
+      <stop offset="0.16" stop-color="#75e5ff" stop-opacity="0.70"/>
+      <stop offset="0.48" stop-color="#6f5cff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#6f5cff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="16" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="70"/></filter>
+  </defs>
+  <rect width="3840" height="2160" fill="url(#space)"/>
+  <ellipse cx="1960" cy="1110" rx="1180" ry="620" fill="#52297d" opacity="0.18" filter="url(#soft)"/>
+  <ellipse cx="2640" cy="810" rx="900" ry="480" fill="#0ba6d8" opacity="0.12" filter="url(#soft)"/>
+  <ellipse cx="1780" cy="1070" rx="620" ry="620" fill="url(#halo)" opacity="0.62"/>
+  <g fill="#dff7ff" opacity="0.72">
+    <circle cx="312" cy="304" r="3"/><circle cx="690" cy="530" r="4"/><circle cx="1090" cy="280" r="3"/><circle cx="1480" cy="390" r="4"/>
+    <circle cx="2210" cy="260" r="3"/><circle cx="2580" cy="450" r="4"/><circle cx="3100" cy="330" r="3"/><circle cx="3490" cy="620" r="4"/>
+    <circle cx="420" cy="1360" r="4"/><circle cx="910" cy="1730" r="3"/><circle cx="2640" cy="1680" r="4"/><circle cx="3330" cy="1520" r="3"/>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M230 1650 C730 780 1190 1790 1770 1020 S2860 720 3540 1450" stroke="#70ddff" stroke-opacity="0.32" stroke-width="4"/>
+    <path d="M270 1120 C950 350 1410 1540 2050 770 S3000 1290 3580 560" stroke="#8c70ff" stroke-opacity="0.28" stroke-width="4"/>
+    <path d="M640 1860 C1220 1170 1550 1510 2060 1110 S2920 920 3300 1160" stroke="#f4b6ff" stroke-opacity="0.18" stroke-width="3"/>
+  </g>
+  <g fill="none" stroke="#8ce7ff" stroke-opacity="0.50" stroke-width="4" filter="url(#glow)">
+    <circle cx="1780" cy="1030" r="190"/>
+    <path d="M1780 760 L1570 900 L1605 1160 L1780 1320 L1960 1160 L1995 900 Z"/>
+    <path d="M1570 900 L1995 900 M1605 1160 L1960 1160 M1780 760 L1780 1320 M1570 900 L1960 1160 M1995 900 L1605 1160"/>
+  </g>
+  <g fill="#eefcff" filter="url(#glow)">
+    <circle cx="1780" cy="760" r="16"/><circle cx="1570" cy="900" r="13"/><circle cx="1995" cy="900" r="13"/>
+    <circle cx="1605" cy="1160" r="13"/><circle cx="1960" cy="1160" r="13"/><circle cx="1780" cy="1320" r="16"/><circle cx="1780" cy="1030" r="22"/>
+  </g>
+  <text x="1920" y="1870" text-anchor="middle" fill="#f4fbff" font-family="Noto Sans, sans-serif" font-size="76" font-weight="600" letter-spacing="18">SYNAPSE OS</text>
+  <text x="1920" y="1960" text-anchor="middle" fill="#86dfff" font-family="Noto Sans, sans-serif" font-size="29" letter-spacing="7">NEBULA // CST // HUMAN-LATENCY ENGINEERING</text>
+</svg>
