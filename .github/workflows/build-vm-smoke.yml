@@ -11,14 +11,25 @@ permissions:
 jobs:
   build-and-boot:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install build and VM tools
+      - name: Install host build and VM tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y live-build debootstrap rsync xorriso squashfs-tools qemu-system-x86
+          sudo apt-get install -y cpio debootstrap rsync xorriso squashfs-tools qemu-system-x86 curl
+
+      - name: Install Debian 13 live-build and archive keyring
+        run: |
+          curl -fsSL -o /tmp/debian-archive-keyring.deb \
+            'https://deb.debian.org/debian/pool/main/d/debian-archive-keyring/debian-archive-keyring_2025.1_all.deb'
+          echo '9ea7778e443144ca490668737a8ab22dd3e748bb99e805e22ec055abeb3c7fac  /tmp/debian-archive-keyring.deb' | sha256sum -c -
+          curl -fsSL -o /tmp/live-build.deb \
+            'https://deb.debian.org/debian/pool/main/l/live-build/live-build_20250505+deb13u1_all.deb'
+          echo '58e09779881cbcc631c49ceb703413e0247a87db01823e597b2a1c40a2afd8f4  /tmp/live-build.deb' | sha256sum -c -
+          sudo dpkg -i /tmp/debian-archive-keyring.deb /tmp/live-build.deb
+          lb --version
 
       - name: Validate source
         run: make check
