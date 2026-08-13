@@ -7,12 +7,18 @@ fail() {
   exit 1
 }
 
-grep -q '^ID=synapse-os$' /etc/os-release || fail "os-release"
+grep -q '^ID=synapseos$' /etc/os-release || fail "os-release"
 command -v synapse >/dev/null 2>&1 || fail "synapse-cli-missing"
+command -v synapse-control >/dev/null 2>&1 || fail "synapse-control-missing"
 command -v plasmashell >/dev/null 2>&1 || fail "plasma-missing"
 command -v calamares >/dev/null 2>&1 || fail "calamares-missing"
 command -v pipewire >/dev/null 2>&1 || fail "pipewire-missing"
 python3 -c 'import sys; sys.path.insert(0, "/usr/lib/synapse/python"); import synapse' || fail "python-package"
+python3 -c 'import PyQt6, psutil' || fail "control-dependencies"
+test -s /usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg || fail "wallpaper"
+test -s /usr/share/sddm/themes/synapse-nebula/Main.qml || fail "sddm-theme"
+test -s /usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth || fail "plymouth-theme"
+test -s /usr/share/grub/themes/synapse-nebula/theme.txt || fail "grub-theme"
 synapse status || fail "synapse-status"
 synapse doctor || fail "synapse-doctor"
 systemctl is-active --quiet synapse-agent.service || fail "synapse-agent"
