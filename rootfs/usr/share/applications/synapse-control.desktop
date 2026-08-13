@@ -1,8 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Synapse Control
-Comment=Open the Synapse OS control plane
-Exec=konsole -e synapse status
-Icon=utilities-system-monitor
+Comment=Control performance, COSMOS, diagnostics and recovery
+Exec=/usr/local/bin/synapse-control
+Icon=synapse-os
 Terminal=false
-Categories=System;
+Categories=System;Settings;
+Keywords=Synapse;COSMOS;performance;recovery;system;
