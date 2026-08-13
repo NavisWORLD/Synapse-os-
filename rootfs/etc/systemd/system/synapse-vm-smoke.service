@@ -1,0 +1,15 @@
+[Unit]
+Description=Synapse OS automated VM smoke test
+ConditionKernelCommandLine=synapse.vmtest=1
+Wants=NetworkManager.service synapse-agent.service
+After=NetworkManager.service synapse-agent.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/synapse/vm-smoke
+StandardOutput=journal+console
+StandardError=journal+console
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target
