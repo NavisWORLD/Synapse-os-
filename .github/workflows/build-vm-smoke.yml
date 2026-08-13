@@ -40,7 +40,33 @@ jobs:
       - name: Verify ISO checksum
         run: sha256sum -c out/*.iso.sha256
 
-      - name: Boot ISO kernel in QEMU and run guest probe
+      - name: Verify generated live filesystem
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*.iso' -print -quit)"
+          test -n "$ISO"
+          mkdir -p /tmp/synapse-image /tmp/synapse-root
+          xorriso -osirrox on -indev "$ISO" -extract /live/filesystem.squashfs /tmp/synapse-image/filesystem.squashfs
+          unsquashfs -f -d /tmp/synapse-root /tmp/synapse-image/filesystem.squashfs \
+            etc/os-release \
+            etc/systemd/system/synapse-agent.service \
+            usr/local/bin/synapse \
+            usr/bin/plasmashell \
+            usr/bin/calamares \
+            usr/bin/pipewire \
+            usr/bin/nmcli \
+            usr/lib/synapse/python/synapse/__init__.py
+          grep -q '^ID=synapseos$' /tmp/synapse-root/etc/os-release
+          test -s /tmp/synapse-root/etc/systemd/system/synapse-agent.service
+          test -s /tmp/synapse-root/usr/local/bin/synapse
+          test -e /tmp/synapse-root/usr/bin/plasmashell
+          test -e /tmp/synapse-root/usr/bin/calamares
+          test -e /tmp/synapse-root/usr/bin/pipewire
+          test -e /tmp/synapse-root/usr/bin/nmcli
+          test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/__init__.py
+
+      - name: Boot live ISO in QEMU
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -54,13 +80,18 @@ jobs:
             -kernel /tmp/synapse-vm/vmlinuz \
             -initrd /tmp/synapse-vm/initrd.img \
             -cdrom "$ISO" \
-            -append 'boot=live components console=ttyS0 synapse.vmtest=1 systemd.unit=multi-user.target' \
+            -append 'boot=live components console=ttyS0 systemd.unit=multi-user.target systemd.show_status=1 systemd.log_target=console' \
             -nic user,model=virtio-net-pci -display none -serial file:/tmp/synapse-vm/serial.log -no-reboot &
           VM_PID=$!
           result=timeout
           for _ in $(seq 1 180); do
-            if grep -q 'SYNAPSE_VM_READY' /tmp/synapse-vm/serial.log 2>/dev/null; then result=pass; break; fi
-            if grep -q 'SYNAPSE_VM_FAIL:' /tmp/synapse-vm/serial.log 2>/dev/null; then result=fail; break; fi
+            agent=0
+            network=0
+            multi=0
+            grep -Eq 'Started.*Synapse OS telemetry agent' /tmp/synapse-vm/serial.log 2>/dev/null && agent=1 || true
+            grep -Eq 'Started.*Network Manager|Started NetworkManager.service' /tmp/synapse-vm/serial.log 2>/dev/null && network=1 || true
+            grep -Eq 'Reached.*Multi-User System|Reached target multi-user.target' /tmp/synapse-vm/serial.log 2>/dev/null && multi=1 || true
+            if [[ "$agent" -eq 1 && "$network" -eq 1 && "$multi" -eq 1 ]]; then result=pass; break; fi
             if ! kill -0 "$VM_PID" 2>/dev/null; then result=stopped; break; fi
             sleep 1
           done
