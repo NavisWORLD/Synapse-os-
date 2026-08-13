@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+exec >/dev/ttyS0 2>&1
+
+fail() {
+  echo "SYNAPSE_VM2_FAIL:$*"
+  exit 1
+}
+
+grep -q '^ID=synapseos$' /etc/os-release || fail "os-release"
+command -v synapse >/dev/null 2>&1 || fail "synapse-cli-missing"
+command -v plasmashell >/dev/null 2>&1 || fail "plasma-missing"
+command -v calamares >/dev/null 2>&1 || fail "calamares-missing"
+command -v pipewire >/dev/null 2>&1 || fail "pipewire-missing"
+python3 -c 'import sys; sys.path.insert(0, "/usr/lib/synapse/python"); import synapse' || fail "python-package"
+synapse status || fail "synapse-status"
+synapse doctor || fail "synapse-doctor"
+test -s /run/synapse/status.json || fail "synapse-agent-output"
+command -v nmcli >/dev/null 2>&1 || fail "nmcli-missing"
+nmcli general status >/dev/null 2>&1 || fail "network-manager"
+echo "SYNAPSE_VM2_READY"
