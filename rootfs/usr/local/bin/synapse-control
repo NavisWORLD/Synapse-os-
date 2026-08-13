@@ -1,0 +1,280 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import os
+import shutil
+import socket
+import subprocess
+import sys
+
+import psutil
+from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+COSMOS_PORTS = {
+    "Ollama": 11434,
+    "Helper": 11435,
+    "CST bridge": 11501,
+    "Sensory API": 8765,
+    "COSMOS Web": 8081,
+    "Web fallback": 8090,
+}
+
+
+def run(*args: str) -> tuple[int, str]:
+    try:
+        proc = subprocess.run(args, text=True, capture_output=True, timeout=8, check=False)
+        return proc.returncode, (proc.stdout or proc.stderr).strip()
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return 127, str(exc)
+
+
+def probe(port: int) -> bool:
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.08):
+            return True
+    except OSError:
+        return False
+
+
+def card(title: str, value: str, subtitle: str = "") -> tuple[QFrame, QLabel]:
+    frame = QFrame()
+    frame.setObjectName("card")
+    layout = QVBoxLayout(frame)
+    title_label = QLabel(title)
+    title_label.setObjectName("muted")
+    value_label = QLabel(value)
+    value_label.setObjectName("value")
+    layout.addWidget(title_label)
+    layout.addWidget(value_label)
+    if subtitle:
+        detail = QLabel(subtitle)
+        detail.setObjectName("muted")
+        detail.setWordWrap(True)
+        layout.addWidget(detail)
+    return frame, value_label
+
+
+class Window(QMainWindow):
+    def __init__(self, initial_tab: str = "overview") -> None:
+        super().__init__()
+        self.setWindowTitle("Synapse Control // Nebula")
+        self.resize(1040, 700)
+
+        root = QWidget()
+        outer = QVBoxLayout(root)
+        outer.setContentsMargins(26, 22, 26, 22)
+        outer.setSpacing(16)
+
+        header = QHBoxLayout()
+        brand = QVBoxLayout()
+        hero = QLabel("SYNAPSE CONTROL")
+        hero.setObjectName("hero")
+        subtitle = QLabel("Nebula // human-latency engineering // COSMOS ready")
+        subtitle.setObjectName("muted")
+        brand.addWidget(hero)
+        brand.addWidget(subtitle)
+        header.addLayout(brand)
+        header.addStretch()
+        self.ready = QLabel("● SYSTEM READY")
+        self.ready.setObjectName("ready")
+        header.addWidget(self.ready)
+        outer.addLayout(header)
+
+        self.tabs = QTabWidget()
+        outer.addWidget(self.tabs, 1)
+        self.tabs.addTab(self.overview_tab(), "Overview")
+        self.tabs.addTab(self.performance_tab(), "Performance")
+        self.tabs.addTab(self.cosmos_tab(), "COSMOS")
+        self.tabs.addTab(self.recovery_tab(), "Recovery")
+        tab_map = {"overview": 0, "performance": 1, "cosmos": 2, "recovery": 3}
+        self.tabs.setCurrentIndex(tab_map.get(initial_tab, 0))
+
+        self.setCentralWidget(root)
+        self.apply_style()
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.refresh)
+        self.timer.start(1500)
+        self.refresh()
+
+    def overview_tab(self) -> QWidget:
+        widget = QWidget()
+        grid = QGridLayout(widget)
+        grid.setSpacing(14)
+        item, self.cpu_value = card("CPU", "—", "live utilization")
+        grid.addWidget(item, 0, 0)
+        item, self.ram_value = card("MEMORY", "—", "physical memory")
+        grid.addWidget(item, 0, 1)
+        item, self.disk_value = card("STORAGE", "—", "root filesystem")
+        grid.addWidget(item, 1, 0)
+        item, self.net_value = card("NETWORK", "—", "active interfaces")
+        grid.addWidget(item, 1, 1)
+        item, self.kernel_value = card("KERNEL", os.uname().release, "Synapse OS Nebula")
+        grid.addWidget(item, 2, 0, 1, 2)
+        return widget
+
+    def performance_tab(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(16)
+        title = QLabel("Performance profile")
+        title.setObjectName("section")
+        layout.addWidget(title)
+        row = QHBoxLayout()
+        self.profile = QComboBox()
+        self.profile.addItems(["balanced", "pulse", "quiet", "auto"])
+        row.addWidget(self.profile, 1)
+        apply_button = QPushButton("Apply profile")
+        apply_button.clicked.connect(self.apply_profile)
+        row.addWidget(apply_button)
+        layout.addLayout(row)
+        self.profile_state = QLabel(
+            "Pulse favors responsiveness. Balanced is the everyday default. Quiet favors efficiency."
+        )
+        self.profile_state.setWordWrap(True)
+        self.profile_state.setObjectName("muted")
+        layout.addWidget(self.profile_state)
+        bench = QPushButton("Run Synapse microbenchmark")
+        bench.clicked.connect(self.run_bench)
+        layout.addWidget(bench)
+        self.bench_out = QLabel(
+            "Benchmark results compare runs on the same hardware; they are not a faster-than-light claim."
+        )
+        self.bench_out.setWordWrap(True)
+        self.bench_out.setObjectName("console")
+        layout.addWidget(self.bench_out)
+        layout.addStretch()
+        return widget
+
+    def cosmos_tab(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        self.cosmos_labels: dict[str, tuple[int, QLabel]] = {}
+        for name, port in COSMOS_PORTS.items():
+            row = QFrame()
+            row.setObjectName("card")
+            row_layout = QHBoxLayout(row)
+            left = QLabel(f"{name}  :{port}")
+            right = QLabel("Checking…")
+            right.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            row_layout.addWidget(left)
+            row_layout.addStretch()
+            row_layout.addWidget(right)
+            layout.addWidget(row)
+            self.cosmos_labels[name] = (port, right)
+        refresh = QPushButton("Probe COSMOS services")
+        refresh.clicked.connect(self.refresh_cosmos)
+        layout.addWidget(refresh)
+        layout.addStretch()
+        return widget
+
+    def recovery_tab(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        intro = QLabel("Safe tools first. Nothing on this screen erases disks automatically.")
+        intro.setObjectName("muted")
+        layout.addWidget(intro)
+        actions = [
+            ("Run system doctor", self.doctor),
+            ("Open KDE System Settings", lambda: self.launch("systemsettings")),
+            ("Open installer (Calamares)", lambda: self.launch("calamares")),
+            ("Open terminal", lambda: self.launch("konsole")),
+        ]
+        for text, callback in actions:
+            button = QPushButton(text)
+            button.clicked.connect(callback)
+            layout.addWidget(button)
+        self.recovery_out = QLabel("Diagnostics output appears here.")
+        self.recovery_out.setWordWrap(True)
+        self.recovery_out.setObjectName("console")
+        layout.addWidget(self.recovery_out, 1)
+        return widget
+
+    def apply_style(self) -> None:
+        self.setStyleSheet(
+            """
+            QWidget { background:#070b18; color:#edf6ff; font:11pt 'Noto Sans'; }
+            QMainWindow { background:#030611; }
+            QTabWidget::pane { border:1px solid #24385f; border-radius:16px; background:#09101f; }
+            QTabBar::tab { background:#0d1629; padding:11px 20px; margin:3px; border-radius:9px; color:#a9bdd9; }
+            QTabBar::tab:selected { background:#17294b; color:#ffffff; border:1px solid #5c86ff; }
+            QFrame#card { background:#0e1729; border:1px solid #22365b; border-radius:15px; }
+            QLabel#hero { font-size:24pt; font-weight:700; color:#f6fbff; }
+            QLabel#section { font-size:17pt; font-weight:650; }
+            QLabel#value { font-size:20pt; font-weight:700; color:#8edfff; }
+            QLabel#muted { color:#91a5c4; }
+            QLabel#ready { color:#66f09a; font-weight:700; }
+            QLabel#console { background:#050914; border:1px solid #203455; border-radius:12px; padding:14px; color:#bdd5ff; }
+            QPushButton, QComboBox { background:#13213a; border:1px solid #31548b; border-radius:10px; padding:10px 14px; }
+            QPushButton:hover { background:#1a3156; border-color:#66b7ff; }
+            """
+        )
+
+    def refresh(self) -> None:
+        cpu = psutil.cpu_percent(None)
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage("/")
+        network = [name for name, state in psutil.net_if_stats().items() if state.isup and name != "lo"]
+        self.cpu_value.setText(f"{cpu:.0f}%")
+        self.ram_value.setText(f"{mem.percent:.0f}%  ·  {mem.used / 2**30:.1f}/{mem.total / 2**30:.1f} GiB")
+        self.disk_value.setText(f"{disk.percent:.0f}%  ·  {disk.free / 2**30:.0f} GiB free")
+        self.net_value.setText(", ".join(network[:3]) or "offline")
+        self.refresh_cosmos()
+
+    def refresh_cosmos(self) -> None:
+        online = 0
+        for _, (port, label) in self.cosmos_labels.items():
+            ok = probe(port)
+            online += int(ok)
+            label.setText("● Online" if ok else "○ Offline")
+            label.setStyleSheet("color:#66f09a" if ok else "color:#7f91ad")
+        self.ready.setText(f"● SYSTEM READY  ·  COSMOS {online}/{len(COSMOS_PORTS)}")
+
+    def apply_profile(self) -> None:
+        rc, output = run("synapse", "profile", "set", self.profile.currentText())
+        self.profile_state.setText(output or f"exit {rc}")
+
+    def run_bench(self) -> None:
+        rc, output = run("synapse", "bench")
+        self.bench_out.setText(output or f"exit {rc}")
+
+    def doctor(self) -> None:
+        rc, output = run("synapse", "doctor")
+        self.recovery_out.setText(output or f"exit {rc}")
+
+    def launch(self, program: str) -> None:
+        path = shutil.which(program)
+        if not path:
+            QMessageBox.warning(self, "Unavailable", f"{program} is not installed in this environment.")
+            return
+        subprocess.Popen([path], start_new_session=True)
+
+
+def main() -> int:
+    initial_tab = "overview"
+    if "--tab" in sys.argv:
+        index = sys.argv.index("--tab")
+        if index + 1 < len(sys.argv):
+            initial_tab = sys.argv[index + 1].lower()
+    app = QApplication(sys.argv)
+    app.setApplicationName("Synapse Control")
+    window = Window(initial_tab)
+    window.show()
+    return app.exec()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
