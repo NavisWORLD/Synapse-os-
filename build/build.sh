@@ -41,6 +41,24 @@ lb config \
   --bootappend-live "boot=live components hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us quiet splash"
 
 rsync -a "$REPO_ROOT/build/config/" config/
+
+# Plasma 6 in Debian 13 folds the Wayland session into plasma-workspace.
+# Older Debian releases used a separate plasma-workspace-wayland package.
+# Keep the source manifest readable across generations, but remove that legacy
+# package name from the generated trixie build configuration before live-build
+# resolves packages.
+if [[ "$SUITE" == "trixie" ]]; then
+  python3 - "config/package-lists/nebula-ui.list.chroot" <<'PYCOMPAT'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+if path.exists():
+    lines = path.read_text(encoding="utf-8").splitlines()
+    lines = [line for line in lines if line.strip() != "plasma-workspace-wayland"]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PYCOMPAT
+fi
+
 mkdir -p config/includes.chroot config/hooks/live
 rsync -a "$REPO_ROOT/rootfs/" config/includes.chroot/
 mkdir -p config/includes.chroot/usr/lib/synapse/python
