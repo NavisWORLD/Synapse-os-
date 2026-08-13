@@ -1,0 +1,14 @@
+[SddmGreeterTheme]
+Name=Synapse Nebula
+Description=Synapse OS cosmic login experience
+Author=Synapse OS
+Copyright=(c) Synapse OS contributors
+License=MIT
+Type=sddm-theme
+Version=1.0
+Website=https://github.com/NavisWORLD/Synapse-os-
+MainScript=Main.qml
+ConfigFile=theme.conf
+TranslationsDirectory=translations
+Theme-Id=synapse-nebula
+Theme-API=2.0
