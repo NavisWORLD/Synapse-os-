@@ -1,0 +1,7 @@
+plasma-workspace-wayland
+python3-pyqt6
+python3-psutil
+xdg-utils
+plymouth
+plymouth-themes
+grub2-common
