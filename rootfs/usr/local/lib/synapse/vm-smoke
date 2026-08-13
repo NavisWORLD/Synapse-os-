@@ -66,6 +66,8 @@ EOF
 run_check "synflow-v2-check" synflow check /tmp/synapse-v2-smoke.syn
 run_check "synflow-v2-compile" synflow compile /tmp/synapse-v2-smoke.syn -o /tmp/synapse-v2-smoke.synb
 run_check "synflow-v2-run" synflow run /tmp/synapse-v2-smoke.synb
+run_check "synflow-v2-native" synflow native /tmp/synapse-v2-smoke.syn -o /tmp/synapse-v2-native
+run_check "synflow-v2-native-run" /tmp/synapse-v2-native
 check_cmd "synapse-control" synapse-control
 check_cmd "plasma" plasmashell
 check_cmd "calamares" calamares
