@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Synapse Nebula
+Description=Cosmic boot splash for Synapse OS
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/synapse-nebula
+ScriptFile=/usr/share/plymouth/themes/synapse-nebula/synapse-nebula.script
