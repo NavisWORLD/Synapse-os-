@@ -1,0 +1,26 @@
+title-text: "SYNAPSE OS // NEBULA"
+title-color: "#eefbff"
+desktop-color: "#02040d"
+
++ boot_menu {
+  left = 23%
+  top = 24%
+  width = 54%
+  height = 50%
+  item_font = "Unifont Regular 16"
+  item_color = "#9fb6d8"
+  selected_item_color = "#ffffff"
+  item_height = 42
+  item_padding = 14
+  item_spacing = 8
+}
+
++ label {
+  text = "COSMIC OUTSIDE. FAMILIAR INSIDE."
+  left = 0
+  top = 82%
+  width = 100%
+  align = "center"
+  color = "#70dfff"
+  font = "Unifont Regular 14"
+}
