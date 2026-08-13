@@ -53,6 +53,7 @@ jobs:
             -machine q35,accel=tcg -cpu max -smp 2 -m 4096 \
             -kernel /tmp/synapse-vm/vmlinuz \
             -initrd /tmp/synapse-vm/initrd.img \
+            -cdrom "$ISO" \
             -append 'boot=live components console=ttyS0 synapse.vmtest=1 systemd.unit=multi-user.target' \
             -nic user,model=virtio-net-pci -display none -serial file:/tmp/synapse-vm/serial.log -no-reboot &
           VM_PID=$!
