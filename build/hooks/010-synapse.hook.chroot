@@ -1,13 +1,37 @@
 #!/bin/sh
 set -eu
+
 chmod 0755 /usr/local/bin/synapse
+chmod 0755 /usr/local/bin/synapse-control
 chmod 0755 /usr/local/lib/synapse/vm-smoke
+
 mkdir -p /run/synapse
 systemctl enable synapse-agent.service
 systemctl enable synapse-vm-smoke.service
 systemctl enable NetworkManager.service || true
 systemctl enable sddm.service || true
 systemctl enable power-profiles-daemon.service || true
+
+mkdir -p /etc/sddm.conf.d
+cat > /etc/sddm.conf.d/10-synapse-nebula.conf <<'EOF'
+[Theme]
+Current=synapse-nebula
+CursorTheme=breeze_cursors
+EOF
+
+if command -v plymouth-set-default-theme >/dev/null 2>&1; then
+  plymouth-set-default-theme synapse-nebula || true
+fi
+
+mkdir -p /etc/default/grub.d
+cat > /etc/default/grub.d/50-synapse-theme.cfg <<'EOF'
+GRUB_THEME="/usr/share/grub/themes/synapse-nebula/theme.txt"
+GRUB_TIMEOUT=5
+EOF
+
 mkdir -p /etc/skel/Desktop
 cp /usr/share/applications/install-synapse.desktop /etc/skel/Desktop/Install-Synapse-OS.desktop
-chmod +x /etc/skel/Desktop/Install-Synapse-OS.desktop
+cp /usr/share/applications/synapse-control.desktop /etc/skel/Desktop/Synapse-Control.desktop
+cp /usr/share/applications/synapse-recovery.desktop /etc/skel/Desktop/Synapse-Recovery.desktop
+cp /usr/share/applications/cosmos.desktop /etc/skel/Desktop/COSMOS.desktop
+chmod +x /etc/skel/Desktop/*.desktop
