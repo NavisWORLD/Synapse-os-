@@ -1,0 +1,34 @@
+Window.SetBackgroundTopColor(0.01, 0.02, 0.07);
+Window.SetBackgroundBottomColor(0.03, 0.07, 0.18);
+
+screen_w = Window.GetWidth();
+screen_h = Window.GetHeight();
+
+logo = Image.Text("SYNAPSE OS", 0.92, 0.97, 1.00);
+logo_sprite = Sprite(logo);
+logo_sprite.SetX(screen_w / 2 - logo.GetWidth() / 2);
+logo_sprite.SetY(screen_h / 2 - 54);
+
+sub = Image.Text("NEBULA  //  CST", 0.38, 0.82, 1.00);
+sub_sprite = Sprite(sub);
+sub_sprite.SetX(screen_w / 2 - sub.GetWidth() / 2);
+sub_sprite.SetY(screen_h / 2 + 6);
+
+status = Image.Text("awakening synapses", 0.55, 0.64, 0.82);
+status_sprite = Sprite(status);
+status_sprite.SetX(screen_w / 2 - status.GetWidth() / 2);
+status_sprite.SetY(screen_h / 2 + 56);
+
+fun refresh_callback () {
+  now = Plymouth.GetTime();
+  alpha = 0.55 + 0.45 * Math.Sin(now * 2.2);
+  status_sprite.SetOpacity(alpha);
+}
+Plymouth.SetRefreshFunction(refresh_callback);
+
+fun message_callback (text) {
+  status = Image.Text(text, 0.55, 0.64, 0.82);
+  status_sprite.SetImage(status);
+  status_sprite.SetX(screen_w / 2 - status.GetWidth() / 2);
+}
+Plymouth.SetMessageFunction(message_callback);
