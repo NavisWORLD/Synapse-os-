@@ -52,6 +52,20 @@ else
 fi
 
 check_cmd "synapse-cli" synapse
+check_cmd "synflow-cli" synflow
+cat >/tmp/synapse-v2-smoke.syn <<'EOF'
+SYNAPSE/2
+state x: int = 1
+fn plus(v: int) -> int
+    return v + 2
+end
+set x = plus(x)
+assert x == 3
+emit x
+EOF
+run_check "synflow-v2-check" synflow check /tmp/synapse-v2-smoke.syn
+run_check "synflow-v2-compile" synflow compile /tmp/synapse-v2-smoke.syn -o /tmp/synapse-v2-smoke.synb
+run_check "synflow-v2-run" synflow run /tmp/synapse-v2-smoke.synb
 check_cmd "synapse-control" synapse-control
 check_cmd "plasma" plasmashell
 check_cmd "calamares" calamares
