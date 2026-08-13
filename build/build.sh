@@ -61,6 +61,7 @@ fi
 
 mkdir -p config/includes.chroot config/hooks/live
 rsync -a "$REPO_ROOT/rootfs/" config/includes.chroot/
+chmod 0755 config/includes.chroot/usr/local/bin/synflow
 mkdir -p config/includes.chroot/usr/lib/synapse/python
 rsync -a "$REPO_ROOT/src/synapse" config/includes.chroot/usr/lib/synapse/python/
 rsync -a "$REPO_ROOT/build/hooks/" config/hooks/live/
