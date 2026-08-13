@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Synapse Nebula Wallpaper
+Exec=plasma-apply-wallpaperimage /usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg
+OnlyShowIn=KDE;
+NoDisplay=true
+X-KDE-autostart-after=panel
