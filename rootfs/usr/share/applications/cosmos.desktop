@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=COSMOS
+Comment=Open the local COSMOS interface
+Exec=xdg-open http://127.0.0.1:8081
+Icon=synapse-os
+Terminal=false
+Categories=Utility;Development;
+Keywords=COSMOS;CST;AI;Synapse;
