@@ -1,8 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Install Synapse OS
-Comment=Install Synapse OS to this computer
+Comment=Install Synapse OS Nebula to this computer
 Exec=calamares
-Icon=system-software-install
+Icon=synapse-os
 Terminal=false
 Categories=System;
+Keywords=install;Synapse;Nebula;
