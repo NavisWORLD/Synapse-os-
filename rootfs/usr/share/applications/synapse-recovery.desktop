@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Synapse Recovery
+Comment=Open safe diagnostics and recovery tools
+Exec=/usr/local/bin/synapse-control --tab recovery
+Icon=synapse-os
+Terminal=false
+Categories=System;Settings;
+Keywords=recovery;diagnostics;repair;Synapse;
