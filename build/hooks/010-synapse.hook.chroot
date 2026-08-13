@@ -5,7 +5,21 @@ chmod 0755 /usr/local/bin/synapse
 chmod 0755 /usr/local/bin/synapse-control
 chmod 0755 /usr/local/lib/synapse/vm-smoke
 
-mkdir -p /run/synapse
+# /run is volatile. The tmpfiles rule recreates /run/synapse on every boot.
+# Correct the legacy unit ordering in the generated image so the agent starts
+# before multi-user.target completes instead of ordering itself after the target
+# that pulls it in.
+python3 - <<'PYUNIT'
+from pathlib import Path
+unit = Path('/etc/systemd/system/synapse-agent.service')
+text = unit.read_text(encoding='utf-8')
+old = 'After=multi-user.target\n'
+new = 'After=local-fs.target\n'
+if old not in text:
+    raise SystemExit('expected Synapse agent ordering line not found')
+unit.write_text(text.replace(old, new, 1), encoding='utf-8')
+PYUNIT
+
 systemctl enable synapse-agent.service
 systemctl enable synapse-vm-smoke.service
 systemctl enable NetworkManager.service || true
