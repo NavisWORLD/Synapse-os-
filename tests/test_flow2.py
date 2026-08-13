@@ -1,9 +1,12 @@
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 
 from synapse.flow import BytecodeModule, FlowError, RuntimeCapabilities, TypeChecker, VM, compile_program, disassemble, parse_lines
 from synapse.lsp import diagnostics
+from synapse.native import emit_c_file
 from synapse.net import NetworkError
 from synapse.packages import Manifest
 
@@ -47,5 +50,15 @@ class Flow2Tests(unittest.TestCase):
             self.assertEqual(Manifest.load(p).dependencies["math"],"1.0.0")
     def test_attribute_access_rejected(self):
         with self.assertRaises(FlowError):TypeChecker(parse_lines('SYNAPSE/2\nlet x: any = (1).__class__\n'.splitlines())).check()
+    def test_native_backend_compiles_and_runs(self):
+        cc=shutil.which("cc") or shutil.which("gcc") or shutil.which("clang")
+        if not cc:self.skipTest("C11 compiler unavailable")
+        src='SYNAPSE/2\nstate x: int = 1\nfn plus(v: int) -> int\n return v + 2\nend\nset x = plus(x)\nassert x == 3\nemit x\n'
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);source=root/"native.syn";cfile=root/"native.c";binary=root/"native"
+            source.write_text(src,encoding="utf-8");emit_c_file(source,cfile)
+            subprocess.run([cc,"-std=c11","-O2",str(cfile),"-lm","-o",str(binary)],check=True,capture_output=True,text=True)
+            result=subprocess.run([str(binary)],check=True,capture_output=True,text=True)
+            self.assertEqual(result.stdout.strip(),"3")
 
 if __name__=="__main__":unittest.main()
