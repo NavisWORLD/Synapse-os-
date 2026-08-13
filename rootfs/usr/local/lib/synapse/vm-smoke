@@ -1,26 +1,70 @@
 #!/bin/sh
-set -eu
-exec >/dev/ttyS0 2>&1
+set -u
 
 fail() {
-  echo "SYNAPSE_VM_FAIL:$*"
+  echo "SYNAPSE_VM_FAIL:$1"
   exit 1
 }
 
-grep -q '^ID=synapseos$' /etc/os-release || fail "os-release"
-command -v synapse >/dev/null 2>&1 || fail "synapse-cli-missing"
-command -v synapse-control >/dev/null 2>&1 || fail "synapse-control-missing"
-command -v plasmashell >/dev/null 2>&1 || fail "plasma-missing"
-command -v calamares >/dev/null 2>&1 || fail "calamares-missing"
-command -v pipewire >/dev/null 2>&1 || fail "pipewire-missing"
-python3 -c 'import sys; sys.path.insert(0, "/usr/lib/synapse/python"); import synapse' || fail "python-package"
-python3 -c 'import PyQt6, psutil' || fail "control-dependencies"
-test -s /usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg || fail "wallpaper"
-test -s /usr/share/sddm/themes/synapse-nebula/Main.qml || fail "sddm-theme"
-test -s /usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth || fail "plymouth-theme"
-test -s /usr/share/grub/themes/synapse-nebula/theme.txt || fail "grub-theme"
-synapse status || fail "synapse-status"
-synapse doctor || fail "synapse-doctor"
-systemctl is-active --quiet synapse-agent.service || fail "synapse-agent"
-systemctl is-active --quiet NetworkManager.service || fail "network-manager"
+pass() {
+  echo "SYNAPSE_VM_PASS:$1"
+}
+
+check_cmd() {
+  name="$1"
+  binary="$2"
+  echo "SYNAPSE_VM_CHECK:$name"
+  if command -v "$binary" >/dev/null 2>&1; then
+    pass "$name"
+  else
+    fail "$name"
+  fi
+}
+
+check_file() {
+  name="$1"
+  path="$2"
+  echo "SYNAPSE_VM_CHECK:$name"
+  if test -s "$path"; then
+    pass "$name"
+  else
+    fail "$name"
+  fi
+}
+
+run_check() {
+  name="$1"
+  shift
+  echo "SYNAPSE_VM_CHECK:$name"
+  if "$@" >/dev/null 2>&1; then
+    pass "$name"
+  else
+    fail "$name"
+  fi
+}
+
+echo "SYNAPSE_VM_CHECK:os-release"
+if grep -q '^ID=synapseos$' /etc/os-release; then
+  pass "os-release"
+else
+  echo "SYNAPSE_VM_INFO:os-release=$(tr '\n' ' ' < /etc/os-release)"
+  fail "os-release"
+fi
+
+check_cmd "synapse-cli" synapse
+check_cmd "synapse-control" synapse-control
+check_cmd "plasma" plasmashell
+check_cmd "calamares" calamares
+check_cmd "pipewire" pipewire
+run_check "python-package" python3 -c 'import sys; sys.path.insert(0, "/usr/lib/synapse/python"); import synapse'
+run_check "control-dependencies" python3 -c 'import PyQt6, psutil'
+check_file "wallpaper" /usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg
+check_file "sddm-theme" /usr/share/sddm/themes/synapse-nebula/Main.qml
+check_file "plymouth-theme" /usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth
+check_file "grub-theme" /usr/share/grub/themes/synapse-nebula/theme.txt
+run_check "synapse-status" synapse status
+run_check "synapse-doctor" synapse doctor
+run_check "synapse-agent" systemctl is-active --quiet synapse-agent.service
+run_check "network-manager" systemctl is-active --quiet NetworkManager.service
+
 echo "SYNAPSE_VM_READY"
