@@ -1,5 +1,6 @@
 {
   "schema": "synapse-model-integration-v1",
+  "integration_status": "draft_feature_branch",
   "lineage": "Zeref-Mobile-v1",
   "source_repository": "NavisWORLD/Cosmos",
   "source_branch": "feature/cosmos-apple-zeref-mobile-v1",
