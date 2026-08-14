@@ -1,6 +1,6 @@
 # Zeref-Mobile-v1 // Synapse OS Integration
 
-This folder is the Synapse OS / OS+ discovery and provenance lane for the native Apple `Zeref-Mobile-v1` artifact.
+This folder is the Synapse OS / OS+ discovery and provenance lane for the native Apple `Zeref-Mobile-v1` artifact. It is intentionally developed on `feature/zeref-mobile-v1-integration` until its integration checks are reviewed.
 
 The model itself is owned by the COSMOS lineage. Synapse OS does **not** rename, rewrite, or claim authorship over its checkpoint lineage.
 
