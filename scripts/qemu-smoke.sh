@@ -44,7 +44,6 @@ common=(
   -kernel "$TMP/vmlinuz"
   -initrd "$TMP/initrd.img"
   -append "boot=live components live-media=/dev/vda console=$SYNAPSE_SERIAL_CONSOLE systemd.unit=multi-user.target systemd.show_status=1 systemd.log_target=console synapse.vmtest=1"
-  -nic user,model=virtio-net-pci
   -display none
   -serial "file:$TMP/serial.log"
   -no-reboot
@@ -52,11 +51,13 @@ common=(
 
 if [[ "$SYNAPSE_ARCH_NORMALIZED" == "amd64" ]]; then
   media=(-drive "file=$ISO,format=raw,if=virtio,readonly=on")
+  network=(-nic user,model=virtio-net-pci)
 else
   media=(-drive "if=none,id=live,file=$ISO,format=raw,readonly=on" -device "virtio-blk-device,drive=live")
+  network=(-netdev "user,id=net0" -device "virtio-net-device,netdev=net0")
 fi
 
-"$SYNAPSE_QEMU_SYSTEM" "${common[@]}" "${media[@]}" &
+"$SYNAPSE_QEMU_SYSTEM" "${common[@]}" "${media[@]}" "${network[@]}" &
 VM_PID=$!
 result=timeout
 for _ in $(seq 1 "${SYNAPSE_QEMU_TIMEOUT:-240}"); do
