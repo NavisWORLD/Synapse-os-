@@ -35,6 +35,22 @@ class LicensePolicyTests(unittest.TestCase):
         self.assertIn("source-available, not open source", readme)
         self.assertNotIn("Synapse-specific original code is MIT licensed", readme)
 
+    def test_build_stages_legal_package_into_bootable_image(self):
+        build = (ROOT / "build/build.sh").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/build-vm-smoke.yml").read_text(encoding="utf-8")
+        self.assertIn("usr/share/doc/synapse-os", build)
+        for name in (
+            "LICENSE",
+            "NOTICE",
+            "COMMERCIAL-LICENSING.md",
+            "LICENSE-HISTORY.md",
+            "TRADEMARKS.md",
+            "THIRD_PARTY_NOTICES.md",
+        ):
+            self.assertIn(name, build)
+            self.assertIn(f"usr/share/doc/synapse-os/{name}", workflow)
+        self.assertIn("Cory Davis / NavisWORLD Synapse Source License 1.0", workflow)
+
     def test_repository_license_audit_passes(self):
         self.assertEqual([], license_audit.audit())
 
