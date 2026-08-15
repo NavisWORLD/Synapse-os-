@@ -8,15 +8,18 @@ from synapse.phone_bootstrap import InstallManager, device_snapshot, resolve_ui_
 
 class PhoneBootstrapTests(unittest.TestCase):
     def test_device_snapshot_has_required_shape(self):
+        hardware = {"arch": "amd64", "profile_id": "asus-cx1700cka-gallop", "certification_state": "physical-target"}
         with mock.patch("synapse.phone_bootstrap._network_addresses", return_value=[]), mock.patch(
             "synapse.phone_bootstrap._port_open", return_value=False
-        ):
+        ), mock.patch("synapse.phone_bootstrap.probe_hardware", return_value=hardware):
             data = device_snapshot()
         self.assertIn("hostname", data)
         self.assertIn("machine", data)
         self.assertIn("disk_root", data)
         self.assertIn("cosmos_ports", data)
         self.assertIn("11434", data["cosmos_ports"])
+        self.assertEqual(data["hardware"]["profile_id"], "asus-cx1700cka-gallop")
+        self.assertEqual(data["hardware"]["certification_state"], "physical-target")
 
     def test_install_is_disabled_without_explicit_flag(self):
         manager = InstallManager(install_root=Path("/tmp/unused-cosmos"), allow_install=False, activate=False)
