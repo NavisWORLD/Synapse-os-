@@ -6,7 +6,7 @@ int main(int argc, char** argv) {
     try {
         std::cout << "ABI " << synapse::abi_version() << '\n';
         std::cout << synapse::raw_status(path) << '\n';
-        std::cout << "probe " << (synapse::service_reachable("127.0.0.1", 65534, 5) ? "open" : "closed") << '\n';
+        std::cout << "invalid-port " << (synapse::service_reachable("127.0.0.1", 0, 5) ? "open" : "closed") << '\n';
         return 0;
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
