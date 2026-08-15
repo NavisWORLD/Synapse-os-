@@ -32,7 +32,7 @@ rust: c
 	@if command -v cargo >/dev/null 2>&1; then LD_LIBRARY_PATH=$(ABI_BUILD):$${LD_LIBRARY_PATH:-} RUSTFLAGS='-L native=$(ABI_BUILD)' cargo test --manifest-path sdk/rust/Cargo.toml; else echo "cargo not installed; Rust execution gate skipped locally (CI installs Rust)"; fi
 
 python-sdk: c
-	SYNAPSE_ABI_LIBRARY=$(ABI_BUILD)/libsynapse_abi.so PYTHONPATH=sdk/python $(PYTHON) -m unittest tests.test_sdk_python -v
+	SYNAPSE_ABI_LIBRARY=$(ABI_BUILD)/libsynapse_abi.so PYTHONPATH=sdk/python $(PYTHON) -m unittest discover -s tests -p 'test_sdk_python.py' -v
 
 arch-config:
 	$(PYTHON) scripts/arch_matrix.py validate
