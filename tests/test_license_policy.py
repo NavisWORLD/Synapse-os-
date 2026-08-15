@@ -33,7 +33,8 @@ class LicensePolicyTests(unittest.TestCase):
         self.assertIn("not revoked", history)
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("source-available, not open source", readme)
-        self.assertNotIn("Synapse-specific original code is MIT licensed", readme)
+        old_statement = "Synapse-specific original code " + "is " + "MIT " + "licensed"
+        self.assertNotIn(old_statement, readme)
 
     def test_build_stages_legal_package_into_bootable_image(self):
         build = (ROOT / "build/build.sh").read_text(encoding="utf-8")
