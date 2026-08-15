@@ -82,7 +82,7 @@ jobs:
           test -s /tmp/synapse-root/usr/include/synapse/synapse.h
           test -s /tmp/synapse-root/usr/share/synapse/hardware/profiles.json
           test -s /tmp/synapse-root/usr/share/synapse/phone-bootstrap.html
-          unsquashfs -ll /tmp/synapse-image/filesystem.squashfs | grep -q 'libsynapse_abi\.so'
+          unsquashfs -ll /tmp/synapse-image/filesystem.squashfs | grep 'libsynapse_abi\.so' >/dev/null
           grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/sddm/themes/synapse-nebula/Main.qml
           grep -q 'Synapse Nebula' /tmp/synapse-root/usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth
           grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/grub/themes/synapse-nebula/theme.txt
