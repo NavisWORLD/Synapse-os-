@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+SRC=/usr/src/synapse-sdk-c
+BUILD=/tmp/synapse-sdk-c-build
+
+if [ ! -f "$SRC/CMakeLists.txt" ]; then
+  echo "missing Synapse C ABI source at $SRC" >&2
+  exit 1
+fi
+
+rm -rf "$BUILD"
+cmake -S "$SRC" -B "$BUILD" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build "$BUILD"
+ctest --test-dir "$BUILD" --output-on-failure
+cmake --install "$BUILD"
+ldconfig
+rm -rf "$BUILD" "$SRC"
