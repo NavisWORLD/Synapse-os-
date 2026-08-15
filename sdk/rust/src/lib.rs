@@ -97,7 +97,7 @@ mod tests {
     }
 
     #[test]
-    fn closed_high_port_is_safe_to_probe() {
-        assert!(!service_reachable(65534, Duration::from_millis(5)));
+    fn invalid_port_is_rejected() {
+        assert!(!service_reachable(0, Duration::from_millis(5)));
     }
 }
