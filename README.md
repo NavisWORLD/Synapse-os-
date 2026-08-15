@@ -99,7 +99,7 @@ See [`docs/UI.md`](docs/UI.md).
 make check
 ```
 
-This validates the Python control plane, Nebula UI source syntax/assets, C ABI, C++ adapter, Python adapter, Rust adapter when Cargo is available, architecture registry, dry-run build profiles, and QEMU command profiles.
+This validates the Python control plane, Nebula UI source syntax/assets, C ABI, C++ adapter, Python adapter, Rust adapter when Cargo is available, architecture registry, dry-run build profiles, QEMU command profiles, and the repository licensing policy.
 
 ## Build an image
 
@@ -232,4 +232,10 @@ Installing an OS can overwrite existing storage if the installer is instructed t
 
 ## License
 
-Synapse-specific original code is MIT licensed. The generated image contains Debian and third-party packages under their own licenses. See [`docs/LICENSING.md`](docs/LICENSING.md).
+Current Synapse-specific original material owned or controlled by Cory Davis / NavisWORLD is **source-available, not open source**, under the [`Cory Davis / NavisWORLD Synapse Source License 1.0`](LICENSE). The public grant is limited to noncommercial evaluation, research, education, security review, and private modification within the license terms.
+
+Commercial deployment, production business use, hosted services, resale, redistribution, OEM/bundling, paid client work, commercial derivative products, and AI/ML training or model-development use require a separate written commercial license. See [`COMMERCIAL-LICENSING.md`](COMMERCIAL-LICENSING.md).
+
+Historical versions previously released under MIT retain their earlier license grants for those earlier copies and versions. See [`LICENSE-HISTORY.md`](LICENSE-HISTORY.md).
+
+The generated image contains Debian and other third-party components under their own licenses. The Synapse Source License does not override those third-party rights. See [`docs/LICENSING.md`](docs/LICENSING.md) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
