@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: synapse-abi
+Description: Stable native ABI for Synapse OS status and service probes
+Version: @PROJECT_VERSION@
+Libs: -L${libdir} -lsynapse_abi
+Cflags: -I${includedir}
