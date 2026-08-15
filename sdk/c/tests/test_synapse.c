@@ -28,7 +28,7 @@ int main(void) {
     free(buf);
 
     assert(synapse_status_read("/tmp/definitely-missing-synapse.json", NULL, 0, &needed) == SYNAPSE_ENOENT);
-    assert(synapse_service_reachable("127.0.0.1", 65534, 10) == 0);
+    assert(synapse_service_reachable("127.0.0.1", 0, 10) == 0);
     remove(path);
     return 0;
 }
