@@ -3,12 +3,34 @@ set -Eeuo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(tr -d '\n' < "$REPO_ROOT/VERSION")"
-ARCH="${SYNAPSE_ARCH:-amd64}"
 SUITE="${SYNAPSE_SUITE:-trixie}"
-WORK="$REPO_ROOT/.work/live-build"
+REQUESTED_ARCH="${SYNAPSE_ARCH:-$(dpkg --print-architecture 2>/dev/null || uname -m)}"
+
+eval "$(python3 "$REPO_ROOT/scripts/arch_matrix.py" shell "$REQUESTED_ARCH")"
+ARCH="$SYNAPSE_ARCH_NORMALIZED"
+WORK="$REPO_ROOT/.work/live-build-$ARCH"
 OUT="$REPO_ROOT/out"
 ISO="$OUT/SynapseOS-${VERSION}-${ARCH}.iso"
 
+HOST_RAW="$(dpkg --print-architecture 2>/dev/null || uname -m)"
+HOST_ARCH="$(python3 "$REPO_ROOT/scripts/arch_matrix.py" normalize "$HOST_RAW")"
+LB_FOREIGN=()
+FOREIGN=0
+if [[ "$HOST_ARCH" != "$ARCH" ]]; then
+  FOREIGN=1
+  LB_FOREIGN+=(--bootstrap-qemu-arch "$SYNAPSE_BOOTSTRAP_QEMU_ARCH" --bootstrap-qemu-static "$SYNAPSE_QEMU_STATIC")
+fi
+
+if [[ "${SYNAPSE_DRY_RUN:-0}" == "1" ]]; then
+  printf 'arch=%s\nhost_arch=%s\nforeign=%s\nkernel=%s\nbinary_image=%s\nsupport_state=%s\nqemu_static=%s\n' \
+    "$ARCH" "$HOST_ARCH" "$FOREIGN" "$SYNAPSE_KERNEL_PACKAGE" "$SYNAPSE_BINARY_IMAGE" "$SYNAPSE_SUPPORT_STATE" "$SYNAPSE_QEMU_STATIC"
+  exit 0
+fi
+
+if [[ "$FOREIGN" == "1" && ( -z "$SYNAPSE_QEMU_STATIC" || ! -x "$SYNAPSE_QEMU_STATIC" ) ]]; then
+  echo "error: foreign $ARCH build on $HOST_ARCH requires $SYNAPSE_QEMU_STATIC" >&2
+  exit 2
+fi
 if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   echo "error: live-build needs root for chroot/mount operations; run: sudo ./build/build.sh" >&2
   exit 2
@@ -21,8 +43,8 @@ from pathlib import Path
 import shutil, sys
 work = Path(sys.argv[1]).resolve()
 root = Path(sys.argv[2]).resolve()
-expected = (root / ".work" / "live-build").resolve()
-if work != expected:
+expected_parent = (root / ".work").resolve()
+if work.parent != expected_parent or not work.name.startswith("live-build-"):
     raise SystemExit(f"refusing unsafe cleanup path: {work}")
 shutil.rmtree(work, ignore_errors=True)
 PYSAFE
@@ -33,20 +55,17 @@ lb config \
   --mode debian \
   --distribution "$SUITE" \
   --architectures "$ARCH" \
-  --binary-images iso-hybrid \
+  --binary-images "$SYNAPSE_BINARY_IMAGE" \
   --archive-areas "main contrib non-free-firmware" \
   --debian-installer none \
   --apt-recommends true \
   --memtest none \
-  --bootappend-live "boot=live components hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us quiet splash"
+  --bootappend-live "boot=live components hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us quiet splash" \
+  "${LB_FOREIGN[@]}"
 
 rsync -a "$REPO_ROOT/build/config/" config/
+printf '%s\n' "$SYNAPSE_KERNEL_PACKAGE" >> config/package-lists/synapse.list.chroot
 
-# Plasma 6 in Debian 13 folds the Wayland session into plasma-workspace.
-# Older Debian releases used a separate plasma-workspace-wayland package.
-# Keep the source manifest readable across generations, but remove that legacy
-# package name from the generated trixie build configuration before live-build
-# resolves packages.
 if [[ "$SUITE" == "trixie" ]]; then
   python3 - "config/package-lists/nebula-ui.list.chroot" <<'PYCOMPAT'
 from pathlib import Path
@@ -64,6 +83,10 @@ rsync -a "$REPO_ROOT/rootfs/" config/includes.chroot/
 chmod 0755 config/includes.chroot/usr/local/bin/synflow
 mkdir -p config/includes.chroot/usr/lib/synapse/python
 rsync -a "$REPO_ROOT/src/synapse" config/includes.chroot/usr/lib/synapse/python/
+mkdir -p config/includes.chroot/usr/src/synapse-sdk-c
+rsync -a "$REPO_ROOT/sdk/c/" config/includes.chroot/usr/src/synapse-sdk-c/
+mkdir -p config/includes.chroot/usr/share/synapse/hardware
+cp "$REPO_ROOT/hardware/profiles.json" config/includes.chroot/usr/share/synapse/hardware/profiles.json
 rsync -a "$REPO_ROOT/build/hooks/" config/hooks/live/
 chmod +x config/hooks/live/*.hook.chroot
 
