@@ -1,21 +1,126 @@
-MIT License
+Cory Davis / NavisWORLD Synapse Source License 1.0
+Effective for covered versions first published with this License
 
-Copyright (c) 2026 Cory Davis / NavisWORLD
+Copyright (c) 2026 Cory Davis / NavisWORLD. All rights reserved except for the limited rights expressly granted below.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+IMPORTANT: THIS IS A SOURCE-AVAILABLE LICENSE, NOT AN OPEN-SOURCE LICENSE.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. DEFINITIONS
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+"Licensor" means Cory Davis, operating under or through the NavisWORLD identity, and any successor or assignee that validly owns the applicable rights in the Covered Material.
+
+"Covered Material" means original copyrightable source code, object code, scripts, SDK code, build logic, documentation, graphics, configuration, and other original material in this repository that is owned or controlled by the Licensor and is distributed with this License. Covered Material does not include Third-Party Material.
+
+"Third-Party Material" means Debian packages, libraries, firmware, models, datasets, fonts, tools, code, documentation, or other material owned by third parties and governed by separate license terms.
+
+"Noncommercial Evaluation Use" means personal, educational, security-review, academic-research, or internal evaluation activity that is not performed for commercial advantage, monetary compensation, a customer or client, internal business production, or the development or operation of a commercial product or service.
+
+"Commercial Use" includes any use, reproduction, modification, deployment, integration, distribution, or exploitation of Covered Material for or on behalf of a business, employer, client, customer, government contractor, paid engagement, monetized activity, revenue-producing activity, or commercial product or service, whether or not the particular transaction involving the Covered Material is separately charged.
+
+"Hosted Service" means providing functionality derived from Covered Material to third parties through SaaS, PaaS, cloud, API, managed service, remote service, hosted application, appliance, embedded system, OEM product, or similar offering.
+
+"AI/ML Use" means using Covered Material or a substantial portion of it as training data, fine-tuning data, reinforcement data, evaluation or benchmark corpus, retrieval or RAG corpus, embedding input, distillation input, synthetic-data source, labeling source, model-development material, or other machine-learning or generative-AI development input.
+
+2. LIMITED PUBLIC LICENSE GRANT
+
+Subject to full compliance with this License, the Licensor grants you a limited, nonexclusive, nontransferable, nonsublicensable license under the Licensor's copyright in the Covered Material to:
+
+(a) view and inspect the Covered Material;
+
+(b) reproduce and run the Covered Material privately for Noncommercial Evaluation Use;
+
+(c) make private modifications solely for Noncommercial Evaluation Use; and
+
+(d) prepare and submit proposed contributions to the Licensor's official repository, subject to the repository's contributor terms.
+
+No other permission is granted.
+
+3. CONDITIONS OF THE LIMITED GRANT
+
+You must preserve all copyright, authorship, attribution, provenance, trademark, license, and notice files included with the Covered Material.
+
+You may not remove, obscure, falsify, or materially misrepresent ownership, origin, attribution, licensing status, benchmark provenance, authorship, or version history.
+
+Except for copies or forks necessarily permitted through GitHub's platform functionality and used only for evaluation or contribution back to the project, you may not publicly redistribute, publish, mirror, sublicense, sell, transfer, or make available the Covered Material or a modified version of it without a separate written license from the Licensor.
+
+4. USES THAT REQUIRE A SEPARATE WRITTEN COMMERCIAL LICENSE
+
+Unless a separate written agreement signed by the Licensor expressly authorizes the activity, you may not use the Covered Material for:
+
+(a) any Commercial Use;
+
+(b) any Hosted Service;
+
+(c) internal production or operational use by a business or other commercial organization beyond evaluation;
+
+(d) resale, OEM distribution, bundling, sublicensing, paid redistribution, or incorporation into a commercial hardware or software product;
+
+(e) paid consulting, paid research, client deliverables, government contracting, commercial demonstrations, or other compensated work;
+
+(f) development, operation, or distribution of a commercial competing product materially derived from access to the Covered Material; or
+
+(g) any AI/ML Use.
+
+A download, clone, fork, star, issue, discussion, pull request, message, email, verbal statement, silence, public availability, or access to the repository does not create commercial permission.
+
+5. AI AND MACHINE-LEARNING RESTRICTION
+
+The limited public grant in Section 2 does not include AI/ML Use. No permission is granted under this License to ingest the Covered Material into model-training, fine-tuning, distillation, RAG, embedding, benchmark, evaluation, synthetic-data, or model-development systems, whether commercial or noncommercial, unless a separate written agreement from the Licensor expressly permits that activity.
+
+This Section does not purport to restrict rights that applicable law independently grants without permission from the copyright owner; it defines the scope of the license granted here.
+
+6. NO PATENT LICENSE
+
+No patent license is granted, whether expressly, by implication, estoppel, exhaustion beyond what applicable law independently requires, or otherwise. Any patent rights that exist are reserved.
+
+7. TRADEMARKS, NAMES, AND BRANDING
+
+This License grants no right to use SYNAPSE OS, SYNAPSE, COSMOS, CST, NAVISWORLD, Cory Davis, project logos, certification marks, trade dress, or other names, logos, marks, or source identifiers as a trademark, service mark, product name, company name, domain name, endorsement, compatibility badge, or branding element.
+
+You may make truthful nominative references where applicable law permits them, but you may not imply sponsorship, approval, certification, affiliation, or endorsement by the Licensor.
+
+8. THIRD-PARTY MATERIAL
+
+Third-Party Material remains governed exclusively by its applicable third-party licenses. Nothing in this License reduces, replaces, expands, or overrides rights that a third-party licensor independently grants to you.
+
+Generated Synapse OS images may aggregate Covered Material with Debian and other Third-Party Material. Each component retains its own licensing status.
+
+9. HISTORICAL VERSIONS
+
+This License does not retroactively revoke rights validly granted for an earlier copy or version under a different license. Earlier Synapse OS versions that were distributed under the MIT License or another license remain subject to those prior grants for those earlier copies or versions.
+
+The current license status and historical boundary are described in LICENSE-HISTORY.md.
+
+10. CONTRIBUTIONS
+
+Contributions submitted to the official project are governed by CONTRIBUTOR_LICENSE_AGREEMENT.md and CONTRIBUTING.md in addition to this License. Submission of a contribution does not transfer ownership unless a separate written assignment expressly provides otherwise.
+
+11. OWNERSHIP AND RESERVED RIGHTS
+
+As between you and the Licensor, the Licensor retains all copyright and other rights in Covered Material owned or controlled by the Licensor. All rights not expressly granted by this License are reserved.
+
+Copyright protection does not extend to abstract ideas, procedures, processes, systems, methods of operation, concepts, principles, or discoveries merely because they are described or embodied in Covered Material. Any protection for such subject matter must arise, if at all, under other applicable law or agreement.
+
+12. TERMINATION
+
+Your rights under this License terminate automatically when you materially breach its conditions. Upon termination, you must stop exercising rights granted by this License and delete or destroy copies made only under this License, except to the extent retention is required by law.
+
+If the breach is curable and you fully cure it within 30 days after receiving written notice from the Licensor, the Licensor may provide written reinstatement. Reinstatement is not automatic unless the Licensor states otherwise in writing.
+
+13. NO WARRANTY
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE COVERED MATERIAL IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, SECURITY, OR FITNESS FOR PRODUCTION USE.
+
+14. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE LICENSOR WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR FOR LOSS OF PROFITS, REVENUE, DATA, GOODWILL, BUSINESS, OR USE, ARISING FROM OR RELATED TO THE COVERED MATERIAL OR THIS LICENSE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+15. SEVERABILITY AND NO WAIVER
+
+If a provision of this License is held unenforceable, it will be enforced to the maximum extent permitted and the remaining provisions will remain in effect. Failure to enforce a provision in one instance is not a waiver of the right to enforce it later.
+
+16. SEPARATE COMMERCIAL AGREEMENTS
+
+The Licensor may offer separate commercial, enterprise, OEM, research, government, hosted-service, AI/ML, redistribution, or other licenses on negotiated terms. Only a separate written agreement that clearly identifies the Covered Material and permitted scope and is signed by the Licensor or an authorized rights holder grants those additional rights.
+
+END OF CORY DAVIS / NAVISWORLD SYNAPSE SOURCE LICENSE 1.0

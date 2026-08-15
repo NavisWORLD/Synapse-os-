@@ -2,7 +2,7 @@
 name = "synapse-os-sdk"
 version = "0.2.0"
 edition = "2021"
-license = "MIT"
+license-file = "../../LICENSE"
 description = "Safe Rust bindings for the stable Synapse OS C ABI"
 
 [lib]

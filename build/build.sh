@@ -87,6 +87,22 @@ mkdir -p config/includes.chroot/usr/src/synapse-sdk-c
 rsync -a "$REPO_ROOT/sdk/c/" config/includes.chroot/usr/src/synapse-sdk-c/
 mkdir -p config/includes.chroot/usr/share/synapse/hardware
 cp "$REPO_ROOT/hardware/profiles.json" config/includes.chroot/usr/share/synapse/hardware/profiles.json
+
+# Ship the controlling first-party license and provenance notices inside every
+# generated Synapse OS image. Third-party package licenses remain available
+# through their own package metadata and are not replaced by these files.
+LEGAL_DIR="config/includes.chroot/usr/share/doc/synapse-os"
+mkdir -p "$LEGAL_DIR"
+for legal_file in \
+  LICENSE \
+  NOTICE \
+  COMMERCIAL-LICENSING.md \
+  LICENSE-HISTORY.md \
+  TRADEMARKS.md \
+  THIRD_PARTY_NOTICES.md; do
+  install -m 0644 "$REPO_ROOT/$legal_file" "$LEGAL_DIR/$legal_file"
+done
+
 rsync -a "$REPO_ROOT/build/hooks/" config/hooks/live/
 chmod +x config/hooks/live/*.hook.chroot
 
