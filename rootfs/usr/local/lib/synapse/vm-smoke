@@ -73,7 +73,18 @@ check_cmd "plasma" plasmashell
 check_cmd "calamares" calamares
 check_cmd "pipewire" pipewire
 run_check "python-package" python3 -c 'import sys; sys.path.insert(0, "/usr/lib/synapse/python"); import synapse'
+run_check "hardware-package" python3 -c 'import sys; sys.path.insert(0, "/usr/lib/synapse/python"); from synapse.hardware import probe_hardware; assert "arch" in probe_hardware()'
 run_check "control-dependencies" python3 -c 'import PyQt6, psutil'
+check_file "native-abi" /usr/lib/libsynapse_abi.so
+check_file "native-abi-header" /usr/include/synapse/synapse.h
+cat >/tmp/synapse-abi-smoke.c <<'EOF'
+#include <stdint.h>
+#include <synapse/synapse.h>
+int main(void) { return synapse_abi_version() == 1u ? 0 : 1; }
+EOF
+run_check "native-abi-compile" cc /tmp/synapse-abi-smoke.c -lsynapse_abi -o /tmp/synapse-abi-smoke
+run_check "native-abi-run" /tmp/synapse-abi-smoke
+check_file "hardware-registry" /usr/share/synapse/hardware/profiles.json
 check_file "wallpaper" /usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg
 check_file "sddm-theme" /usr/share/sddm/themes/synapse-nebula/Main.qml
 check_file "plymouth-theme" /usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth
