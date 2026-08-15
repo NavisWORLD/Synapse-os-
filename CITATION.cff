@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: >-
+  If you use or discuss Synapse OS, cite the software repository and the
+  foundational research record listed in the references below. Citation does
+  not grant license, commercial, patent, trademark, redistribution, or AI/ML
+  rights.
+title: Synapse OS
+type: software
+authors:
+  - family-names: Davis
+    given-names: Cory
+    alias: C. S. Davis
+repository-code: https://github.com/NavisWORLD/Synapse-os-
+references:
+  - type: report
+    authors:
+      - family-names: Davis
+        given-names: Cory
+        alias: C. S. Davis
+    title: >-
+      The 12-Dimensional Cosmic Synapse Theory: Audio-Driven Deterministic
+      Cosmological Simulation with Adaptive Memory and Light Particle Mapping
+    institution:
+      name: Zenodo
+    year: 2024
+    doi: 10.5281/zenodo.17574447
