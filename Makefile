@@ -1,9 +1,9 @@
 PYTHON ?= python3
 ABI_BUILD ?= /tmp/synapse-abi-check
 
-.PHONY: check test lint c cpp rust python-sdk arch-config iso clean
+.PHONY: check test lint license-audit c cpp rust python-sdk arch-config iso clean
 
-check: test lint c cpp rust python-sdk arch-config
+check: test lint license-audit c cpp rust python-sdk arch-config
 
 test:
 	PYTHONPATH=src:. $(PYTHON) -m unittest discover -s tests -v
@@ -15,6 +15,9 @@ lint:
 	bash -n build/build.sh build/clean.sh scripts/validate-tree.sh scripts/qemu-smoke.sh
 	sh -n build/hooks/010-synapse.hook.chroot build/hooks/020-phone-bootstrap.hook.chroot build/hooks/030-native-sdk.hook.chroot rootfs/usr/local/bin/synapse rootfs/usr/local/bin/synapse-phone-bootstrap rootfs/usr/local/lib/synapse/vm-smoke rootfs/usr/local/bin/synflow
 	./scripts/validate-tree.sh
+
+license-audit:
+	$(PYTHON) scripts/license_audit.py
 
 c:
 	rm -rf $(ABI_BUILD)
