@@ -17,7 +17,9 @@ import time
 from typing import Any
 from urllib.parse import urlparse
 
-API_VERSION = "1.0"
+from .hardware import probe_hardware
+
+API_VERSION = "1.1"
 DEFAULT_PORT = 8787
 DEFAULT_COSMOS_REPO = "https://github.com/NavisWORLD/Cosmos.git"
 DEFAULT_COSMOS_BRANCH = "main"
@@ -111,6 +113,7 @@ def device_snapshot() -> dict[str, Any]:
         "battery_percent": _battery_percent(),
         "network": _network_addresses(),
         "cosmos_ports": {str(port): _port_open("127.0.0.1", port) for port in COSMOS_PORTS},
+        "hardware": probe_hardware(),
         "api_version": API_VERSION,
     }
 
