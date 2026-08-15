@@ -1,0 +1,3 @@
+#!/bin/sh
+export PYTHONPATH="/usr/lib/synapse/python${PYTHONPATH:+:$PYTHONPATH}"
+exec /usr/bin/python3 -m synapse.phone_bootstrap "$@"

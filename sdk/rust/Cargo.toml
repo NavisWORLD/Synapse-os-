@@ -1,9 +1,9 @@
 [package]
 name = "synapse-os-sdk"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
-description = "Zero-dependency Rust access to Synapse OS telemetry"
+description = "Safe Rust bindings for the stable Synapse OS C ABI"
 
 [lib]
 name = "synapse_os_sdk"
