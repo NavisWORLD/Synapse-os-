@@ -75,7 +75,7 @@ check_cmd "pipewire" pipewire
 run_check "python-package" python3 -c 'import sys; sys.path.insert(0, "/usr/lib/synapse/python"); import synapse'
 run_check "hardware-package" python3 -c 'import sys; sys.path.insert(0, "/usr/lib/synapse/python"); from synapse.hardware import probe_hardware; assert "arch" in probe_hardware()'
 run_check "control-dependencies" python3 -c 'import PyQt6, psutil'
-check_file "native-abi" /usr/lib/libsynapse_abi.so
+run_check "native-abi-linker-cache" sh -c 'ldconfig -p | grep -q "libsynapse_abi.so"'
 check_file "native-abi-header" /usr/include/synapse/synapse.h
 cat >/tmp/synapse-abi-smoke.c <<'EOF'
 #include <stdint.h>
