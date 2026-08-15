@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+chmod 0755 /usr/local/bin/synapse-phone-bootstrap
+
+# Enable the per-user phone bootstrap for every desktop account. It starts in
+# the user's own systemd manager, so COSMOS is installed in that user's $HOME
+# instead of running the installer as root.
+systemctl --global enable synapse-phone-bootstrap.service
