@@ -23,6 +23,16 @@ A download, clone, fork, star, issue, discussion, pull request, email, direct me
 
 A commercial agreement may include terms for enterprise deployment, redistribution, OEM use, hosted service, support, maintenance, certification, research collaboration, AI/ML rights, or other negotiated use cases.
 
+## Research provenance and citation
+
+The broader Cory Davis / NavisWORLD research lineage cites the following foundational Zenodo record:
+
+**C. S. Davis.** *The 12-Dimensional Cosmic Synapse Theory: Audio-Driven Deterministic Cosmological Simulation with Adaptive Memory and Light Particle Mapping.* Zenodo, 2024. DOI: `10.5281/zenodo.17574447`.
+
+See [`PROVENANCE.md`](PROVENANCE.md) and [`CITATION.cff`](CITATION.cff).
+
+Publication, citation, DOI assignment, public availability, or reference to that research lineage does not grant commercial, production, redistribution, sublicensing, hosted-service, trademark, patent, AI/ML, or other rights in current Synapse OS Covered Material. Those rights remain governed by the applicable software license and any separate written agreement.
+
 ## Third-party components
 
 Commercial licensing from Cory Davis / NavisWORLD covers only rights Cory Davis / NavisWORLD can grant. Debian packages and all other third-party software, models, datasets, firmware, fonts, tools, and documentation remain subject to their own licenses and obligations.
