@@ -39,9 +39,9 @@ arch-config:
 	SYNAPSE_DRY_RUN=1 SYNAPSE_ARCH=amd64 ./build/build.sh
 	SYNAPSE_DRY_RUN=1 SYNAPSE_ARCH=arm64 ./build/build.sh
 	SYNAPSE_DRY_RUN=1 SYNAPSE_ARCH=riscv64 ./build/build.sh
-	SYNAPSE_QEMU_DRY_RUN=1 ./scripts/qemu-smoke.sh amd64 /tmp/not-used.iso
-	SYNAPSE_QEMU_DRY_RUN=1 ./scripts/qemu-smoke.sh arm64 /tmp/not-used.iso
-	SYNAPSE_QEMU_DRY_RUN=1 ./scripts/qemu-smoke.sh riscv64 /tmp/not-used.iso
+	SYNAPSE_QEMU_DRY_RUN=1 bash scripts/qemu-smoke.sh amd64 /tmp/not-used.iso
+	SYNAPSE_QEMU_DRY_RUN=1 bash scripts/qemu-smoke.sh arm64 /tmp/not-used.iso
+	SYNAPSE_QEMU_DRY_RUN=1 bash scripts/qemu-smoke.sh riscv64 /tmp/not-used.iso
 
 iso:
 	sudo ./build/build.sh
