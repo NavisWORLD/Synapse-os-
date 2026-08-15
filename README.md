@@ -4,11 +4,16 @@
 
 Synapse OS is a reproducible Debian-based live/installable operating-system project. It does **not** claim literal faster-than-light computation; instead, “FTL” is the engineering theme for reducing *human-visible latency*: fast boot, responsive desktop behavior, compressed-memory swap, hardware-aware power profiles, local-first tools, and a single command surface for COSMOS services.
 
-> Status: **0.1.0-alpha.1 — Nebula**. The project builds an amd64 hybrid live ISO with Debian `live-build`, validates the generated live filesystem, and includes a QEMU guest boot gate before the image should be considered ready for physical installation.
+> Status: **Nebula alpha**. `amd64` is the required VM-certified build path. `arm64` and `riscv64` have architecture-aware build/QEMU machinery and remain explicitly **experimental** until their promotion gates pass. The ASUS Chromebook CX1700CKA / `GALLOP` is Reference Hardware #1 and remains a physical certification target until the real-device checklist passes.
 
 ## What is real in this repository
 
-- Bootable/installable **Debian 13 (trixie) amd64 live ISO recipe**
+- Bootable/installable **Debian 13 (trixie) amd64 live ISO recipe** with required QEMU guest gate
+- Architecture registry and build profiles for **amd64 / arm64 / riscv64**
+- Manual ARM64 and RISC-V full-image/QEMU promotion workflow
+- Architecture-specific Debian kernel selection and foreign-bootstrap configuration
+- **Stable C ABI v1** compiled natively inside each generated image
+- C, C++, Rust, and Python SDK surfaces over the same native contract
 - KDE Plasma desktop + Wayland-capable stack
 - **Synapse Nebula visual system**: cosmic wallpaper, boot splash, login theme, application iconography and dark defaults
 - **Native Synapse Control GUI** for system status, performance profiles, COSMOS status and recovery launchers
@@ -19,12 +24,47 @@ Synapse OS is a reproducible Debian-based live/installable operating-system proj
 - Synapse telemetry agent (`synapse-agent.service`)
 - `synapse` system CLI: status, doctor, profiles, COSMOS probes, benchmark, `.syn` plans
 - COSMOS port map for 11434 / 11435 / 11501 / 8765 / 8081 / 8090
-- Safe `pulse`, `balanced`, `quiet`, and `auto` performance profiles
-- Synapse Flow `.syn` declarative control language
-- Python, C++, and Rust SDK surfaces
+- Phone Bootstrap local API/UI for authenticated laptop discovery and COSMOS installation
+- Hardware certification registry with `GALLOP` as the first physical target
 - Local validation via `make check`
 - GitHub Actions ISO build + generated-filesystem verification + QEMU guest smoke test
 - Recovery, hardware, architecture, install, performance, and UI manuals
+
+## Compatibility model
+
+Synapse separates **language compatibility**, **architecture buildability**, **VM certification**, and **physical hardware certification** so a source port is never mislabeled as a proven boot target.
+
+| Target | State |
+|---|---|
+| C ABI v1 | required local/CI gate |
+| C++ adapter | required local/CI gate |
+| Rust adapter | required CI gate when Rust toolchain is present |
+| Python adapter | required local/CI gate |
+| amd64 image | `vm-certified` required gate |
+| arm64 image | `experimental` promotion gate |
+| riscv64 image | `experimental` promotion gate |
+| ASUS CX1700CKA / GALLOP | `physical-target` |
+
+See [`docs/ARCHITECTURES.md`](docs/ARCHITECTURES.md) and [`docs/HARDWARE_CERTIFICATION.md`](docs/HARDWARE_CERTIFICATION.md).
+
+## Universal native ABI
+
+The portable language boundary is `sdk/c/`:
+
+```text
+               Synapse C ABI v1
+                      │
+        ┌─────────────┼─────────────┐
+        │             │             │
+        C            C++           Rust
+        │                           │
+        └─────────────┬─────────────┘
+                      │
+                   Python
+                  (ctypes)
+```
+
+The ABI exposes version discovery, opaque status-file reads, and timed service reachability. C++ and Rust wrap it with safer language-native APIs; Python uses the ABI when installed and retains a pure-Python development fallback. No architecture-specific SDK binary is committed to Git.
 
 ## Nebula UI
 
@@ -59,50 +99,59 @@ See [`docs/UI.md`](docs/UI.md).
 make check
 ```
 
-This validates the Python control plane, Nebula UI source syntax/assets, shell scripts, C++ SDK example and Rust SDK when Cargo is available.
+This validates the Python control plane, Nebula UI source syntax/assets, C ABI, C++ adapter, Python adapter, Rust adapter when Cargo is available, architecture registry, dry-run build profiles, and QEMU command profiles.
 
-## Build the ISO
+## Build an image
 
 On a Debian-family amd64 build host:
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y live-build debootstrap rsync xorriso squashfs-tools
-sudo ./build/build.sh
+sudo env SYNAPSE_ARCH=amd64 ./build/build.sh
 ```
 
-Expected output:
+Architecture configuration can be inspected without root or a full build:
 
-```text
-out/SynapseOS-0.1.0-alpha.1-amd64.iso
-out/SynapseOS-0.1.0-alpha.1-amd64.iso.sha256
+```bash
+SYNAPSE_DRY_RUN=1 SYNAPSE_ARCH=amd64 ./build/build.sh
+SYNAPSE_DRY_RUN=1 SYNAPSE_ARCH=arm64 ./build/build.sh
+SYNAPSE_DRY_RUN=1 SYNAPSE_ARCH=riscv64 ./build/build.sh
 ```
 
-See [`docs/BUILD.md`](docs/BUILD.md) and [`docs/INSTALL.md`](docs/INSTALL.md) before installing to physical hardware.
+Foreign ARM64/RISC-V image generation requires the matching `qemu-*-static` emulator. Full experimental promotion is defined in `.github/workflows/experimental-arch-vm.yml`.
+
+See [`docs/BUILD.md`](docs/BUILD.md), [`docs/INSTALL.md`](docs/INSTALL.md), and [`docs/ARCHITECTURES.md`](docs/ARCHITECTURES.md).
 
 ## VM certification path
 
-The hosted workflow deliberately separates “the ISO exists” from “the OS booted.”
+The hosted workflow deliberately separates “the image exists” from “the OS booted.”
 
 ```text
-SOURCE CHECKS
+SOURCE + SDK CHECKS
     ↓
-BUILD FULL ISO
+BUILD FULL IMAGE
     ↓
 VERIFY SHA-256
     ↓
 OPEN filesystem.squashfs
     ↓
-VERIFY SYNAPSE + PLASMA + CALAMARES + UI ASSETS
+VERIFY SYNAPSE + NATIVE ABI + PLASMA + CALAMARES + UI ASSETS
     ↓
-BOOT KERNEL/INITRAMFS IN QEMU WITH THE ISO AS LIVE MEDIA
+BOOT KERNEL/INITRAMFS IN ARCH-SPECIFIC QEMU
     ↓
 RUN IN-GUEST SYNAPSE SMOKE TEST
     ↓
 SYNAPSE_VM_READY
 ```
 
-The guest verifies Synapse OS identity, the CLI, native Control application dependencies, Plasma, Calamares, PipeWire, NetworkManager, the Synapse Python package, system services and Nebula theme assets. A physical-laptop install should wait until this chain is green.
+The guest verifies Synapse OS identity, CLI, native ABI, hardware detector, Control dependencies, Plasma, Calamares, PipeWire, NetworkManager, Python package, system services and Nebula theme assets.
+
+## Phone Bootstrap
+
+The authenticated local bootstrap daemon listens on port `8787` when enabled. The phone UI can connect over a trusted routed USB/local link, identify the laptop, send the `hey, I'm here` handshake, and start the fixed-purpose COSMOS install/service activation job.
+
+See [`PHONE_BOOTSTRAP.md`](PHONE_BOOTSTRAP.md) and [`phone-bootstrap/README.md`](phone-bootstrap/README.md).
 
 ## The Synapse command surface
 
@@ -125,7 +174,7 @@ synapse apply /usr/share/synapse/examples/pulse.syn
 | `quiet` | battery / thermals / focus | `power-saver` |
 | `auto` | AC→balanced, battery→quiet | adaptive |
 
-Synapse deliberately avoids brittle “magic” kernel hacks that can make one laptop benchmark faster while breaking another. Hardware-specific tuning belongs behind detected capabilities and explicit user choice.
+Synapse deliberately avoids brittle “magic” kernel hacks that can make one laptop benchmark faster while breaking another. Hardware-specific tuning belongs behind detected capabilities and explicit evidence.
 
 ## COSMOS bridge
 
@@ -158,14 +207,18 @@ It is intentionally constrained: `.syn` plans cannot execute arbitrary shell com
 ## Repository map
 
 ```text
-.github/      hosted ISO + VM validation
-build/        live-build ISO recipe and hooks
+.github/      required amd64 CI + experimental architecture promotion gates
+build/        live-build image recipe, architecture registry and hooks
+hardware/     evidence-based physical hardware profiles
 rootfs/       files injected into the live/installed system
-src/          Synapse Python control plane
+src/          Synapse Python control plane and hardware detection
 language/     .syn specification and examples
-sdk/          Python / C++ / Rust integration surfaces
+sdk/c/        stable native ABI v1
+sdk/cpp/      C++ wrapper
+sdk/rust/     safe Rust wrapper
+sdk/python/   Python native/fallback wrapper
 tests/        unit tests
-scripts/      repository validation helpers
+scripts/      repository, architecture and QEMU validation helpers
 docs/         engineering and user manuals
 ```
 
@@ -175,8 +228,8 @@ The target is *latency you can feel*: avoiding disk swap where possible, using c
 
 ## Safety
 
-Installing an OS can overwrite existing storage if the installer is instructed to do so. Test the live environment first, keep backups, verify the SHA-256 checksum, and read the recovery guide. Hardware-specific proprietary GPU drivers are not silently forced into the image.
+Installing an OS can overwrite existing storage if the installer is instructed to do so. Test the live environment first, keep backups, verify the SHA-256 checksum, and read the recovery guide. Hardware-specific proprietary GPU drivers are not silently forced into the image. Firmware/write-protection changes are not automated by Phone Bootstrap.
 
 ## License
 
-Synapse-specific original code is MIT licensed. The generated ISO contains Debian and third-party packages under their own licenses. See [`docs/LICENSING.md`](docs/LICENSING.md).
+Synapse-specific original code is MIT licensed. The generated image contains Debian and third-party packages under their own licenses. See [`docs/LICENSING.md`](docs/LICENSING.md).
