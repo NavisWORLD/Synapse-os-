@@ -70,7 +70,6 @@ jobs:
             usr/bin/nmcli \
             usr/lib/synapse/python/synapse/__init__.py \
             usr/lib/synapse/python/synapse/hardware.py \
-            usr/lib/libsynapse_abi.so \
             usr/include/synapse/synapse.h \
             usr/share/synapse/hardware/profiles.json \
             usr/share/synapse/phone-bootstrap.html \
@@ -80,10 +79,10 @@ jobs:
             usr/share/grub/themes/synapse-nebula/theme.txt
           grep -q '^ID=synapseos$' /tmp/synapse-root/etc/os-release
           test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/hardware.py
-          test -e /tmp/synapse-root/usr/lib/libsynapse_abi.so
           test -s /tmp/synapse-root/usr/include/synapse/synapse.h
           test -s /tmp/synapse-root/usr/share/synapse/hardware/profiles.json
           test -s /tmp/synapse-root/usr/share/synapse/phone-bootstrap.html
+          unsquashfs -ll /tmp/synapse-image/filesystem.squashfs | grep -Eq '/usr/lib/[^ ]*/libsynapse_abi\.so(\.1)?$'
           grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/sddm/themes/synapse-nebula/Main.qml
           grep -q 'Synapse Nebula' /tmp/synapse-root/usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth
           grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/grub/themes/synapse-nebula/theme.txt
