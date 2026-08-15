@@ -26,6 +26,11 @@ target_include_directories(synapse_abi_static
 )
 set_target_properties(synapse_abi_static PROPERTIES OUTPUT_NAME synapse_abi)
 
+if(WIN32)
+  target_link_libraries(synapse_abi PRIVATE ws2_32)
+  target_link_libraries(synapse_abi_static PUBLIC ws2_32)
+endif()
+
 add_executable(synapse_abi_test tests/test_synapse.c)
 target_link_libraries(synapse_abi_test PRIVATE synapse_abi)
 
