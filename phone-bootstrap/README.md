@@ -6,13 +6,15 @@ Phone Bootstrap turns a Synapse OS laptop into an authenticated local bootstrap 
 
 - serves `phone-bootstrap.html` from the laptop itself
 - exposes `GET /v1/health`
-- exposes authenticated `GET /v1/device` with hostname, OS/kernel, architecture, CPU/core count, RAM, root disk, battery, local IPv4 addresses and COSMOS port probes
+- exposes authenticated `GET /v1/device` with hostname, OS/kernel, normalized architecture, CPU/core count, RAM, root disk, battery, local IPv4 addresses, COSMOS port probes, hardware identity and certification profile
 - accepts authenticated `POST /v1/hello` so the phone can send `hey, I'm here`
 - accepts authenticated `POST /v1/install/start`
 - reports progress through `GET /v1/install/status`
 - installs or fast-forwards the configured COSMOS Git checkout
 - preserves an existing COSMOS checkout when it contains local modifications
 - can activate COSMOS through Docker Compose when present, or through the repository Dockerfile as a fallback
+
+API v1.1 adds the `hardware` object to the device response. A known `GALLOP` amd64 machine is reported as profile `asus-cx1700cka-gallop` with state `physical-target` until the real hardware acceptance checklist passes.
 
 The browser never receives a shell endpoint and cannot submit arbitrary commands. There is no wipe, raw-disk, firmware, or reimage route in this API.
 
@@ -58,4 +60,6 @@ The API is transport-independent. A USB cable only works when the phone and lapt
 
 ## GitHub / VM relationship
 
-Synapse OS is already built and QEMU-smoke-tested by the repository workflow. The phone bootstrap does not flash the GitHub Actions ISO artifact onto the laptop. Instead it installs/activates the COSMOS service checkout on the running Synapse OS system. A future signed release asset can be added as a separate staged-image path without changing this API contract.
+The required `amd64` GitHub workflow builds the image, verifies the generated filesystem and native ABI, and boots the image through the shared `SYNAPSE_VM_READY` QEMU gate. ARM64 and RISC-V use a separate promotion workflow and remain labeled experimental until that workflow passes for each architecture.
+
+Phone Bootstrap does not flash an image onto the laptop. It identifies a running Synapse OS machine and installs/activates the COSMOS service checkout. Firmware and raw-disk operations remain outside this API.
