@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "architectures": {
+    "amd64": {
+      "aliases": ["amd64", "x86_64"],
+      "kernel_package": "linux-image-amd64",
+      "qemu_system": "qemu-system-x86_64",
+      "qemu_machine": "q35,accel=tcg",
+      "qemu_cpu": "max",
+      "serial_console": "ttyS0",
+      "qemu_static": null,
+      "bootstrap_qemu_arch": "x86_64",
+      "binary_image": "iso-hybrid",
+      "support_state": "vm-certified"
+    },
+    "arm64": {
+      "aliases": ["arm64", "aarch64"],
+      "kernel_package": "linux-image-arm64",
+      "qemu_system": "qemu-system-aarch64",
+      "qemu_machine": "virt,accel=tcg,gic-version=max",
+      "qemu_cpu": "max",
+      "serial_console": "ttyAMA0",
+      "qemu_static": "/usr/bin/qemu-aarch64-static",
+      "bootstrap_qemu_arch": "aarch64",
+      "binary_image": "iso",
+      "support_state": "experimental"
+    },
+    "riscv64": {
+      "aliases": ["riscv64"],
+      "kernel_package": "linux-image-riscv64",
+      "qemu_system": "qemu-system-riscv64",
+      "qemu_machine": "virt,accel=tcg",
+      "qemu_cpu": "rv64",
+      "serial_console": "ttyS0",
+      "qemu_static": "/usr/bin/qemu-riscv64-static",
+      "bootstrap_qemu_arch": "riscv64",
+      "binary_image": "iso",
+      "support_state": "experimental"
+    }
+  }
+}
