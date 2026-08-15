@@ -36,6 +36,26 @@ class LicensePolicyTests(unittest.TestCase):
         old_statement = "Synapse-specific original code " + "is " + "MIT " + "licensed"
         self.assertNotIn(old_statement, readme)
 
+    def test_zenodo_provenance_is_bound_without_relicensing(self):
+        doi = license_audit.ZENODO_DOI
+        provenance = (ROOT / "PROVENANCE.md").read_text(encoding="utf-8")
+        citation = (ROOT / "CITATION.cff").read_text(encoding="utf-8")
+        notice = (ROOT / "NOTICE").read_text(encoding="utf-8")
+        history = (ROOT / "LICENSE-HISTORY.md").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        guide = (ROOT / "docs/LICENSING.md").read_text(encoding="utf-8")
+
+        for text in (provenance, citation, notice, history, readme, guide):
+            self.assertIn(doi, text)
+
+        self.assertIn("The 12-Dimensional Cosmic Synapse Theory", provenance)
+        self.assertIn("not represented as the software DOI for Synapse OS", provenance)
+        self.assertIn("not, by itself", provenance)
+        self.assertIn("references:", citation)
+        self.assertIn("type: report", citation)
+        self.assertIn("PROVENANCE.md", readme)
+        self.assertIn("PROVENANCE.md", guide)
+
     def test_build_stages_legal_package_into_bootable_image(self):
         build = (ROOT / "build/build.sh").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/build-vm-smoke.yml").read_text(encoding="utf-8")
@@ -45,12 +65,15 @@ class LicensePolicyTests(unittest.TestCase):
             "NOTICE",
             "COMMERCIAL-LICENSING.md",
             "LICENSE-HISTORY.md",
+            "PROVENANCE.md",
+            "CITATION.cff",
             "TRADEMARKS.md",
             "THIRD_PARTY_NOTICES.md",
         ):
             self.assertIn(name, build)
             self.assertIn(f"usr/share/doc/synapse-os/{name}", workflow)
         self.assertIn("Cory Davis / NavisWORLD Synapse Source License 1.0", workflow)
+        self.assertIn("10.5281/zenodo.17574447", workflow)
 
     def test_repository_license_audit_passes(self):
         self.assertEqual([], license_audit.audit())

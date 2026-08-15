@@ -98,6 +98,8 @@ for legal_file in \
   NOTICE \
   COMMERCIAL-LICENSING.md \
   LICENSE-HISTORY.md \
+  PROVENANCE.md \
+  CITATION.cff \
   TRADEMARKS.md \
   THIRD_PARTY_NOTICES.md; do
   install -m 0644 "$REPO_ROOT/$legal_file" "$LEGAL_DIR/$legal_file"

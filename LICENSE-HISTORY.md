@@ -14,6 +14,18 @@ Versions first published from the repository revision that adopts `Cory Davis / 
 
 The new license does not convert Debian packages, third-party dependencies, firmware, models, datasets, fonts, or other third-party components into proprietary Synapse material. Those components remain under their own licenses.
 
+## Research provenance
+
+The software-license timeline above is separate from the project's research-publication provenance.
+
+A foundational public research record in the Cory Davis / NavisWORLD lineage is:
+
+**C. S. Davis.** *The 12-Dimensional Cosmic Synapse Theory: Audio-Driven Deterministic Cosmological Simulation with Adaptive Memory and Light Particle Mapping.* Zenodo, 2024. DOI: `10.5281/zenodo.17574447`.
+
+See [`PROVENANCE.md`](PROVENANCE.md) and [`CITATION.cff`](CITATION.cff).
+
+The Zenodo deposit is recorded here as publication/provenance evidence. It is not represented as the software DOI for Synapse OS, does not replace this repository's software-license history, and does not by itself create or expand copyright, patent, trademark, ownership, commercialization, redistribution, AI/ML, or other rights.
+
 ## Important distinction
 
 The current license controls the rights granted for current Covered Material. It does not create ownership of abstract ideas, systems, methods, algorithms, or discoveries that copyright law does not protect. Separate patent, trademark, contract, or other rights may apply independently where legally available.

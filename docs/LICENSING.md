@@ -8,6 +8,16 @@ This is a **source-available license, not an open-source license**. It permits l
 
 See [`COMMERCIAL-LICENSING.md`](../COMMERCIAL-LICENSING.md) for activities that require a separate written commercial agreement.
 
+## Research provenance
+
+The broader Cory Davis / NavisWORLD research lineage cites this foundational public research record:
+
+**C. S. Davis.** *The 12-Dimensional Cosmic Synapse Theory: Audio-Driven Deterministic Cosmological Simulation with Adaptive Memory and Light Particle Mapping.* Zenodo, 2024. DOI: `10.5281/zenodo.17574447`.
+
+See [`PROVENANCE.md`](../PROVENANCE.md) and [`CITATION.cff`](../CITATION.cff).
+
+The Zenodo DOI documents a research publication/provenance record. It is not represented as the software DOI for Synapse OS and does not replace the root software license, the repository's copyright history, or any separately required patent, trademark, contract, or registration process. Citation or public availability does not grant commercial, redistribution, sublicensing, hosted-service, trademark, patent, AI/ML, or other rights beyond those independently provided by the applicable license, agreement, platform terms, or law.
+
 ## Historical MIT versions
 
 Earlier Synapse-specific original code was publicly distributed under MIT. Commit `3e7642d4b5c060ee0302ba769357e99c20dae98b` and earlier are recorded as the MIT-era boundary, subject to file-level and third-party exceptions that applied at the time.

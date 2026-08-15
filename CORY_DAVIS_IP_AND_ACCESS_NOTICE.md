@@ -18,7 +18,15 @@ See [`COMMERCIAL-LICENSING.md`](COMMERCIAL-LICENSING.md).
 
 ## Provenance and notices
 
-Copyright, authorship, attribution, license, trademark, and provenance notices must not be removed, falsified, or materially misrepresented. A fork, download, issue, pull request, message, meeting, demo, verbal statement, or silence does not grant additional commercial rights.
+Copyright, authorship, attribution, license, trademark, research-lineage, citation, and provenance notices must not be removed, falsified, or materially misrepresented. A fork, download, issue, pull request, message, meeting, demo, verbal statement, or silence does not grant additional commercial rights.
+
+Foundational research provenance in the broader Cory Davis / NavisWORLD lineage includes:
+
+**C. S. Davis.** *The 12-Dimensional Cosmic Synapse Theory: Audio-Driven Deterministic Cosmological Simulation with Adaptive Memory and Light Particle Mapping.* Zenodo, 2024. DOI: `10.5281/zenodo.17574447`.
+
+See [`PROVENANCE.md`](PROVENANCE.md) and [`CITATION.cff`](CITATION.cff).
+
+The Zenodo DOI is cited as publication/provenance evidence. It is not represented as the software DOI for Synapse OS and does not itself create or expand copyright, patent, trademark, ownership, commercial, redistribution, AI/ML, or other rights.
 
 ## Historical versions
 

@@ -81,6 +81,8 @@ jobs:
             usr/share/doc/synapse-os/NOTICE \
             usr/share/doc/synapse-os/COMMERCIAL-LICENSING.md \
             usr/share/doc/synapse-os/LICENSE-HISTORY.md \
+            usr/share/doc/synapse-os/PROVENANCE.md \
+            usr/share/doc/synapse-os/CITATION.cff \
             usr/share/doc/synapse-os/TRADEMARKS.md \
             usr/share/doc/synapse-os/THIRD_PARTY_NOTICES.md \
             usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg \
@@ -96,9 +98,13 @@ jobs:
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/NOTICE
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/COMMERCIAL-LICENSING.md
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/LICENSE-HISTORY.md
+          test -s /tmp/synapse-root/usr/share/doc/synapse-os/PROVENANCE.md
+          test -s /tmp/synapse-root/usr/share/doc/synapse-os/CITATION.cff
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/TRADEMARKS.md
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/THIRD_PARTY_NOTICES.md
           grep -q 'Cory Davis / NavisWORLD Synapse Source License 1.0' /tmp/synapse-root/usr/share/doc/synapse-os/LICENSE
+          grep -q '10.5281/zenodo.17574447' /tmp/synapse-root/usr/share/doc/synapse-os/PROVENANCE.md
+          grep -q '10.5281/zenodo.17574447' /tmp/synapse-root/usr/share/doc/synapse-os/CITATION.cff
           unsquashfs -ll /tmp/synapse-image/filesystem.squashfs | grep 'libsynapse_abi\.so' >/dev/null
           grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/sddm/themes/synapse-nebula/Main.qml
           grep -q 'Synapse Nebula' /tmp/synapse-root/usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth

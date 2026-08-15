@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed when Synapse OS first-party licensing drifts from policy."""
+"""Fail closed when Synapse OS first-party licensing or provenance drifts from policy."""
 
 from __future__ import annotations
 
@@ -8,12 +8,16 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+ZENODO_DOI = "10.5281/zenodo.17574447"
+ZENODO_TITLE_MARKER = "The 12-Dimensional Cosmic Synapse Theory"
 
 REQUIRED_FILES = (
     "LICENSE",
     "LICENSE-HISTORY.md",
     "COMMERCIAL-LICENSING.md",
     "NOTICE",
+    "PROVENANCE.md",
+    "CITATION.cff",
     "TRADEMARKS.md",
     "THIRD_PARTY_NOTICES.md",
     "CONTRIBUTOR_LICENSE_AGREEMENT.md",
@@ -36,6 +40,8 @@ README_MARKERS = (
     "COMMERCIAL-LICENSING.md",
     "LICENSE-HISTORY.md",
     "THIRD_PARTY_NOTICES.md",
+    "PROVENANCE.md",
+    ZENODO_DOI,
 )
 
 LICENSING_GUIDE_MARKERS = (
@@ -43,6 +49,30 @@ LICENSING_GUIDE_MARKERS = (
     "source-available license, not an open-source license",
     "Historical MIT versions",
     "Third-party components",
+    "PROVENANCE.md",
+    ZENODO_DOI,
+)
+
+NOTICE_MARKERS = (
+    "PROVENANCE.md",
+    "CITATION.cff",
+    ZENODO_DOI,
+)
+
+PROVENANCE_MARKERS = (
+    ZENODO_DOI,
+    ZENODO_TITLE_MARKER,
+    "not represented as the software DOI for Synapse OS",
+    "not, by itself",
+    "COMMERCIAL-LICENSING.md",
+)
+
+CITATION_MARKERS = (
+    "cff-version: 1.2.0",
+    "title: Synapse OS",
+    "references:",
+    ZENODO_TITLE_MARKER,
+    ZENODO_DOI,
 )
 
 # These patterns indicate a current permissive-license declaration, not a
@@ -66,6 +96,7 @@ SKIP_PREFIXES = (
 
 TEXT_SUFFIXES = {
     "",
+    ".cff",
     ".md",
     ".txt",
     ".toml",
@@ -107,6 +138,16 @@ def _iter_first_party_text_files() -> list[Path]:
     return files
 
 
+def _require_markers(errors: list[str], relative: str, markers: tuple[str, ...]) -> None:
+    path = ROOT / relative
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8")
+    for marker in markers:
+        if marker not in text:
+            errors.append(f"{relative} missing marker: {marker}")
+
+
 def audit() -> list[str]:
     errors: list[str] = []
 
@@ -114,26 +155,12 @@ def audit() -> list[str]:
         if not (ROOT / relative).is_file():
             errors.append(f"missing required legal file: {relative}")
 
-    license_path = ROOT / "LICENSE"
-    if license_path.is_file():
-        text = license_path.read_text(encoding="utf-8")
-        for marker in ROOT_LICENSE_MARKERS:
-            if marker not in text:
-                errors.append(f"LICENSE missing marker: {marker}")
-
-    readme_path = ROOT / "README.md"
-    if readme_path.is_file():
-        text = readme_path.read_text(encoding="utf-8")
-        for marker in README_MARKERS:
-            if marker not in text:
-                errors.append(f"README.md missing licensing marker: {marker}")
-
-    guide_path = ROOT / "docs/LICENSING.md"
-    if guide_path.is_file():
-        text = guide_path.read_text(encoding="utf-8")
-        for marker in LICENSING_GUIDE_MARKERS:
-            if marker not in text:
-                errors.append(f"docs/LICENSING.md missing marker: {marker}")
+    _require_markers(errors, "LICENSE", ROOT_LICENSE_MARKERS)
+    _require_markers(errors, "README.md", README_MARKERS)
+    _require_markers(errors, "docs/LICENSING.md", LICENSING_GUIDE_MARKERS)
+    _require_markers(errors, "NOTICE", NOTICE_MARKERS)
+    _require_markers(errors, "PROVENANCE.md", PROVENANCE_MARKERS)
+    _require_markers(errors, "CITATION.cff", CITATION_MARKERS)
 
     pyproject = ROOT / "pyproject.toml"
     if pyproject.is_file():
@@ -166,11 +193,11 @@ def audit() -> list[str]:
 def main() -> int:
     errors = audit()
     if errors:
-        print("Synapse license audit: FAILED", file=sys.stderr)
+        print("Synapse license/provenance audit: FAILED", file=sys.stderr)
         for error in errors:
             print(f" - {error}", file=sys.stderr)
         return 1
-    print("Synapse license audit: PASS")
+    print("Synapse license/provenance audit: PASS")
     return 0
 
 

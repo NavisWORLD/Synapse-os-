@@ -230,6 +230,16 @@ The target is *latency you can feel*: avoiding disk swap where possible, using c
 
 Installing an OS can overwrite existing storage if the installer is instructed to do so. Test the live environment first, keep backups, verify the SHA-256 checksum, and read the recovery guide. Hardware-specific proprietary GPU drivers are not silently forced into the image. Firmware/write-protection changes are not automated by Phone Bootstrap.
 
+## Research provenance
+
+The broader Cory Davis / NavisWORLD research lineage cites this foundational public record:
+
+**C. S. Davis.** *The 12-Dimensional Cosmic Synapse Theory: Audio-Driven Deterministic Cosmological Simulation with Adaptive Memory and Light Particle Mapping.* Zenodo, 2024. DOI: `10.5281/zenodo.17574447`.
+
+See [`PROVENANCE.md`](PROVENANCE.md) for the human-readable provenance chain and [`CITATION.cff`](CITATION.cff) for machine-readable citation metadata.
+
+The DOI is a research publication/provenance reference. It is not represented as the software DOI for Synapse OS and does not itself grant commercial, redistribution, hosted-service, patent, trademark, AI/ML, or other rights.
+
 ## License
 
 Current Synapse-specific original material owned or controlled by Cory Davis / NavisWORLD is **source-available, not open source**, under the [`Cory Davis / NavisWORLD Synapse Source License 1.0`](LICENSE). The public grant is limited to noncommercial evaluation, research, education, security review, and private modification within the license terms.
