@@ -169,6 +169,10 @@ def _partition_and_install(
     esp, root_partition = partition_paths(target)
     mount_root = Path(mount_root)
     esp_mount = mount_root / "boot" / "efi"
+    # For a removable-path UEFI install GRUB's own modules and grub.cfg must
+    # stay on the EFI System Partition. The generated EFI loader can then find
+    # its prefix before grub.cfg searches the ext4 Synapse root by UUID.
+    esp_boot = esp_mount / "boot"
 
     wipefs = _require_tool("wipefs")
     parted = _require_tool("parted")
@@ -226,12 +230,13 @@ def _partition_and_install(
         )
 
         _record(receipt, "bootloader", "installing removable UEFI GRUB bootloader")
+        esp_boot.mkdir(parents=True, exist_ok=True)
         runner(
             [
                 grub_install,
                 "--target=x86_64-efi",
                 f"--efi-directory={esp_mount}",
-                f"--boot-directory={mount_root / 'boot'}",
+                f"--boot-directory={esp_boot}",
                 "--removable",
                 "--no-nvram",
             ],
@@ -244,7 +249,7 @@ def _partition_and_install(
             raise GenesisError("VERIFY_FAILED", "installed rootfs does not contain a kernel/initramfs pair")
         kernel = kernels[-1].name
         initrd = initrds[-1].name
-        grub_dir = mount_root / "boot" / "grub"
+        grub_dir = esp_boot / "grub"
         grub_dir.mkdir(parents=True, exist_ok=True)
         (grub_dir / "grub.cfg").write_text(
             "set timeout=3\n"
