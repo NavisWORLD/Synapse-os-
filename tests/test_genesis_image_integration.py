@@ -65,7 +65,7 @@ class GenesisLiveImageIntegrationTests(unittest.TestCase):
         self.assertIn("chmod 0755 /usr/local/bin/synapse-genesis-writer", hook)
         self.assertIn("systemctl enable synapse-genesis-installer-api.service", hook)
 
-    def test_amd64_build_includes_required_writer_tools(self):
+    def test_amd64_build_includes_required_writer_and_iphone_transport_tools(self):
         build = (ROOT / "build/build.sh").read_text(encoding="utf-8")
         for package in (
             "parted",
@@ -75,6 +75,7 @@ class GenesisLiveImageIntegrationTests(unittest.TestCase):
             "grub2-common",
             "squashfs-tools",
             "util-linux",
+            "ipheth-utils",
         ):
             self.assertIn(package, build)
 
@@ -84,6 +85,12 @@ class GenesisLiveImageIntegrationTests(unittest.TestCase):
         self.assertIn("--bootappend-live-failsafe", build)
         self.assertIn("synapse.genesis=1", build)
         self.assertIn("grep -a -q 'synapse.genesis=1' \"$ISO\"", workflow)
+
+    def test_final_manifest_verification_preserves_payload_filename(self):
+        build = (ROOT / "build/build.sh").read_text(encoding="utf-8")
+        self.assertIn('GENESIS_VERIFY_DIR="$GENESIS_STAGE/verify"', build)
+        self.assertIn('GENESIS_VERIFY_ROOTFS="$GENESIS_VERIFY_DIR/filesystem.squashfs"', build)
+        self.assertNotIn('GENESIS_VERIFY_ROOTFS="$GENESIS_STAGE/verify-filesystem.squashfs"', build)
 
     def test_required_ci_gate_inspects_genesis_inside_built_iso(self):
         workflow = (ROOT / ".github/workflows/build-vm-smoke.yml").read_text(encoding="utf-8")
