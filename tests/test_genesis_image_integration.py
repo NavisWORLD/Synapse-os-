@@ -99,6 +99,21 @@ class GenesisLiveImageIntegrationTests(unittest.TestCase):
         self.assertIn("ConditionKernelCommandLine=synapse.genesis=1", workflow)
         self.assertIn("HOLD TO INSTALL SYNAPSE OS", workflow)
 
+    def test_installed_disk_gate_uses_only_disposable_nbd_target(self):
+        script = ROOT / "scripts/genesis-installed-vm-smoke.sh"
+        self.assertTrue(script.is_file())
+        text = script.read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/build-vm-smoke.yml").read_text(encoding="utf-8")
+        self.assertIn("qemu-nbd", text)
+        self.assertIn("truncate", text)
+        self.assertIn("mktemp -d", text)
+        self.assertIn("synapse.genesis=1", text)
+        self.assertIn("SYNAPSE_VM_READY", text)
+        self.assertNotIn("/dev/sda", text)
+        self.assertNotIn("/dev/mmcblk", text)
+        self.assertIn("sudo bash scripts/genesis-installed-vm-smoke.sh", workflow)
+        self.assertIn("synapse-genesis-installed-vm.log", workflow)
+
     def test_non_simulation_manager_delegates_to_fixed_writer(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
