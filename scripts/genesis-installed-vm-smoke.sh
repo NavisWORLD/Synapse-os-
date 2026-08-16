@@ -24,11 +24,13 @@ DISK="$TMP/synapse-installed.raw"
 ROOTFS="$TMP/filesystem.squashfs"
 MANIFEST="$TMP/manifest.json"
 MOUNT_ROOT="$TMP/installed-root"
+MOUNT_ESP="$TMP/installed-esp"
 SERIAL_LOG="$TMP/installed-serial.log"
 OUT_LOG="${SYNAPSE_GENESIS_INSTALLED_LOG:-/tmp/synapse-vm/synapse-genesis-installed-vm.log}"
 NBD=""
 NBD_CONNECTED=0
 ROOT_MOUNTED=0
+ESP_MOUNTED=0
 VM_PID=""
 
 copy_log() {
@@ -42,6 +44,9 @@ cleanup() {
   if [[ -n "$VM_PID" ]]; then
     kill "$VM_PID" 2>/dev/null || true
     wait "$VM_PID" 2>/dev/null || true
+  fi
+  if [[ "$ESP_MOUNTED" == "1" ]]; then
+    umount "$MOUNT_ESP" 2>/dev/null || true
   fi
   if [[ "$ROOT_MOUNTED" == "1" ]]; then
     umount "$MOUNT_ROOT" 2>/dev/null || true
@@ -163,19 +168,23 @@ if result.get("final_state") != "complete":
 print("GENESIS disposable-disk writer: PASS")
 PY
 
+ESP_PART="${NBD}p1"
 ROOT_PART="${NBD}p2"
 for _ in $(seq 1 30); do
-  [[ -b "$ROOT_PART" ]] && break
+  [[ -b "$ESP_PART" && -b "$ROOT_PART" ]] && break
   sleep 1
   udevadm settle || true
 done
+[[ -b "$ESP_PART" ]] || { echo "error: installed EFI partition did not appear: $ESP_PART" >&2; exit 4; }
 [[ -b "$ROOT_PART" ]] || { echo "error: installed root partition did not appear: $ROOT_PART" >&2; exit 4; }
 
-mkdir -p "$MOUNT_ROOT"
+mkdir -p "$MOUNT_ROOT" "$MOUNT_ESP"
 mount "$ROOT_PART" "$MOUNT_ROOT"
 ROOT_MOUNTED=1
-GRUB_CFG="$MOUNT_ROOT/boot/grub/grub.cfg"
-[[ -s "$GRUB_CFG" ]] || { echo "error: installed GRUB config missing" >&2; exit 4; }
+mount "$ESP_PART" "$MOUNT_ESP"
+ESP_MOUNTED=1
+GRUB_CFG="$MOUNT_ESP/boot/grub/grub.cfg"
+[[ -s "$GRUB_CFG" ]] || { echo "error: installed ESP GRUB config missing" >&2; exit 4; }
 
 # Add serial output and the existing VM smoke marker only to this disposable CI
 # disk. This does not alter the production installer's generated command line.
@@ -184,6 +193,8 @@ grep -q 'synapse.vmtest=1' "$GRUB_CFG"
 test -s "$MOUNT_ROOT/var/lib/synapse/genesis/receipt.json"
 grep -q '10.5281/zenodo.17574447' "$MOUNT_ROOT/var/lib/synapse/genesis/receipt.json"
 sync
+umount "$MOUNT_ESP"
+ESP_MOUNTED=0
 umount "$MOUNT_ROOT"
 ROOT_MOUNTED=0
 qemu-nbd --disconnect "$NBD" >/dev/null
