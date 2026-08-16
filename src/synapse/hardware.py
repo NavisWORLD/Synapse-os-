@@ -58,24 +58,61 @@ def load_profiles(path: Path | None = None) -> dict[str, Any]:
     return {"schema_version": 1, "profiles": []}
 
 
+def _contains_all(value: str, tokens: list[str]) -> bool:
+    return bool(tokens) and all(token in value for token in tokens)
+
+
+def _vendor_matches(value: str, tokens: list[str]) -> bool:
+    """Match vendor tokens only at safe component starts.
+
+    ASUS must match values such as ``ASUSTeK COMPUTER INC.`` but must not match
+    an unrelated value such as ``NOT-ASUS-CORP`` merely because ASUS appears
+    after a hyphen. Hyphens deliberately remain inside a component here.
+    """
+    if not tokens:
+        return True
+    components = [
+        component
+        for component in value.replace(",", " ").replace("/", " ").replace("(", " ").replace(")", " ").split()
+        if component
+    ]
+    return all(any(component.startswith(token) for component in components) for token in tokens)
+
+
 def match_profile(probe: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]:
     arch = normalize_arch(str(probe.get("arch") or ""))
     hwid = str(probe.get("hwid") or "").upper()
+    board = str(probe.get("board_name") or "").upper()
     product = str(probe.get("product_name") or "").upper()
+    vendor = str(probe.get("sys_vendor") or "").upper()
+
     for profile in registry.get("profiles", []):
         if normalize_arch(str(profile.get("arch") or "")) != arch:
             continue
+
         hwid_tokens = [str(x).upper() for x in profile.get("hwid_contains", [])]
+        board_tokens = [str(x).upper() for x in profile.get("board_contains", [])]
         product_tokens = [str(x).upper() for x in profile.get("product_contains", [])]
-        if hwid_tokens and not all(token in hwid for token in hwid_tokens):
+        vendor_tokens = [str(x).upper() for x in profile.get("vendor_contains", [])]
+
+        hwid_match = _contains_all(hwid, hwid_tokens)
+        board_match = _contains_all(board, board_tokens)
+        product_match = _contains_all(product, product_tokens)
+        if product_match and vendor_tokens:
+            product_match = _vendor_matches(vendor, vendor_tokens)
+
+        # Identity paths are alternatives, not cumulative requirements. ChromeOS
+        # HWID is strongest; board name is the next fallback; retail product
+        # matching is accepted only when the configured vendor also matches.
+        if not (hwid_match or board_match or product_match):
             continue
-        if product_tokens and product and not any(token in product for token in product_tokens):
-            continue
+
         return {
             "profile_id": profile.get("id"),
             "certification_state": profile.get("certification_state", "unverified"),
             "profile": profile,
         }
+
     return {"profile_id": None, "certification_state": "unverified", "profile": None}
 
 
