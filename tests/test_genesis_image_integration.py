@@ -78,6 +78,13 @@ class GenesisLiveImageIntegrationTests(unittest.TestCase):
         ):
             self.assertIn(package, build)
 
+    def test_build_exposes_explicit_genesis_boot_mode(self):
+        build = (ROOT / "build/build.sh").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/build-vm-smoke.yml").read_text(encoding="utf-8")
+        self.assertIn("--bootappend-live-failsafe", build)
+        self.assertIn("synapse.genesis=1", build)
+        self.assertIn("grep -a -q 'synapse.genesis=1' \"$ISO\"", workflow)
+
     def test_required_ci_gate_inspects_genesis_inside_built_iso(self):
         workflow = (ROOT / ".github/workflows/build-vm-smoke.yml").read_text(encoding="utf-8")
         for installed_path in (
