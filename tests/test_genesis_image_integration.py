@@ -78,6 +78,20 @@ class GenesisLiveImageIntegrationTests(unittest.TestCase):
         ):
             self.assertIn(package, build)
 
+    def test_required_ci_gate_inspects_genesis_inside_built_iso(self):
+        workflow = (ROOT / ".github/workflows/build-vm-smoke.yml").read_text(encoding="utf-8")
+        for installed_path in (
+            "usr/share/synapse/GENESIS.html",
+            "usr/local/bin/synapse-genesis-writer",
+            "usr/lib/systemd/system/synapse-genesis-installer-api.service",
+            "usr/lib/synapse/python/synapse/genesis.py",
+            "usr/lib/synapse/python/synapse/genesis_runtime.py",
+            "usr/lib/synapse/python/synapse/genesis_writer.py",
+        ):
+            self.assertIn(installed_path, workflow)
+        self.assertIn("ConditionKernelCommandLine=synapse.genesis=1", workflow)
+        self.assertIn("HOLD TO INSTALL SYNAPSE OS", workflow)
+
     def test_non_simulation_manager_delegates_to_fixed_writer(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
