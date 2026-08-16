@@ -8,8 +8,46 @@ from .genesis import GenesisError, GenesisManager, EXPECTED_LICENSE, EXPECTED_ZE
 from .genesis_writer import run_install
 
 
+GENESIS_V1_PHYSICAL_PROFILE = "asus-cx1700cka-gallop"
+
+
 class InstallerGenesisManager(GenesisManager):
     """GENESIS manager variant used only by the kernel-gated root installer service."""
+
+    def preflight(self) -> dict[str, Any]:
+        result = super().preflight()
+        if not self.installer_mode or self.simulation:
+            return result
+
+        hardware = result.get("hardware") or {}
+        if hardware.get("profile_id") != GENESIS_V1_PHYSICAL_PROFILE:
+            raise GenesisError(
+                "HARDWARE_UNSUPPORTED",
+                "GENESIS v1 destructive installation is locked to the ASUS CX1700CKA / GALLOP profile",
+            )
+
+        power = result.get("power") or {}
+        ac_online = power.get("ac_online")
+        battery = power.get("battery_percent")
+        known_safe_power = ac_online is True or (battery is not None and float(battery) >= 50.0)
+        if not known_safe_power:
+            raise GenesisError(
+                "POWER_INSUFFICIENT",
+                "GENESIS destructive installation requires detected external power or at least 50% battery",
+            )
+
+        boot = result.get("boot") or {}
+        if boot.get("mode") != "uefi":
+            raise GenesisError(
+                "INSTALLER_DISABLED",
+                "GENESIS v1 destructive installation requires a UEFI boot environment",
+            )
+        if not boot.get("genesis_kernel_marker"):
+            raise GenesisError(
+                "INSTALLER_DISABLED",
+                "GENESIS v1 destructive installation requires kernel marker synapse.genesis=1",
+            )
+        return result
 
     def _worker(self, preflight: dict[str, Any]) -> None:
         try:
