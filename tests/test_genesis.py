@@ -17,6 +17,7 @@ from synapse.genesis import (
     select_install_target,
     verify_manifest,
 )
+from synapse.genesis_runtime import InstallerGenesisManager
 
 
 GALLOP = {
@@ -205,7 +206,8 @@ class GenesisArmAndReceiptTests(unittest.TestCase):
             encoding="utf-8",
         )
         inventory = parse_lsblk_inventory(lsblk_payload(disk("mmcblk0", serial="TARGET")))
-        manager = GenesisManager(
+        manager_type = InstallerGenesisManager if installer_mode and not simulation else GenesisManager
+        manager = manager_type(
             manifest_path=manifest_path,
             image_path=image,
             staging_dir=root / "stage",
