@@ -2,8 +2,12 @@
 set -eu
 
 chmod 0755 /usr/local/bin/synapse-phone-bootstrap
+chmod 0755 /usr/local/bin/synapse-genesis-writer
 
-# Enable the per-user phone bootstrap for every desktop account. It starts in
-# the user's own systemd manager, so COSMOS is installed in that user's $HOME
-# instead of running the installer as root.
+# Enable the per-user phone bootstrap for every desktop account. It is
+# explicitly disabled when the live kernel carries synapse.genesis=1.
 systemctl --global enable synapse-phone-bootstrap.service
+
+# The root GENESIS installer API is enabled in the image but systemd conditions
+# keep it dormant unless the dedicated live boot marker and manifest exist.
+systemctl enable synapse-genesis-installer-api.service

@@ -17,14 +17,35 @@ import time
 from typing import Any
 from urllib.parse import urlparse
 
+from .genesis import GenesisError, GenesisManager
 from .hardware import probe_hardware
 
 API_VERSION = "1.1"
+GENESIS_API_VERSION = "2.0"
 DEFAULT_PORT = 8787
 DEFAULT_COSMOS_REPO = "https://github.com/NavisWORLD/Cosmos.git"
 DEFAULT_COSMOS_BRANCH = "main"
 COSMOS_PORTS = (11434, 11435, 11501, 8765, 8081, 8090, 8000, 8501)
 MAX_BODY = 64 * 1024
+GENESIS_FORBIDDEN_REQUEST_FIELDS = frozenset(
+    {
+        "target",
+        "target_path",
+        "disk",
+        "disk_path",
+        "device",
+        "image",
+        "image_path",
+        "manifest",
+        "manifest_path",
+        "command",
+        "commands",
+        "shell",
+        "argv",
+        "repo",
+        "repo_url",
+    }
+)
 
 
 class BootstrapError(RuntimeError):
@@ -304,11 +325,15 @@ class BootstrapServer(ThreadingHTTPServer):
         token: str,
         install_manager: InstallManager,
         ui_path: Path | None,
+        genesis_manager: GenesisManager | Any | None = None,
+        genesis_ui_path: Path | None = None,
     ) -> None:
         super().__init__(address, BootstrapHandler)
         self.token = token
         self.install_manager = install_manager
         self.ui_path = ui_path
+        self.genesis_manager = genesis_manager
+        self.genesis_ui_path = genesis_ui_path
 
 
 class BootstrapHandler(BaseHTTPRequestHandler):
@@ -333,10 +358,9 @@ class BootstrapHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_ui(self) -> None:
-        path = self.server.ui_path
+    def _send_html(self, path: Path | None, *, missing: str) -> None:
         if not path or not path.is_file():
-            self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": "phone bootstrap UI not installed"})
+            self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": missing})
             return
         body = path.read_bytes()
         self.send_response(HTTPStatus.OK)
@@ -345,6 +369,12 @@ class BootstrapHandler(BaseHTTPRequestHandler):
         self._cors()
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_ui(self) -> None:
+        self._send_html(self.server.ui_path, missing="phone bootstrap UI not installed")
+
+    def _send_genesis_ui(self) -> None:
+        self._send_html(self.server.genesis_ui_path, missing="GENESIS UI not installed")
 
     def _authorized(self) -> bool:
         supplied = self.headers.get("X-Synapse-Token", "")
@@ -359,6 +389,30 @@ class BootstrapHandler(BaseHTTPRequestHandler):
             return True
         self._send_json(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "pairing token required"})
         return False
+
+    def _require_auth_v2(self) -> bool:
+        if self._authorized():
+            return True
+        self._send_json(
+            HTTPStatus.UNAUTHORIZED,
+            {"ok": False, "error": {"code": "AUTH_REQUIRED", "message": "pairing token required"}},
+        )
+        return False
+
+    def _genesis(self) -> Any:
+        manager = self.server.genesis_manager
+        if manager is None:
+            raise GenesisError("GENESIS_UNAVAILABLE", "GENESIS manager is not configured on this daemon")
+        return manager
+
+    def _send_genesis_error(self, exc: GenesisError) -> None:
+        if exc.code == "AUTH_REQUIRED":
+            status = HTTPStatus.UNAUTHORIZED
+        elif exc.code in {"INSTALL_ALREADY_RUNNING", "ARM_REPLAYED", "ARM_EXPIRED"}:
+            status = HTTPStatus.CONFLICT
+        else:
+            status = HTTPStatus.BAD_REQUEST
+        self._send_json(status, {"ok": False, "error": {"code": exc.code, "message": exc.message}})
 
     def _read_json(self) -> dict[str, Any]:
         raw_length = self.headers.get("Content-Length", "0")
@@ -379,6 +433,15 @@ class BootstrapHandler(BaseHTTPRequestHandler):
             raise BootstrapError("JSON body must be an object")
         return data
 
+    def _reject_genesis_control_fields(self, data: dict[str, Any], *, allowed: set[str]) -> None:
+        forbidden = (set(data) - allowed) | (set(data) & GENESIS_FORBIDDEN_REQUEST_FIELDS)
+        if forbidden:
+            names = ", ".join(sorted(forbidden))
+            raise GenesisError(
+                "REQUEST_FIELDS_FORBIDDEN",
+                f"GENESIS does not accept request-controlled disk, image, or command fields: {names}",
+            )
+
     def do_OPTIONS(self) -> None:
         self.send_response(HTTPStatus.NO_CONTENT)
         self._cors()
@@ -390,12 +453,52 @@ class BootstrapHandler(BaseHTTPRequestHandler):
         if path in ("/", "/phone-bootstrap.html"):
             self._send_ui()
             return
+        if path in ("/GENESIS.html", "/genesis"):
+            self._send_genesis_ui()
+            return
         if path == "/v1/health":
             self._send_json(
                 HTTPStatus.OK,
                 {"ok": True, "service": "synapse-phone-bootstrap", "api_version": API_VERSION},
             )
             return
+        if path == "/v2/health":
+            self._send_json(
+                HTTPStatus.OK,
+                {"ok": True, "service": "synapse-genesis", "api_version": GENESIS_API_VERSION},
+            )
+            return
+
+        if path.startswith("/v2/"):
+            if not self._require_auth_v2():
+                return
+            try:
+                manager = self._genesis()
+                if path == "/v2/device":
+                    snapshot = device_snapshot()
+                    snapshot["genesis_api_version"] = GENESIS_API_VERSION
+                    self._send_json(HTTPStatus.OK, {"ok": True, "device": snapshot})
+                    return
+                if path == "/v2/preflight":
+                    self._send_json(HTTPStatus.OK, {"ok": True, "preflight": manager.preflight()})
+                    return
+                if path == "/v2/image":
+                    self._send_json(HTTPStatus.OK, {"ok": True, "image": manager.image_status()})
+                    return
+                if path == "/v2/install/status":
+                    self._send_json(HTTPStatus.OK, {"ok": True, "install": manager.status()})
+                    return
+                if path == "/v2/install/receipt":
+                    self._send_json(HTTPStatus.OK, {"ok": True, "receipt": manager.receipt()})
+                    return
+                self._send_json(
+                    HTTPStatus.NOT_FOUND,
+                    {"ok": False, "error": {"code": "ROUTE_NOT_FOUND", "message": "route not found"}},
+                )
+            except GenesisError as exc:
+                self._send_genesis_error(exc)
+            return
+
         if not self._require_auth():
             return
         if path == "/v1/device":
@@ -408,6 +511,48 @@ class BootstrapHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
+        if path.startswith("/v2/"):
+            if not self._require_auth_v2():
+                return
+            try:
+                data = self._read_json()
+                manager = self._genesis()
+                if path == "/v2/hello":
+                    self._reject_genesis_control_fields(data, allowed={"message"})
+                    message = str(data.get("message") or "hey, I'm here")[:200]
+                    self._send_json(
+                        HTTPStatus.OK,
+                        {
+                            "ok": True,
+                            "received": message,
+                            "reply": "Synapse GENESIS laptop here.",
+                            "hostname": socket.gethostname(),
+                        },
+                    )
+                    return
+                if path == "/v2/install/arm":
+                    self._reject_genesis_control_fields(data, allowed=set())
+                    self._send_json(HTTPStatus.OK, {"ok": True, "arm": manager.arm()})
+                    return
+                if path == "/v2/install/start":
+                    self._reject_genesis_control_fields(data, allowed={"challenge_id", "acknowledgement"})
+                    challenge_id = str(data.get("challenge_id") or "")
+                    acknowledgement = str(data.get("acknowledgement") or "")
+                    if not challenge_id or not acknowledgement:
+                        raise GenesisError("ARM_MISMATCH", "challenge_id and acknowledgement are required")
+                    state = manager.start(challenge_id, acknowledgement)
+                    self._send_json(HTTPStatus.ACCEPTED, {"ok": True, "install": state})
+                    return
+                self._send_json(
+                    HTTPStatus.NOT_FOUND,
+                    {"ok": False, "error": {"code": "ROUTE_NOT_FOUND", "message": "route not found"}},
+                )
+            except BootstrapError as exc:
+                self._send_genesis_error(GenesisError("BAD_REQUEST", str(exc)))
+            except GenesisError as exc:
+                self._send_genesis_error(exc)
+            return
+
         if not self._require_auth():
             return
         try:
@@ -444,6 +589,16 @@ def resolve_ui_path(value: str | None) -> Path | None:
     return source if source.is_file() else None
 
 
+def resolve_genesis_ui_path(value: str | None) -> Path | None:
+    if value:
+        return Path(value).expanduser().resolve()
+    installed = Path("/usr/share/synapse/GENESIS.html")
+    if installed.is_file():
+        return installed
+    source = Path(__file__).resolve().parents[2] / "phone-bootstrap" / "GENESIS.html"
+    return source if source.is_file() else None
+
+
 def write_token_file(path: Path | None, token: str) -> None:
     if path is None:
         return
@@ -458,7 +613,7 @@ def write_token_file(path: Path | None, token: str) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="synapse-phone-bootstrap",
-        description="Authenticated local API and phone UI for reading a Synapse laptop and bootstrapping COSMOS",
+        description="Authenticated local API and phone UI for Synapse/COSMOS bootstrap and GENESIS installation",
     )
     parser.add_argument("--listen", default="127.0.0.1", help="bind address; use 0.0.0.0 for a trusted USB/local link")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
@@ -470,6 +625,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cosmos-repo", default=DEFAULT_COSMOS_REPO)
     parser.add_argument("--cosmos-branch", default=DEFAULT_COSMOS_BRANCH)
     parser.add_argument("--install-root", type=Path, default=Path.home() / "COSMOS")
+    parser.add_argument("--genesis-ui")
+    parser.add_argument("--genesis-manifest", type=Path)
+    parser.add_argument("--genesis-image", type=Path)
+    parser.add_argument(
+        "--genesis-staging-dir",
+        type=Path,
+        default=Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "synapse-genesis",
+    )
+    parser.add_argument("--genesis-installer-mode", action="store_true")
+    parser.add_argument("--genesis-simulation", action="store_true")
     return parser
 
 
@@ -487,10 +652,25 @@ def main(argv: list[str] | None = None) -> int:
         allow_install=args.allow_install,
         activate=args.activate,
     )
-    server = BootstrapServer((args.listen, args.port), token=token, install_manager=manager, ui_path=resolve_ui_path(args.ui))
+    genesis_manager = GenesisManager(
+        manifest_path=args.genesis_manifest,
+        image_path=args.genesis_image,
+        staging_dir=args.genesis_staging_dir,
+        installer_mode=args.genesis_installer_mode,
+        simulation=args.genesis_simulation,
+    )
+    server = BootstrapServer(
+        (args.listen, args.port),
+        token=token,
+        install_manager=manager,
+        ui_path=resolve_ui_path(args.ui),
+        genesis_manager=genesis_manager,
+        genesis_ui_path=resolve_genesis_ui_path(args.genesis_ui),
+    )
     print(f"Synapse Phone Bootstrap listening on http://{args.listen}:{args.port}")
     print(f"Pairing token: {token}")
-    print("Endpoints: /v1/health /v1/device /v1/hello /v1/install/start /v1/install/status")
+    print("v1 endpoints: /v1/health /v1/device /v1/hello /v1/install/start /v1/install/status")
+    print("v2 endpoints: /v2/health /v2/device /v2/preflight /v2/image /v2/install/arm /v2/install/start /v2/install/status /v2/install/receipt")
     try:
         server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:

@@ -2,6 +2,7 @@
 Description=Synapse OS phone bootstrap API
 After=network-online.target
 Wants=network-online.target
+ConditionKernelCommandLine=!synapse.genesis=1
 
 [Service]
 Type=simple

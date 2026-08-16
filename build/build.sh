@@ -35,7 +35,7 @@ if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   echo "error: live-build needs root for chroot/mount operations; run: sudo ./build/build.sh" >&2
   exit 2
 fi
-for cmd in lb rsync sha256sum python3; do
+for cmd in lb rsync sha256sum python3 xorriso; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "error: missing $cmd" >&2; exit 2; }
 done
 python3 - "$WORK" "$REPO_ROOT" <<'PYSAFE'
@@ -51,6 +51,9 @@ PYSAFE
 mkdir -p "$WORK" "$OUT"
 cd "$WORK"
 
+LIVE_BOOT="boot=live components hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us quiet splash"
+GENESIS_BOOT="boot=live components hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us synapse.genesis=1"
+
 lb config \
   --mode debian \
   --distribution "$SUITE" \
@@ -60,11 +63,29 @@ lb config \
   --debian-installer none \
   --apt-recommends true \
   --memtest none \
-  --bootappend-live "boot=live components hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us quiet splash" \
+  --bootappend-live "$LIVE_BOOT" \
+  --bootappend-live-failsafe "$GENESIS_BOOT" \
   "${LB_FOREIGN[@]}"
 
 rsync -a "$REPO_ROOT/build/config/" config/
 printf '%s\n' "$SYNAPSE_KERNEL_PACKAGE" >> config/package-lists/synapse.list.chroot
+
+# GENESIS v1 performs destructive installation only on the first certified
+# amd64 path. Other architectures keep their non-destructive compatibility
+# framework without silently claiming an installer implementation.
+if [[ "$ARCH" == "amd64" ]]; then
+  cat >> config/package-lists/synapse.list.chroot <<'GENESIS_PACKAGES'
+parted
+dosfstools
+e2fsprogs
+grub-efi-amd64-bin
+grub2-common
+efibootmgr
+squashfs-tools
+util-linux
+ipheth-utils
+GENESIS_PACKAGES
+fi
 
 if [[ "$SUITE" == "trixie" ]]; then
   python3 - "config/package-lists/nebula-ui.list.chroot" <<'PYCOMPAT'
@@ -114,7 +135,50 @@ if [[ -z "$built" ]]; then
   echo "error: live-build completed without an ISO" >&2
   exit 3
 fi
-cp "$built" "$ISO"
+
+# The live rootfs is the immutable GENESIS installation payload. Generate its
+# manifest after live-build finishes, then add that manifest to the ISO outside
+# filesystem.squashfs so the installer can verify the exact payload before arm.
+GENESIS_STAGE="$WORK/.genesis-manifest"
+GENESIS_ROOTFS="$GENESIS_STAGE/filesystem.squashfs"
+GENESIS_MANIFEST="$GENESIS_STAGE/manifest.json"
+GENESIS_VERIFY_DIR="$GENESIS_STAGE/verify"
+GENESIS_VERIFY_ROOTFS="$GENESIS_VERIFY_DIR/filesystem.squashfs"
+GENESIS_VERIFY_MANIFEST="$GENESIS_VERIFY_DIR/manifest.json"
+REMUSTERED_ISO="$WORK/live-image-genesis.iso"
+rm -rf "$GENESIS_STAGE" "$REMUSTERED_ISO"
+mkdir -p "$GENESIS_STAGE" "$GENESIS_VERIFY_DIR"
+
+xorriso -osirrox on -indev "$built" -extract /live/filesystem.squashfs "$GENESIS_ROOTFS"
+BUILD_COMMIT="${SYNAPSE_BUILD_COMMIT:-$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || printf unknown)}"
+python3 "$REPO_ROOT/scripts/genesis_manifest.py" generate \
+  --image "$GENESIS_ROOTFS" \
+  --version "$VERSION" \
+  --arch "$ARCH" \
+  --commit "$BUILD_COMMIT" \
+  --output "$GENESIS_MANIFEST"
+
+xorriso \
+  -indev "$built" \
+  -outdev "$REMUSTERED_ISO" \
+  -boot_image any replay \
+  -map "$GENESIS_MANIFEST" /synapse-genesis/manifest.json \
+  -commit
+
+cp "$REMUSTERED_ISO" "$ISO"
+
+# Verify the manifest and rootfs from the final remastered ISO, not the staging
+# copies, so a broken remaster cannot produce a successful build artifact. The
+# verification copy intentionally preserves the original payload basename,
+# because image_filename is part of the manifest identity contract.
+xorriso -osirrox on -indev "$ISO" -extract /synapse-genesis/manifest.json "$GENESIS_VERIFY_MANIFEST"
+xorriso -osirrox on -indev "$ISO" -extract /live/filesystem.squashfs "$GENESIS_VERIFY_ROOTFS"
+python3 "$REPO_ROOT/scripts/genesis_manifest.py" verify \
+  --manifest "$GENESIS_VERIFY_MANIFEST" \
+  --image "$GENESIS_VERIFY_ROOTFS"
+
 sha256sum "$ISO" > "$ISO.sha256"
 echo "Synapse OS image: $ISO"
+echo "GENESIS boot mode: live failsafe entry (synapse.genesis=1)"
+echo "GENESIS manifest: /synapse-genesis/manifest.json"
 echo "Checksum: $ISO.sha256"

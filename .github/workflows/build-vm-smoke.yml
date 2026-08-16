@@ -29,14 +29,18 @@ jobs:
   build-and-boot-amd64:
     needs: source-validation
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install host build and VM tools
+      - name: Install host build, writer, and VM tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cpio debootstrap rsync xorriso squashfs-tools qemu-system-x86 curl
+          sudo apt-get install -y \
+            cpio debootstrap rsync xorriso squashfs-tools curl \
+            qemu-system-x86 qemu-utils ovmf \
+            parted dosfstools e2fsprogs grub-efi-amd64-bin grub2-common \
+            util-linux udev
 
       - name: Install Debian 13 live-build and archive keyring
         run: |
@@ -55,28 +59,36 @@ jobs:
       - name: Verify ISO checksum
         run: sha256sum -c out/*.iso.sha256
 
-      - name: Verify generated live filesystem
+      - name: Verify generated live filesystem and GENESIS payload
         shell: bash
         run: |
           set -Eeuo pipefail
           ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
           test -n "$ISO"
+          grep -a -q 'synapse.genesis=1' "$ISO"
           mkdir -p /tmp/synapse-image /tmp/synapse-root
           xorriso -osirrox on -indev "$ISO" -extract /live/filesystem.squashfs /tmp/synapse-image/filesystem.squashfs
+          xorriso -osirrox on -indev "$ISO" -extract /synapse-genesis/manifest.json /tmp/synapse-image/genesis-manifest.json
           unsquashfs -f -d /tmp/synapse-root /tmp/synapse-image/filesystem.squashfs \
             etc/os-release \
             etc/systemd/system/synapse-agent.service \
             usr/local/bin/synapse \
             usr/local/bin/synapse-control \
+            usr/local/bin/synapse-genesis-writer \
             usr/bin/plasmashell \
             usr/bin/calamares \
             usr/bin/pipewire \
             usr/bin/nmcli \
+            usr/lib/systemd/system/synapse-genesis-installer-api.service \
             usr/lib/synapse/python/synapse/__init__.py \
             usr/lib/synapse/python/synapse/hardware.py \
+            usr/lib/synapse/python/synapse/genesis.py \
+            usr/lib/synapse/python/synapse/genesis_runtime.py \
+            usr/lib/synapse/python/synapse/genesis_writer.py \
             usr/include/synapse/synapse.h \
             usr/share/synapse/hardware/profiles.json \
             usr/share/synapse/phone-bootstrap.html \
+            usr/share/synapse/GENESIS.html \
             usr/share/doc/synapse-os/LICENSE \
             usr/share/doc/synapse-os/NOTICE \
             usr/share/doc/synapse-os/COMMERCIAL-LICENSING.md \
@@ -91,9 +103,16 @@ jobs:
             usr/share/grub/themes/synapse-nebula/theme.txt
           grep -q '^ID=synapseos$' /tmp/synapse-root/etc/os-release
           test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/hardware.py
+          test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/genesis.py
+          test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/genesis_runtime.py
+          test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/genesis_writer.py
           test -s /tmp/synapse-root/usr/include/synapse/synapse.h
           test -s /tmp/synapse-root/usr/share/synapse/hardware/profiles.json
           test -s /tmp/synapse-root/usr/share/synapse/phone-bootstrap.html
+          test -s /tmp/synapse-root/usr/share/synapse/GENESIS.html
+          test -s /tmp/synapse-root/usr/local/bin/synapse-genesis-writer
+          test -s /tmp/synapse-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
+          test -s /tmp/synapse-image/genesis-manifest.json
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/LICENSE
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/NOTICE
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/COMMERCIAL-LICENSING.md
@@ -105,6 +124,16 @@ jobs:
           grep -q 'Cory Davis / NavisWORLD Synapse Source License 1.0' /tmp/synapse-root/usr/share/doc/synapse-os/LICENSE
           grep -q '10.5281/zenodo.17574447' /tmp/synapse-root/usr/share/doc/synapse-os/PROVENANCE.md
           grep -q '10.5281/zenodo.17574447' /tmp/synapse-root/usr/share/doc/synapse-os/CITATION.cff
+          grep -q '10.5281/zenodo.17574447' /tmp/synapse-image/genesis-manifest.json
+          grep -q 'Cory Davis / NavisWORLD Synapse Source License 1.0' /tmp/synapse-image/genesis-manifest.json
+          grep -q 'ConditionKernelCommandLine=synapse.genesis=1' /tmp/synapse-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
+          grep -q 'ConditionPathExists=/run/live/medium/synapse-genesis/manifest.json' /tmp/synapse-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
+          grep -q 'HOLD TO INSTALL SYNAPSE OS' /tmp/synapse-root/usr/share/synapse/GENESIS.html
+          grep -q '/v2/install/arm' /tmp/synapse-root/usr/share/synapse/GENESIS.html
+          grep -q '/v2/install/start' /tmp/synapse-root/usr/share/synapse/GENESIS.html
+          python3 scripts/genesis_manifest.py verify \
+            --manifest /tmp/synapse-image/genesis-manifest.json \
+            --image /tmp/synapse-image/filesystem.squashfs
           unsquashfs -ll /tmp/synapse-image/filesystem.squashfs | grep 'libsynapse_abi\.so' >/dev/null
           grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/sddm/themes/synapse-nebula/Main.qml
           grep -q 'Synapse Nebula' /tmp/synapse-root/usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth
@@ -118,12 +147,22 @@ jobs:
           test -n "$ISO"
           SYNAPSE_QEMU_LOG=/tmp/synapse-vm/serial.log bash scripts/qemu-smoke.sh amd64 "$ISO"
 
+      - name: Install to disposable NBD disk and boot installed Synapse
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -n "$ISO"
+          sudo bash scripts/genesis-installed-vm-smoke.sh "$ISO"
+
       - name: Preserve VM diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: synapse-vm-diagnostics-amd64
-          path: /tmp/synapse-vm/serial.log
+          path: |
+            /tmp/synapse-vm/serial.log
+            /tmp/synapse-vm/synapse-genesis-installed-vm.log
           if-no-files-found: warn
 
       - name: Preserve ISO
