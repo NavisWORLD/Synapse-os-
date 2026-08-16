@@ -35,7 +35,7 @@ if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   echo "error: live-build needs root for chroot/mount operations; run: sudo ./build/build.sh" >&2
   exit 2
 fi
-for cmd in lb rsync sha256sum python3; do
+for cmd in lb rsync sha256sum python3 xorriso; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "error: missing $cmd" >&2; exit 2; }
 done
 python3 - "$WORK" "$REPO_ROOT" <<'PYSAFE'
@@ -130,7 +130,46 @@ if [[ -z "$built" ]]; then
   echo "error: live-build completed without an ISO" >&2
   exit 3
 fi
-cp "$built" "$ISO"
+
+# The live rootfs is the immutable GENESIS installation payload. Generate its
+# manifest after live-build finishes, then add that manifest to the ISO outside
+# filesystem.squashfs so the installer can verify the exact payload before arm.
+GENESIS_STAGE="$WORK/.genesis-manifest"
+GENESIS_ROOTFS="$GENESIS_STAGE/filesystem.squashfs"
+GENESIS_MANIFEST="$GENESIS_STAGE/manifest.json"
+GENESIS_VERIFY_ROOTFS="$GENESIS_STAGE/verify-filesystem.squashfs"
+GENESIS_VERIFY_MANIFEST="$GENESIS_STAGE/verify-manifest.json"
+REMUSTERED_ISO="$WORK/live-image-genesis.iso"
+rm -rf "$GENESIS_STAGE" "$REMUSTERED_ISO"
+mkdir -p "$GENESIS_STAGE"
+
+xorriso -osirrox on -indev "$built" -extract /live/filesystem.squashfs "$GENESIS_ROOTFS"
+BUILD_COMMIT="${SYNAPSE_BUILD_COMMIT:-$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || printf unknown)}"
+python3 "$REPO_ROOT/scripts/genesis_manifest.py" generate \
+  --image "$GENESIS_ROOTFS" \
+  --version "$VERSION" \
+  --arch "$ARCH" \
+  --commit "$BUILD_COMMIT" \
+  --output "$GENESIS_MANIFEST"
+
+xorriso \
+  -indev "$built" \
+  -outdev "$REMUSTERED_ISO" \
+  -boot_image any replay \
+  -map "$GENESIS_MANIFEST" /synapse-genesis/manifest.json \
+  -commit
+
+cp "$REMUSTERED_ISO" "$ISO"
+
+# Verify the manifest and rootfs from the final remastered ISO, not the staging
+# copies, so a broken remaster cannot produce a successful build artifact.
+xorriso -osirrox on -indev "$ISO" -extract /synapse-genesis/manifest.json "$GENESIS_VERIFY_MANIFEST"
+xorriso -osirrox on -indev "$ISO" -extract /live/filesystem.squashfs "$GENESIS_VERIFY_ROOTFS"
+python3 "$REPO_ROOT/scripts/genesis_manifest.py" verify \
+  --manifest "$GENESIS_VERIFY_MANIFEST" \
+  --image "$GENESIS_VERIFY_ROOTFS"
+
 sha256sum "$ISO" > "$ISO.sha256"
 echo "Synapse OS image: $ISO"
+echo "GENESIS manifest: /synapse-genesis/manifest.json"
 echo "Checksum: $ISO.sha256"
