@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04070b">
+<title>COSMOS // GENESIS</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#04070b;--panel:#0a111b;--panel2:#0d1724;--line:#25354a;
+  --text:#edf7ff;--muted:#8497ae;--cyan:#63c9ff;--green:#70ffb0;
+  --amber:#ffd36f;--red:#ff6f83;--violet:#b69cff;
+}
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--bg)}
+body{margin:0;min-height:100vh;background:
+ radial-gradient(circle at 50% -20%,#173253 0,transparent 42%),
+ radial-gradient(circle at 110% 30%,#231943 0,transparent 34%),
+ linear-gradient(180deg,#05090f,#020407 70%);color:var(--text);
+ font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.14;background-image:
+ linear-gradient(#fff1 1px,transparent 1px),linear-gradient(90deg,#fff1 1px,transparent 1px);background-size:38px 38px}
+main{position:relative;width:min(820px,100%);margin:auto;padding:22px 16px 70px}
+.hero{padding:18px 2px 8px}.eyebrow{font-size:11px;letter-spacing:.22em;color:var(--cyan);text-transform:uppercase}
+h1{font-size:clamp(34px,10vw,62px);line-height:.95;margin:8px 0 10px;letter-spacing:-.045em}
+.hero p{margin:0;color:var(--muted);max-width:690px}.grid{display:grid;gap:12px}.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.card{position:relative;background:linear-gradient(180deg,#0d1622ee,#080d15f2);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 22px 70px #0008;overflow:hidden}
+.card:before{content:"";position:absolute;inset:0 auto auto 0;width:100%;height:1px;background:linear-gradient(90deg,transparent,#6bd4ff88,transparent)}
+.label{font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted)}
+.value{margin-top:4px;font-size:14px;word-break:break-word}.big{font-size:18px;font-weight:800}.ok{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}
+input{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#050910;color:var(--text);font:inherit;outline:none}
+input:focus{border-color:#4d93c4;box-shadow:0 0 0 3px #4d93c422}
+.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+button{position:relative;appearance:none;border:1px solid #35506e;border-radius:13px;background:#101b2a;color:var(--text);padding:13px 15px;font:inherit;font-weight:800;letter-spacing:.02em;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
+button.primary{background:#123351;border-color:#4389bd}button.good{background:#103325;border-color:#3d9b6e}button:disabled{opacity:.35;cursor:not-allowed}
+.statusline{display:flex;gap:9px;align-items:center}.dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 18px currentColor}.dot.online{background:var(--green)}.dot.busy{background:var(--amber)}
+pre{margin:10px 0 0;white-space:pre-wrap;word-break:break-word;background:#03060b;border:1px solid #192536;border-radius:12px;padding:12px;color:#bdd4eb;max-height:300px;overflow:auto}
+.checks{display:grid;gap:7px;margin-top:10px}.check{display:grid;grid-template-columns:18px 1fr;gap:8px;padding:8px 9px;border-radius:10px;background:#050a11;border:1px solid #172435}.check .mark{color:var(--green)}
+.meter{height:9px;border:1px solid #1b2b3f;background:#03060a;border-radius:999px;overflow:hidden;margin-top:10px}.meter>div{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--green));transition:width .25s ease}
+.warning{border-color:#713846;background:linear-gradient(180deg,#291017e8,#13080cf0)}.warning:before{background:linear-gradient(90deg,transparent,#ff6f83aa,transparent)}
+.warning h2{margin:2px 0 8px;color:#ff9aaa;font-size:20px}.warning p{margin:5px 0;color:#e8b5bd}
+.hold{width:100%;min-height:64px;margin-top:14px;background:#3a111a;border-color:#a03b4c;font-size:16px}.hold .fill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#7a1b2d,#b42a45);transition:width .06s linear;z-index:0}.hold span{position:relative;z-index:1}.hold.armed{border-color:#ff6f83;box-shadow:0 0 30px #ff456633}
+.tiny{font-size:11px;color:var(--muted)}.mono{font-variant-ligatures:none}.hidden{display:none!important}
+.receipt{border-color:#315b49}.receipt strong{color:var(--green)}
+@media(max-width:620px){.two,.actions{grid-template-columns:1fr}main{padding-top:16px}h1{font-size:44px}.card{border-radius:15px}}
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="eyebrow">SYNAPSE OS // PHONE CONTROL // API V2</div>
+    <h1>COSMOS // GENESIS</h1>
+    <p>Authenticated local installer control surface. GENESIS verifies the laptop, target disk, Synapse image and provenance before any install can be armed.</p>
+  </header>
+
+  <section class="card">
+    <div class="grid two">
+      <label><div class="label">Laptop API</div><input id="base" placeholder="http://synapse-os.local:8787"></label>
+      <label><div class="label">Pairing token</div><input id="token" type="password" autocomplete="off" placeholder="pairing token from the laptop"></label>
+    </div>
+    <div class="actions">
+      <button class="primary" id="connect">CONNECT</button>
+      <button id="hello" disabled>HEY, I'M HERE</button>
+      <button id="refresh" disabled>REFRESH PREFLIGHT</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="grid two">
+      <div><div class="label">Connection</div><div class="statusline big"><span class="dot" id="dot"></span><span id="link">DISCONNECTED</span></div></div>
+      <div><div class="label">GENESIS API</div><div class="value big" id="api">NOT DETECTED</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="label">Hardware identity</div>
+    <div class="grid two" style="margin-top:10px">
+      <div><div class="label">Profile</div><div class="value" id="profile">unknown</div></div>
+      <div><div class="label">Certification</div><div class="value" id="cert">unknown</div></div>
+      <div><div class="label">HWID</div><div class="value" id="hwid">unknown</div></div>
+      <div><div class="label">Architecture</div><div class="value" id="arch">unknown</div></div>
+    </div>
+    <pre id="device">No device connected.</pre>
+  </section>
+
+  <section class="card">
+    <div class="label">GENESIS preflight</div>
+    <div class="grid two" style="margin-top:10px">
+      <div><div class="label">Target disk</div><div class="value" id="target">not verified</div></div>
+      <div><div class="label">Image</div><div class="value" id="image">not verified</div></div>
+      <div><div class="label">Power</div><div class="value" id="power">not verified</div></div>
+      <div><div class="label">Boot mode</div><div class="value" id="boot">not verified</div></div>
+    </div>
+    <div class="checks" id="checks"><div class="tiny">Connect to run preflight.</div></div>
+    <pre id="preflightRaw">Waiting.</pre>
+  </section>
+
+  <section class="card warning">
+    <h2>THIS WILL REPLACE CHROMEOS</h2>
+    <p>GENESIS will erase the verified internal target disk and install Synapse OS. The button remains locked unless the local API reports a complete preflight.</p>
+    <p class="tiny">The phone cannot choose a disk, image path, command or firmware operation. The server binds the install challenge to the detected device, target and verified image hash.</p>
+    <button class="hold" id="install" disabled>
+      <div class="fill" id="holdFill"></div>
+      <span id="holdText">HOLD TO INSTALL SYNAPSE OS</span>
+    </button>
+    <div class="tiny" id="armInfo" style="margin-top:10px">Not armed.</div>
+  </section>
+
+  <section class="card">
+    <div class="grid two">
+      <div><div class="label">Install phase</div><div class="value big" id="phase">IDLE</div></div>
+      <div><div class="label">Progress</div><div class="value big" id="pct">0%</div></div>
+    </div>
+    <div class="meter"><div id="bar"></div></div>
+    <pre id="installLog">Ready.</pre>
+  </section>
+
+  <section class="card receipt hidden" id="receiptCard">
+    <div class="label">Installation receipt</div>
+    <div class="value"><strong>GENESIS evidence preserved</strong></div>
+    <pre id="receipt">No receipt yet.</pre>
+  </section>
+</main>
+<script>
+(() => {
+  'use strict';
+  const HOLD_MS = 2500;
+  const POLL_MS = 1500;
+  const $ = id => document.getElementById(id);
+  const base = $('base'), token = $('token');
+  const connect = $('connect'), hello = $('hello'), refresh = $('refresh'), install = $('install');
+  const dot = $('dot'), link = $('link'), api = $('api');
+  const profile = $('profile'), cert = $('cert'), hwid = $('hwid'), arch = $('arch'), device = $('device');
+  const target = $('target'), image = $('image'), power = $('power'), boot = $('boot'), checks = $('checks'), preflightRaw = $('preflightRaw');
+  const phase = $('phase'), pct = $('pct'), bar = $('bar'), installLog = $('installLog');
+  const holdFill = $('holdFill'), holdText = $('holdText'), armInfo = $('armInfo');
+  const receiptCard = $('receiptCard'), receipt = $('receipt');
+  let preflight = null;
+  let pollTimer = null;
+  let holdTimer = null;
+  let holdTicker = null;
+  let holdStarted = 0;
+  let installing = false;
+
+  base.value = location.protocol.startsWith('http') ? location.origin : 'http://synapse-os.local:8787';
+  token.value = localStorage.getItem('synapse-genesis-token') || localStorage.getItem('synapse-phone-token') || '';
+
+  function root(){ return base.value.trim().replace(/\/$/, ''); }
+  function authHeaders(){ return {'Content-Type':'application/json','X-Synapse-Token':token.value.trim()}; }
+  function fmtBytes(n){ if(n==null)return 'unknown'; const units=['B','KiB','MiB','GiB','TiB']; let v=Number(n),i=0; while(v>=1024&&i<units.length-1){v/=1024;i++;} return `${v.toFixed(i?1:0)} ${units[i]}`; }
+  function shortHash(v){ const s=String(v||''); return s.length>24 ? `${s.slice(0,14)}…${s.slice(-10)}` : s || 'unknown'; }
+  function errorText(err){ return err?.message || err?.error?.message || String(err || 'unknown error'); }
+
+  async function call(path, options={}){
+    const res = await fetch(root()+path, {...options, headers:{...authHeaders(), ...(options.headers||{})}});
+    const data = await res.json().catch(()=>({ok:false,error:{code:'BAD_RESPONSE',message:`HTTP ${res.status}`}}));
+    if(!res.ok || data.ok===false){
+      const e = new Error(data?.error?.message || data?.error || `HTTP ${res.status}`);
+      e.code = data?.error?.code || `HTTP_${res.status}`;
+      e.payload = data;
+      throw e;
+    }
+    return data;
+  }
+
+  function setLink(mode,text){ dot.className = `dot ${mode||''}`; link.textContent = text; }
+  function lockInstall(reason){ install.disabled=true; holdText.textContent=reason||'HOLD TO INSTALL SYNAPSE OS'; cancelHold(); }
+  function unlockInstall(){ install.disabled=false; holdText.textContent='HOLD TO INSTALL SYNAPSE OS'; }
+
+  function renderDevice(d){
+    const hardware = d.hardware || {};
+    profile.textContent = hardware.profile_id || 'unverified';
+    cert.textContent = hardware.certification_state || 'unverified';
+    hwid.textContent = hardware.hwid || 'not exposed';
+    arch.textContent = hardware.arch || d.machine || 'unknown';
+    const ips=(d.network||[]).map(x=>`${x.interface}: ${x.address}`).join('\n')||'none';
+    device.textContent = `HOST      ${d.hostname}\nOS        ${d.os} ${d.os_release}\nKERNEL    ${d.kernel}\nCPU       ${d.processor}\nCORES     ${d.cpu_logical}\nRAM       ${fmtBytes(d.memory_total_bytes)}\nIP        ${ips}`;
+  }
+
+  function renderPreflight(p){
+    preflight = p;
+    const preflightChecks = p.checks || []; // preflight.checks
+    const hardware = p.hardware || {};
+    if(hardware.profile_id) profile.textContent=hardware.profile_id;
+    if(hardware.certification_state) cert.textContent=hardware.certification_state;
+    if(hardware.hwid) hwid.textContent=hardware.hwid;
+    if(hardware.arch) arch.textContent=hardware.arch;
+    if(p.target && p.target.path) target.textContent = `${p.target.path} • ${fmtBytes(p.target.size)} • ${shortHash(p.target.fingerprint)}`; // target.path
+    else target.textContent = 'not verified';
+    image.textContent = p.image ? `${p.image.verification||'verified'} • ${shortHash(p.image.image_sha256)}` : 'not verified';
+    power.textContent = p.power ? `AC ${String(p.power.ac_online)} • battery ${p.power.battery_percent==null?'unknown':p.power.battery_percent+'%'}` : 'not verified';
+    boot.textContent = p.boot ? `${p.boot.mode||'unknown'} • genesis marker ${String(p.boot.genesis_kernel_marker)}` : 'not verified';
+    checks.innerHTML='';
+    preflightChecks.forEach(c=>{
+      const row=document.createElement('div'); row.className='check';
+      const mark=document.createElement('div'); mark.className='mark'; mark.textContent=c.ok?'✓':'×';
+      const text=document.createElement('div'); text.textContent=`${c.name}: ${c.message}`;
+      row.append(mark,text); checks.append(row);
+    });
+    if(!preflightChecks.length) checks.innerHTML='<div class="tiny">No check details returned.</div>';
+    preflightRaw.textContent=JSON.stringify({ready:p.ready,installer_mode:p.installer_mode,simulation:p.simulation,device_fingerprint:p.device_fingerprint,target:p.target,image:p.image},null,2);
+    if(p.ready && (p.installer_mode || p.simulation)) unlockInstall();
+    else lockInstall(p.ready ? 'INSTALLER MODE REQUIRED' : 'PREFLIGHT NOT READY');
+  }
+
+  function renderInstall(s){
+    const progress=Math.max(0,Math.min(100,Number(s?.progress||0)));
+    const state=String(s?.phase||'idle');
+    phase.textContent=state.toUpperCase(); pct.textContent=`${progress}%`; bar.style.width=`${progress}%`;
+    const err=s?.error?.message || s?.error || '';
+    installLog.textContent=[s?.message,err?`ERROR: ${err}`:''].filter(Boolean).join('\n')||'Ready.';
+    if(['staging','installing','verifying','partition','format','extract','bootloader','receipt'].includes(state)) setLink('busy','INSTALLING');
+    if(state==='failed'){ setLink('','INSTALL FAILED'); installing=false; }
+    if(state==='complete'){ setLink('online','SYNAPSE INSTALLED'); installing=false; fetchReceipt(); }
+  }
+
+  async function refreshPreflight(){
+    try{
+      lockInstall('CHECKING PREFLIGHT');
+      const r=await call('/v2/preflight');
+      renderPreflight(r.preflight);
+      return r.preflight;
+    }catch(e){
+      preflight=null; lockInstall(`BLOCKED: ${e.code||'PREFLIGHT'}`); preflightRaw.textContent=`${e.code||'ERROR'}: ${errorText(e)}`; throw e;
+    }
+  }
+
+  async function refreshStatus(){
+    try{ const r=await call('/v2/install/status'); renderInstall(r.install); }
+    catch(e){ installLog.textContent=`${e.code||'ERROR'}: ${errorText(e)}`; }
+  }
+
+  async function fetchReceipt(){
+    try{
+      const r=await call('/v2/install/receipt');
+      if(r.receipt){
+        receiptCard.classList.remove('hidden');
+        receipt.textContent=JSON.stringify(r.receipt,null,2);
+        const doi=r.receipt.zenodo_doi || 'not recorded';
+        armInfo.textContent=`Receipt complete • Zenodo ${doi}`;
+      }
+    }catch(e){ receipt.textContent=`${e.code||'ERROR'}: ${errorText(e)}`; }
+  }
+
+  connect.addEventListener('click', async()=>{
+    try{
+      setLink('busy','CONNECTING'); lockInstall('CONNECTING');
+      const health=await fetch(root()+'/v2/health',{cache:'no-store'}).then(async r=>({status:r.status,data:await r.json()}));
+      if(health.status!==200 || !health.data.ok) throw new Error('GENESIS health check failed');
+      api.textContent=`V${health.data.api_version}`;
+      localStorage.setItem('synapse-genesis-token',token.value.trim());
+      const d=await call('/v2/device'); renderDevice(d.device);
+      setLink('online','CONNECTED // AUTHENTICATED');
+      hello.disabled=false; refresh.disabled=false;
+      await refreshPreflight(); await refreshStatus();
+      if(pollTimer) clearInterval(pollTimer); pollTimer=setInterval(refreshStatus,POLL_MS);
+    }catch(e){
+      setLink('','CONNECTION FAILED'); api.textContent=e.code||'OFFLINE'; device.textContent=errorText(e); hello.disabled=true; refresh.disabled=true; lockInstall('CONNECT FIRST');
+    }
+  });
+
+  hello.addEventListener('click',async()=>{
+    try{
+      const r=await call('/v2/hello',{method:'POST',body:JSON.stringify({message:"hey, I'm here"})});
+      installLog.textContent=`PHONE: hey, I'm here\nLAPTOP: ${r.reply}\nHOST: ${r.hostname}`;
+    }catch(e){ installLog.textContent=`${e.code||'ERROR'}: ${errorText(e)}`; }
+  });
+
+  refresh.addEventListener('click',async()=>{ try{await refreshPreflight();}catch(_){ } });
+
+  function cancelHold(){
+    if(holdTimer){clearTimeout(holdTimer);holdTimer=null;}
+    if(holdTicker){clearInterval(holdTicker);holdTicker=null;}
+    holdFill.style.width='0%'; install.classList.remove('armed');
+    if(!installing && !install.disabled) holdText.textContent='HOLD TO INSTALL SYNAPSE OS';
+  }
+
+  function beginHold(ev){
+    if(install.disabled || installing) return;
+    ev.preventDefault();
+    holdStarted=performance.now(); install.classList.add('armed'); holdText.textContent='KEEP HOLDING • 2.5 SECONDS';
+    holdTicker=setInterval(()=>{
+      const p=Math.min(100,((performance.now()-holdStarted)/HOLD_MS)*100); holdFill.style.width=`${p}%`;
+    },50);
+    holdTimer=setTimeout(async()=>{
+      cancelHold();
+      try{ await startGenesisInstall(); }catch(e){ installing=false; install.disabled=false; holdText.textContent='HOLD TO RETRY'; installLog.textContent=`${e.code||'ERROR'}: ${errorText(e)}`; }
+    },HOLD_MS);
+  }
+
+  async function startGenesisInstall(){
+    const p=await refreshPreflight();
+    if(!p.ready || !(p.installer_mode || p.simulation)) throw Object.assign(new Error('GENESIS installer mode is not ready'),{code:'INSTALLER_DISABLED'});
+    installing=true; install.disabled=true; holdText.textContent='ARMING VERIFIED TARGET';
+    const armResponse=await call('/v2/install/arm',{method:'POST',body:'{}'});
+    const arm=armResponse.arm;
+    const acknowledgement=`ERASE:${arm.target_disk_id}:INSTALL:${arm.image_sha256}`;
+    if(arm.acknowledgement && arm.acknowledgement!==acknowledgement) throw Object.assign(new Error('arm acknowledgement integrity mismatch'),{code:'ARM_MISMATCH'});
+    armInfo.textContent=`ARMED • target ${shortHash(arm.target_disk_id)} • image ${shortHash(arm.image_sha256)} • expires ${new Date(arm.expires_at*1000).toLocaleTimeString()}`;
+    holdText.textContent='INSTALLING SYNAPSE OS';
+    const started=await call('/v2/install/start',{method:'POST',body:JSON.stringify({challenge_id:arm.challenge_id,acknowledgement})});
+    renderInstall(started.install);
+    await refreshStatus();
+  }
+
+  install.addEventListener('pointerdown',beginHold);
+  install.addEventListener('pointerup',cancelHold);
+  install.addEventListener('pointercancel',cancelHold);
+  install.addEventListener('pointerleave',cancelHold);
+  window.addEventListener('blur',cancelHold);
+})();
+</script>
+</body>
+</html>
