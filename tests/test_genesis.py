@@ -144,7 +144,8 @@ class GenesisManifestTests(unittest.TestCase):
         td, image, manifest_path, _ = self._fixture()
         with td:
             manifest = ImageManifest.from_path(manifest_path)
-            image.write_bytes(b"tampered")
+            original = image.read_bytes()
+            image.write_bytes(bytes([original[0] ^ 0x01]) + original[1:])
             with self.assertRaises(GenesisError) as ctx:
                 verify_manifest(manifest, image_path=image, expected_arch="amd64", target_size=32_000_000_000)
             self.assertEqual("IMAGE_HASH_MISMATCH", ctx.exception.code)
@@ -210,6 +211,12 @@ class GenesisArmAndReceiptTests(unittest.TestCase):
         )
         return td, manager
 
+    def _wait_terminal(self, manager: GenesisManager) -> None:
+        deadline = time.time() + 2
+        while manager.status()["phase"] not in {"complete", "failed"} and time.time() < deadline:
+            time.sleep(0.01)
+        self.assertIn(manager.status()["phase"], {"complete", "failed"})
+
     def test_arm_is_bound_to_target_device_and_image(self):
         td, manager = self._manager()
         with td:
@@ -233,6 +240,7 @@ class GenesisArmAndReceiptTests(unittest.TestCase):
             with self.assertRaises(GenesisError) as ctx:
                 manager.start(armed["challenge_id"], armed["acknowledgement"])
             self.assertEqual("ARM_REPLAYED", ctx.exception.code)
+            self._wait_terminal(manager)
 
     def test_expired_arm_is_rejected(self):
         td, manager = self._manager(arm_ttl=0.01)
@@ -256,9 +264,7 @@ class GenesisArmAndReceiptTests(unittest.TestCase):
         with td:
             armed = manager.arm()
             manager.start(armed["challenge_id"], armed["acknowledgement"])
-            deadline = time.time() + 2
-            while manager.status()["phase"] not in {"complete", "failed"} and time.time() < deadline:
-                time.sleep(0.01)
+            self._wait_terminal(manager)
             receipt = manager.receipt()
             self.assertIsNotNone(receipt)
             assert receipt is not None
