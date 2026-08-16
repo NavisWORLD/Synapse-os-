@@ -66,6 +66,22 @@ lb config \
 rsync -a "$REPO_ROOT/build/config/" config/
 printf '%s\n' "$SYNAPSE_KERNEL_PACKAGE" >> config/package-lists/synapse.list.chroot
 
+# GENESIS v1 performs destructive installation only on the first certified
+# amd64 path. Other architectures keep their non-destructive compatibility
+# framework without silently claiming an installer implementation.
+if [[ "$ARCH" == "amd64" ]]; then
+  cat >> config/package-lists/synapse.list.chroot <<'GENESIS_PACKAGES'
+parted
+dosfstools
+e2fsprogs
+grub-efi-amd64-bin
+grub2-common
+efibootmgr
+squashfs-tools
+util-linux
+GENESIS_PACKAGES
+fi
+
 if [[ "$SUITE" == "trixie" ]]; then
   python3 - "config/package-lists/nebula-ui.list.chroot" <<'PYCOMPAT'
 from pathlib import Path
