@@ -8,7 +8,8 @@ import time
 import unittest
 from unittest import mock
 
-from synapse.genesis import EXPECTED_LICENSE, EXPECTED_ZENODO_DOI, GenesisManager, parse_lsblk_inventory
+from synapse.genesis import EXPECTED_LICENSE, EXPECTED_ZENODO_DOI, parse_lsblk_inventory
+from synapse.genesis_runtime import InstallerGenesisManager
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,6 +42,7 @@ class GenesisLiveImageIntegrationTests(unittest.TestCase):
         text = path.read_text(encoding="utf-8")
         self.assertIn("ConditionKernelCommandLine=synapse.genesis=1", text)
         self.assertIn("ConditionPathExists=/run/live/medium/synapse-genesis/manifest.json", text)
+        self.assertIn("python3 -m synapse.genesis_server", text)
         self.assertIn("--genesis-installer-mode", text)
         self.assertIn("--genesis-manifest /run/live/medium/synapse-genesis/manifest.json", text)
         self.assertIn("--genesis-image /run/live/medium/live/filesystem.squashfs", text)
@@ -95,7 +97,7 @@ class GenesisLiveImageIntegrationTests(unittest.TestCase):
                 "license": EXPECTED_LICENSE,
                 "zenodo_doi": EXPECTED_ZENODO_DOI,
             }), encoding="utf-8")
-            manager = GenesisManager(
+            manager = InstallerGenesisManager(
                 manifest_path=manifest,
                 image_path=image,
                 staging_dir=root / "stage",
@@ -120,7 +122,7 @@ class GenesisLiveImageIntegrationTests(unittest.TestCase):
                 "zenodo_doi": EXPECTED_ZENODO_DOI,
                 "license": EXPECTED_LICENSE,
             }
-            with mock.patch("synapse.genesis_writer.run_install", return_value=writer_result) as writer:
+            with mock.patch("synapse.genesis_runtime.run_install", return_value=writer_result) as writer:
                 manager.start(armed["challenge_id"], armed["acknowledgement"])
                 deadline = time.time() + 2
                 while manager.status()["phase"] not in {"complete", "failed"} and time.time() < deadline:
