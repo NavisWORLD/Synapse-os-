@@ -7,8 +7,11 @@
       "product_family": "Chromebook CX1700CKA",
       "arch": "amd64",
       "hwid_contains": ["GALLOP"],
+      "board_contains": ["GALLOP"],
+      "product_contains": ["CX1700CKA"],
+      "vendor_contains": ["ASUS"],
       "certification_state": "physical-target",
-      "notes": "Reference Hardware #1. Promote to physical-certified only after the acceptance checklist passes on the actual laptop."
+      "notes": "Reference Hardware #1. HWID is preferred; board-name and ASUS product/vendor matching are safe fallbacks when ChromeOS HWID is unavailable. Promote to physical-certified only after the acceptance checklist passes on the actual laptop."
     }
   ]
 }
