@@ -5,8 +5,10 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 from synapse.genesis import EXPECTED_LICENSE, EXPECTED_ZENODO_DOI, GenesisError, parse_lsblk_inventory
+from synapse import genesis_writer
 from synapse.genesis_writer import (
     partition_paths,
     run_install,
@@ -127,7 +129,6 @@ class GenesisWriterTests(unittest.TestCase):
         td, _, _, _, _, plan, _, _ = self._fixture()
         with td:
             removable = parse_lsblk_inventory({"blockdevices": [disk(rm=True, tran="usb")]})
-            # Make the plan point at the current removable device so fingerprint equality cannot hide the policy failure.
             plan["target"] = removable[0].public()
             with self.assertRaises(GenesisError) as ctx:
                 validate_install_plan(plan, inventory=removable, source_disk_path=None)
@@ -155,6 +156,50 @@ class GenesisWriterTests(unittest.TestCase):
             with self.assertRaises(GenesisError) as ctx:
                 validate_install_plan(plan, inventory=inventory, source_disk_path=target.path)
             self.assertEqual("ARM_MISMATCH", ctx.exception.code)
+
+    def test_installed_receipt_is_finalized_before_it_is_embedded(self):
+        td, root, image, target, _, plan, _, _ = self._fixture()
+        with td:
+            mount_root = root / "mnt"
+            (mount_root / "boot").mkdir(parents=True)
+            (mount_root / "boot" / "vmlinuz-test").write_text("kernel", encoding="utf-8")
+            (mount_root / "boot" / "initrd.img-test").write_text("initrd", encoding="utf-8")
+            (mount_root / "etc").mkdir(parents=True)
+            (mount_root / "etc" / "os-release").write_text("ID=synapseos\n", encoding="utf-8")
+            (mount_root / "usr/share/doc/synapse-os").mkdir(parents=True)
+            (mount_root / "usr/share/doc/synapse-os/LICENSE").write_text(EXPECTED_LICENSE, encoding="utf-8")
+            (mount_root / "usr/share/doc/synapse-os/PROVENANCE.md").write_text(EXPECTED_ZENODO_DOI, encoding="utf-8")
+            (mount_root / "usr/share/synapse").mkdir(parents=True)
+            (mount_root / "usr/share/synapse/phone-bootstrap.html").write_text("bootstrap", encoding="utf-8")
+
+            plan = dict(plan)
+            plan["target"] = target.public()
+            plan["image_path"] = str(image)
+            receipt = {
+                "schema": "synapse-genesis-receipt/v1",
+                "license": EXPECTED_LICENSE,
+                "zenodo_doi": EXPECTED_ZENODO_DOI,
+                "final_state": "installing",
+                "phases": [],
+            }
+
+            def fake_runner(argv, **kwargs):
+                name = Path(argv[0]).name
+                if name == "lsblk":
+                    return ""
+                if name == "blkid":
+                    return "ROOT-UUID" if str(argv[-1]).endswith("p2") else "EFI-UUID"
+                return ""
+
+            with mock.patch("synapse.genesis_writer._require_tool", side_effect=lambda name: name):
+                result = genesis_writer._partition_and_install(plan, receipt, fake_runner, mount_root)
+
+            self.assertEqual("complete", result["final_state"])
+            embedded = json.loads(
+                (mount_root / "var/lib/synapse/genesis/receipt.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual("complete", embedded["final_state"])
+            self.assertEqual("complete", embedded["phases"][-1]["phase"])
 
     def test_execute_delegates_only_after_all_fixed_validations(self):
         td, root, _, _, inventory, _, plan_path, receipt_path = self._fixture()
