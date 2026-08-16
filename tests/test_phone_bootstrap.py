@@ -10,6 +10,9 @@ from synapse.genesis import GenesisError
 from synapse.phone_bootstrap import BootstrapServer, InstallManager, device_snapshot, resolve_ui_path
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 class FakeGenesisManager:
     def __init__(self):
         self.start_args = None
@@ -197,6 +200,52 @@ class GenesisV2HttpTests(unittest.TestCase):
         status, body = self.request("GET", "/phone-bootstrap.html", auth=False)
         self.assertEqual(200, status)
         self.assertIn("v1", body)
+
+
+class GenesisHtmlSourceTests(unittest.TestCase):
+    def test_genesis_html_source_and_image_copy_are_identical(self):
+        source = ROOT / "phone-bootstrap" / "GENESIS.html"
+        installed = ROOT / "rootfs" / "usr" / "share" / "synapse" / "GENESIS.html"
+        self.assertTrue(source.is_file())
+        self.assertTrue(installed.is_file())
+        self.assertEqual(source.read_bytes(), installed.read_bytes())
+
+    def test_genesis_html_contains_fixed_v2_flow_and_hold_confirmation(self):
+        text = (ROOT / "phone-bootstrap" / "GENESIS.html").read_text(encoding="utf-8")
+        for marker in (
+            "/v2/health",
+            "/v2/device",
+            "/v2/preflight",
+            "/v2/install/arm",
+            "/v2/install/start",
+            "/v2/install/status",
+            "/v2/install/receipt",
+            "HOLD_MS = 2500",
+            "pointerdown",
+            "pointerup",
+            "THIS WILL REPLACE CHROMEOS",
+            "INSTALL SYNAPSE OS",
+            "target_disk_id",
+            "image_sha256",
+            "ERASE:${arm.target_disk_id}:INSTALL:${arm.image_sha256}",
+            "localStorage",
+        ):
+            self.assertIn(marker, text)
+        self.assertNotIn("/shell", text)
+        self.assertNotIn("/exec", text)
+
+    def test_genesis_html_surfaces_hardware_image_target_and_receipt(self):
+        text = (ROOT / "phone-bootstrap" / "GENESIS.html").read_text(encoding="utf-8")
+        for marker in (
+            "profile_id",
+            "certification_state",
+            "target.path",
+            "image_sha256",
+            "zenodo_doi",
+            "receipt",
+            "preflight.checks",
+        ):
+            self.assertIn(marker, text)
 
 
 if __name__ == "__main__":
