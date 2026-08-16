@@ -1,0 +1,21 @@
+[Unit]
+Description=Synapse OS GENESIS installer API
+After=network-online.target
+Wants=network-online.target
+ConditionKernelCommandLine=synapse.genesis=1
+ConditionPathExists=/run/live/medium/synapse-genesis/manifest.json
+
+[Service]
+Type=simple
+Environment=PYTHONPATH=/usr/lib/synapse/python
+ExecStartPre=/usr/bin/install -d -m 0700 /run/synapse-genesis
+ExecStart=/usr/bin/python3 -m synapse.genesis_server --listen 0.0.0.0 --port 8787 --genesis-installer-mode --genesis-manifest /run/live/medium/synapse-genesis/manifest.json --genesis-image /run/live/medium/live/filesystem.squashfs --genesis-staging-dir /run/synapse-genesis --token-file /run/synapse-genesis/token --genesis-ui /usr/share/synapse/GENESIS.html
+Restart=on-failure
+RestartSec=2
+UMask=0077
+PrivateTmp=false
+ProtectHome=true
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target
