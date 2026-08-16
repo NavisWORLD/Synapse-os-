@@ -126,7 +126,6 @@ def validate_install_plan(
 
 
 def secrets_compare(left: str, right: str) -> bool:
-    # Local helper keeps comparison semantics explicit without exposing mutable state.
     import secrets
 
     return secrets.compare_digest(left, right)
@@ -258,11 +257,7 @@ def _partition_and_install(
             encoding="utf-8",
         )
 
-        _record(receipt, "receipt", "embedding GENESIS installation receipt")
-        embedded = mount_root / "var" / "lib" / "synapse" / "genesis" / "receipt.json"
-        _write_receipt(embedded, receipt)
-        runner([sync], timeout=120)
-
+        _record(receipt, "receipt", "preparing GENESIS installation receipt")
         _record(receipt, "verify", "verifying installed Synapse identity and provenance")
         os_release = mount_root / "etc" / "os-release"
         try:
@@ -280,6 +275,9 @@ def _partition_and_install(
         receipt["final_state"] = "complete"
         receipt["finished_at"] = time.time()
         _record(receipt, "complete", "Synapse OS installation verified")
+        embedded = mount_root / "var" / "lib" / "synapse" / "genesis" / "receipt.json"
+        _write_receipt(embedded, receipt)
+        runner([sync], timeout=120)
         return receipt
     finally:
         if mounted_esp:
