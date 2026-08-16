@@ -83,6 +83,7 @@ grub2-common
 efibootmgr
 squashfs-tools
 util-linux
+ipheth-utils
 GENESIS_PACKAGES
 fi
 
@@ -141,11 +142,12 @@ fi
 GENESIS_STAGE="$WORK/.genesis-manifest"
 GENESIS_ROOTFS="$GENESIS_STAGE/filesystem.squashfs"
 GENESIS_MANIFEST="$GENESIS_STAGE/manifest.json"
-GENESIS_VERIFY_ROOTFS="$GENESIS_STAGE/verify-filesystem.squashfs"
-GENESIS_VERIFY_MANIFEST="$GENESIS_STAGE/verify-manifest.json"
+GENESIS_VERIFY_DIR="$GENESIS_STAGE/verify"
+GENESIS_VERIFY_ROOTFS="$GENESIS_VERIFY_DIR/filesystem.squashfs"
+GENESIS_VERIFY_MANIFEST="$GENESIS_VERIFY_DIR/manifest.json"
 REMUSTERED_ISO="$WORK/live-image-genesis.iso"
 rm -rf "$GENESIS_STAGE" "$REMUSTERED_ISO"
-mkdir -p "$GENESIS_STAGE"
+mkdir -p "$GENESIS_STAGE" "$GENESIS_VERIFY_DIR"
 
 xorriso -osirrox on -indev "$built" -extract /live/filesystem.squashfs "$GENESIS_ROOTFS"
 BUILD_COMMIT="${SYNAPSE_BUILD_COMMIT:-$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || printf unknown)}"
@@ -166,7 +168,9 @@ xorriso \
 cp "$REMUSTERED_ISO" "$ISO"
 
 # Verify the manifest and rootfs from the final remastered ISO, not the staging
-# copies, so a broken remaster cannot produce a successful build artifact.
+# copies, so a broken remaster cannot produce a successful build artifact. The
+# verification copy intentionally preserves the original payload basename,
+# because image_filename is part of the manifest identity contract.
 xorriso -osirrox on -indev "$ISO" -extract /synapse-genesis/manifest.json "$GENESIS_VERIFY_MANIFEST"
 xorriso -osirrox on -indev "$ISO" -extract /live/filesystem.squashfs "$GENESIS_VERIFY_ROOTFS"
 python3 "$REPO_ROOT/scripts/genesis_manifest.py" verify \
