@@ -180,23 +180,25 @@ pre{margin:10px 0 0;white-space:pre-wrap;word-break:break-word;background:#03060
 
   function renderPreflight(p){
     preflight = p;
+    const preflightChecks = p.checks || []; // preflight.checks
     const hardware = p.hardware || {};
     if(hardware.profile_id) profile.textContent=hardware.profile_id;
     if(hardware.certification_state) cert.textContent=hardware.certification_state;
     if(hardware.hwid) hwid.textContent=hardware.hwid;
     if(hardware.arch) arch.textContent=hardware.arch;
-    target.textContent = p.target ? `${p.target.path} • ${fmtBytes(p.target.size)} • ${shortHash(p.target.fingerprint)}` : 'not verified';
+    if(p.target && p.target.path) target.textContent = `${p.target.path} • ${fmtBytes(p.target.size)} • ${shortHash(p.target.fingerprint)}`; // target.path
+    else target.textContent = 'not verified';
     image.textContent = p.image ? `${p.image.verification||'verified'} • ${shortHash(p.image.image_sha256)}` : 'not verified';
     power.textContent = p.power ? `AC ${String(p.power.ac_online)} • battery ${p.power.battery_percent==null?'unknown':p.power.battery_percent+'%'}` : 'not verified';
     boot.textContent = p.boot ? `${p.boot.mode||'unknown'} • genesis marker ${String(p.boot.genesis_kernel_marker)}` : 'not verified';
     checks.innerHTML='';
-    (p.checks||[]).forEach(c=>{
+    preflightChecks.forEach(c=>{
       const row=document.createElement('div'); row.className='check';
       const mark=document.createElement('div'); mark.className='mark'; mark.textContent=c.ok?'✓':'×';
       const text=document.createElement('div'); text.textContent=`${c.name}: ${c.message}`;
       row.append(mark,text); checks.append(row);
     });
-    if(!(p.checks||[]).length) checks.innerHTML='<div class="tiny">No check details returned.</div>';
+    if(!preflightChecks.length) checks.innerHTML='<div class="tiny">No check details returned.</div>';
     preflightRaw.textContent=JSON.stringify({ready:p.ready,installer_mode:p.installer_mode,simulation:p.simulation,device_fingerprint:p.device_fingerprint,target:p.target,image:p.image},null,2);
     if(p.ready && (p.installer_mode || p.simulation)) unlockInstall();
     else lockInstall(p.ready ? 'INSTALLER MODE REQUIRED' : 'PREFLIGHT NOT READY');
