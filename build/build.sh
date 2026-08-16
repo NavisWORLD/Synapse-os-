@@ -51,6 +51,9 @@ PYSAFE
 mkdir -p "$WORK" "$OUT"
 cd "$WORK"
 
+LIVE_BOOT="boot=live components hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us quiet splash"
+GENESIS_BOOT="boot=live components hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us synapse.genesis=1"
+
 lb config \
   --mode debian \
   --distribution "$SUITE" \
@@ -60,7 +63,8 @@ lb config \
   --debian-installer none \
   --apt-recommends true \
   --memtest none \
-  --bootappend-live "boot=live components hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us quiet splash" \
+  --bootappend-live "$LIVE_BOOT" \
+  --bootappend-live-failsafe "$GENESIS_BOOT" \
   "${LB_FOREIGN[@]}"
 
 rsync -a "$REPO_ROOT/build/config/" config/
@@ -171,5 +175,6 @@ python3 "$REPO_ROOT/scripts/genesis_manifest.py" verify \
 
 sha256sum "$ISO" > "$ISO.sha256"
 echo "Synapse OS image: $ISO"
+echo "GENESIS boot mode: live failsafe entry (synapse.genesis=1)"
 echo "GENESIS manifest: /synapse-genesis/manifest.json"
 echo "Checksum: $ISO.sha256"
