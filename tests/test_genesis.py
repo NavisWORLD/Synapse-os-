@@ -171,7 +171,16 @@ class GenesisManifestTests(unittest.TestCase):
 
 
 class GenesisArmAndReceiptTests(unittest.TestCase):
-    def _manager(self, *, arm_ttl=120.0):
+    def _manager(
+        self,
+        *,
+        arm_ttl=120.0,
+        installer_mode=False,
+        simulation=True,
+        hardware=None,
+        power=None,
+        boot=None,
+    ):
         td = tempfile.TemporaryDirectory()
         root = Path(td.name)
         image = root / "filesystem.squashfs"
@@ -200,14 +209,14 @@ class GenesisArmAndReceiptTests(unittest.TestCase):
             manifest_path=manifest_path,
             image_path=image,
             staging_dir=root / "stage",
-            installer_mode=False,
-            simulation=True,
+            installer_mode=installer_mode,
+            simulation=simulation,
             arm_ttl=arm_ttl,
-            hardware_probe=lambda: dict(GALLOP),
+            hardware_probe=lambda: dict(GALLOP if hardware is None else hardware),
             inventory_probe=lambda: inventory,
             source_disk_probe=lambda: None,
-            power_probe=lambda: {"ac_online": True, "battery_percent": 100.0},
-            boot_mode_probe=lambda: {"mode": "uefi", "genesis_kernel_marker": False},
+            power_probe=lambda: dict({"ac_online": True, "battery_percent": 100.0} if power is None else power),
+            boot_mode_probe=lambda: dict({"mode": "uefi", "genesis_kernel_marker": installer_mode} if boot is None else boot),
         )
         return td, manager
 
@@ -216,6 +225,42 @@ class GenesisArmAndReceiptTests(unittest.TestCase):
         while manager.status()["phase"] not in {"complete", "failed"} and time.time() < deadline:
             time.sleep(0.01)
         self.assertIn(manager.status()["phase"], {"complete", "failed"})
+
+    def test_real_destructive_preflight_requires_gallop_profile(self):
+        unknown = {
+            "arch": "amd64",
+            "hwid": "OTHER",
+            "profile_id": None,
+            "certification_state": "unverified",
+            "product_name": "Unknown Laptop",
+        }
+        td, manager = self._manager(installer_mode=True, simulation=False, hardware=unknown)
+        with td:
+            with self.assertRaises(GenesisError) as ctx:
+                manager.preflight()
+            self.assertEqual("HARDWARE_UNSUPPORTED", ctx.exception.code)
+
+    def test_real_destructive_preflight_requires_uefi(self):
+        td, manager = self._manager(
+            installer_mode=True,
+            simulation=False,
+            boot={"mode": "legacy-or-unknown", "genesis_kernel_marker": True},
+        )
+        with td:
+            with self.assertRaises(GenesisError) as ctx:
+                manager.preflight()
+            self.assertEqual("INSTALLER_DISABLED", ctx.exception.code)
+
+    def test_real_destructive_preflight_rejects_unknown_power(self):
+        td, manager = self._manager(
+            installer_mode=True,
+            simulation=False,
+            power={"ac_online": None, "battery_percent": None},
+        )
+        with td:
+            with self.assertRaises(GenesisError) as ctx:
+                manager.preflight()
+            self.assertEqual("POWER_INSUFFICIENT", ctx.exception.code)
 
     def test_arm_is_bound_to_target_device_and_image(self):
         td, manager = self._manager()
