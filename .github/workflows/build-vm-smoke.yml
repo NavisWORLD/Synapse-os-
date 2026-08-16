@@ -61,6 +61,7 @@ jobs:
           set -Eeuo pipefail
           ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
           test -n "$ISO"
+          grep -a -q 'synapse.genesis=1' "$ISO"
           mkdir -p /tmp/synapse-image /tmp/synapse-root
           xorriso -osirrox on -indev "$ISO" -extract /live/filesystem.squashfs /tmp/synapse-image/filesystem.squashfs
           xorriso -osirrox on -indev "$ISO" -extract /synapse-genesis/manifest.json /tmp/synapse-image/genesis-manifest.json
