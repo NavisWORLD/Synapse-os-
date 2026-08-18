@@ -175,17 +175,22 @@ jobs:
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Write release notes
+      - name: Write release notes safely
         shell: bash
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          cat > release/RELEASE_NOTES.md <<EOF
-          # Synapse OS USB Installer ${TAG}
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          tag = os.environ["TAG"]
+          sha = os.environ["GITHUB_SHA"]
+          notes = f"""# Synapse OS USB Installer {tag}
 
           Ready-to-flash amd64/UEFI installer for Synapse OS Nebula.
 
-          This release was built from commit `${GITHUB_SHA}` and passed:
+          This release was built from commit `{sha}` and passed:
 
           - repository source/SDK validation;
           - full amd64 ISO build;
@@ -199,7 +204,9 @@ jobs:
 
           Verify it with `SynapseOS-Nebula-amd64.iso.sha256` before flashing.
           See `USB_INSTALL.md` in the repository for Windows, macOS, Linux, GALLOP, and GENESIS instructions.
-          EOF
+          """
+          Path("release/RELEASE_NOTES.md").write_text(notes, encoding="utf-8")
+          PY
 
       - name: Publish GitHub Release
         shell: bash
