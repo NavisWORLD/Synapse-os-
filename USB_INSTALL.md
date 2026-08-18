@@ -2,63 +2,112 @@
 
 This guide covers the complete amd64/UEFI USB installation path for Synapse OS Nebula, including the ASUS Chromebook CX1700CKA / GALLOP GENESIS target.
 
-The ready-to-flash image is published through GitHub Releases as:
+The release pipeline builds and verifies the complete ISO, then publishes it in ordered release parts so every GitHub Release asset stays below GitHub's per-file size limit. The release package contains:
 
 ```text
-SynapseOS-Nebula-amd64.iso
+SynapseOS-Nebula-amd64.iso.part-000
+SynapseOS-Nebula-amd64.iso.part-001
+...as needed
+SynapseOS-Nebula-amd64.iso.parts.sha256
 SynapseOS-Nebula-amd64.iso.sha256
+reassemble-usb-installer.ps1
+reassemble-usb-installer.sh
 ```
 
-The release pipeline does not publish an ISO until the source checks pass, the live image boots in QEMU, the real GENESIS writer installs Synapse OS to a disposable virtual disk, and that installed disk cold-boots successfully.
+The helpers rebuild the original `SynapseOS-Nebula-amd64.iso` locally and verify it before you flash the USB.
+
+The release pipeline does not publish the USB package until the source checks pass, the final ISO payload is reopened and inspected, the live image boots in QEMU, the real GENESIS writer installs Synapse OS to a disposable virtual disk, and that installed disk cold-boots successfully.
 
 ## What you need
 
 - an 8 GB or larger USB drive;
 - a computer that can write an ISO image to that USB drive;
-- the Synapse OS release ISO and its matching SHA-256 file;
+- every ISO release part plus the matching checksum and reassembly helper;
 - an amd64 machine with UEFI boot support;
 - for the current physical GENESIS v1 hardware target, an ASUS Chromebook CX1700CKA / board GALLOP prepared for supported UEFI boot.
 
 **Writing the image destroys all data on the USB drive.** Double-check the selected USB device before flashing.
 
-## 1. Download the release
+## 1. Download the release package
 
-Open the repository's GitHub Releases page and download both:
+Open the repository's GitHub Releases page. Download **every** file matching:
 
 ```text
-SynapseOS-Nebula-amd64.iso
+SynapseOS-Nebula-amd64.iso.part-*
+```
+
+Also download:
+
+```text
+SynapseOS-Nebula-amd64.iso.parts.sha256
 SynapseOS-Nebula-amd64.iso.sha256
 ```
 
-Do not use an incomplete browser download or an ISO whose checksum does not match.
+Then download the helper for your computer:
 
-## 2. Verify SHA-256
+```text
+Windows:       reassemble-usb-installer.ps1
+macOS/Linux:   reassemble-usb-installer.sh
+```
+
+Put all of those downloaded files in the same folder. Do not rename the ISO parts.
+
+## 2. Reassemble and verify the ISO
 
 ### Windows PowerShell
+
+Open PowerShell in the download folder and run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\reassemble-usb-installer.ps1
+```
+
+The helper verifies every release part, combines the ordered parts into:
+
+```text
+SynapseOS-Nebula-amd64.iso
+```
+
+and then verifies the completed ISO against `SynapseOS-Nebula-amd64.iso.sha256`.
+
+If PowerShell reports a checksum mismatch, do not flash the image. Re-download the failed part.
+
+### macOS or Linux
+
+Open a terminal in the download folder and run:
+
+```bash
+chmod +x reassemble-usb-installer.sh
+./reassemble-usb-installer.sh
+```
+
+The helper runs the part checksums, rebuilds `SynapseOS-Nebula-amd64.iso`, and checks the final SHA-256 automatically.
+
+### Manual final SHA-256 check
+
+You can independently verify the completed ISO too.
+
+Windows:
 
 ```powershell
 Get-FileHash .\SynapseOS-Nebula-amd64.iso -Algorithm SHA256
 Get-Content .\SynapseOS-Nebula-amd64.iso.sha256
 ```
 
-The hashes must match exactly.
-
-### macOS
+macOS:
 
 ```bash
 shasum -a 256 SynapseOS-Nebula-amd64.iso
 cat SynapseOS-Nebula-amd64.iso.sha256
 ```
 
-The hashes must match exactly.
-
-### Linux
+Linux:
 
 ```bash
 sha256sum -c SynapseOS-Nebula-amd64.iso.sha256
 ```
 
-Expected result:
+Expected Linux result:
 
 ```text
 SynapseOS-Nebula-amd64.iso: OK
@@ -238,11 +287,13 @@ UEFI
 
 ## What is inside the USB image
 
-The release image carries the complete install environment rather than a network stub. The build verification checks for the Synapse control/runtime binaries, GENESIS writer and API service, hardware profiles, `GENESIS.html`, phone bootstrap, KDE Plasma desktop components, Calamares, PipeWire, NetworkManager, native SDK/ABI components, Synapse visual assets, licensing/provenance files, and the verified `filesystem.squashfs` root filesystem.
+The rebuilt ISO carries the complete install environment rather than a network stub. The build verification checks for the Synapse control/runtime binaries, GENESIS writer and API service, hardware profiles, `GENESIS.html`, phone bootstrap, KDE Plasma desktop components, Calamares, PipeWire, NetworkManager, native SDK/ABI components, Synapse visual assets, licensing/provenance files, and the verified `filesystem.squashfs` root filesystem.
+
+Splitting the ISO for release distribution does not alter the image. The reassembly helpers verify the parts and then verify the reconstructed ISO against the original build SHA-256.
 
 The destructive install therefore does not depend on cloning the operating-system payload from GitHub while the disk is being rewritten.
 
-GitHub is the source/build/release system; the USB already carries the install payload.
+GitHub is the source/build/release system; after reassembly, the USB image already carries the install payload.
 
 ## Recovery and boundaries
 
