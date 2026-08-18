@@ -144,48 +144,10 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          NAME="SynapseOS-Nebula-amd64.iso"
           ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
           test -n "$ISO"
           rm -rf release
-          mkdir -p release
-
-          ISO_SHA="$(sha256sum "$ISO" | awk '{print $1}')"
-          printf '%s  %s\n' "$ISO_SHA" "$NAME" > "release/${NAME}.sha256"
-
-          # GitHub release assets must each remain below 2 GiB. 1900 MiB
-          # leaves margin while keeping the number of parts small.
-          split -b 1900M -d -a 3 "$ISO" "release/${NAME}.part-"
-          cp scripts/reassemble-usb-installer.sh release/reassemble-usb-installer.sh
-          cp scripts/reassemble-usb-installer.ps1 release/reassemble-usb-installer.ps1
-          chmod 0755 release/reassemble-usb-installer.sh
-
-          (
-            cd release
-            sha256sum "${NAME}.part-"* > "${NAME}.parts.sha256"
-            sha256sum -c "${NAME}.parts.sha256"
-          )
-
-          for part in "release/${NAME}.part-"*; do
-            bytes="$(stat -c '%s' "$part")"
-            if (( bytes >= 2147483648 )); then
-              echo "release part exceeds GitHub's 2 GiB asset limit: $part ($bytes bytes)" >&2
-              exit 1
-            fi
-          done
-
-          bash -n release/reassemble-usb-installer.sh
-          if command -v pwsh >/dev/null 2>&1; then
-            pwsh -NoProfile -Command \
-              '$null = [scriptblock]::Create((Get-Content -Raw "release/reassemble-usb-installer.ps1"))'
-          fi
-
-          STREAM_SHA="$(cat "release/${NAME}.part-"* | sha256sum | awk '{print $1}')"
-          if [[ "$STREAM_SHA" != "$ISO_SHA" ]]; then
-            echo "split parts do not reconstruct the verified ISO" >&2
-            exit 1
-          fi
-
+          bash scripts/package-usb-release.sh "$ISO" release
           ls -lh release/
 
       - name: Resolve release tag
