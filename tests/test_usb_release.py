@@ -21,7 +21,7 @@ class UsbReleaseTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
         self.assertIn("USB_INSTALL.md", readme)
-        self.assertIn("USB installer", readme.lower())
+        self.assertIn("usb installer", readme.lower())
 
     def test_usb_release_workflow_publishes_iso_and_checksum(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "release-usb-installer.yml").read_text(encoding="utf-8")
