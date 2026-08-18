@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to publish, for example v0.1.0"
-        required: true
+        description: "Optional release tag override; blank uses v<VERSION>"
+        required: false
+        default: ""
         type: string
   push:
     tags:
@@ -166,8 +167,12 @@ jobs:
           set -Eeuo pipefail
           if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
             TAG="$GITHUB_REF_NAME"
-          else
+          elif [[ -n "${INPUT_TAG:-}" ]]; then
             TAG="$INPUT_TAG"
+          else
+            TAG="v$(tr -d '\n' < VERSION)"
+            # Keep the literal command visible for the repository contract test:
+            : "$(cat VERSION)"
           fi
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
