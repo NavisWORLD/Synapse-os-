@@ -52,6 +52,15 @@ class UsbReleaseTests(unittest.TestCase):
         self.assertIn("targetCommitish", workflow)
         self.assertIn("refusing to replace release", workflow)
 
+    def test_large_iso_is_split_into_release_safe_parts_with_reassembly_helpers(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "release-usb-installer.yml").read_text(encoding="utf-8")
+
+        self.assertIn("split -b 1900M", workflow)
+        self.assertIn("SynapseOS-Nebula-amd64.iso.part-", workflow)
+        self.assertIn("reassemble-usb-installer.sh", workflow)
+        self.assertIn("reassemble-usb-installer.ps1", workflow)
+        self.assertNotIn("gh release upload \"$TAG\" \\\n              release/SynapseOS-Nebula-amd64.iso \\", workflow)
+
     def test_usb_guide_documents_genesis_and_safe_flashing(self) -> None:
         guide = (ROOT / "USB_INSTALL.md").read_text(encoding="utf-8")
 
@@ -68,6 +77,13 @@ class UsbReleaseTests(unittest.TestCase):
 
         self.assertIn("/dev/sdX bs=4M status=progress", guide)
         self.assertIn("/dev/rdiskN bs=4m", guide)
+
+    def test_usb_guide_explains_release_part_reassembly(self) -> None:
+        guide = (ROOT / "USB_INSTALL.md").read_text(encoding="utf-8")
+
+        self.assertIn("reassemble-usb-installer.sh", guide)
+        self.assertIn("reassemble-usb-installer.ps1", guide)
+        self.assertIn("iso.part-", guide)
 
 
 if __name__ == "__main__":
