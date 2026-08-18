@@ -78,13 +78,17 @@ class UsbReleaseTests(unittest.TestCase):
 
             env = dict(os.environ)
             env["SYNAPSE_RELEASE_PART_SIZE"] = "1K"
-            subprocess.run(
+            packaged = subprocess.run(
                 ["bash", str(packager), str(source), str(release)],
                 cwd=ROOT,
                 env=env,
-                check=True,
                 capture_output=True,
                 text=True,
+            )
+            self.assertEqual(
+                packaged.returncode,
+                0,
+                f"packager failed\nstdout:\n{packaged.stdout}\nstderr:\n{packaged.stderr}",
             )
 
             parts = sorted(release.glob("SynapseOS-Nebula-amd64.iso.part-*"))
@@ -92,12 +96,16 @@ class UsbReleaseTests(unittest.TestCase):
             self.assertTrue((release / "reassemble-usb-installer.sh").exists())
             self.assertTrue((release / "reassemble-usb-installer.ps1").exists())
 
-            subprocess.run(
+            reassembled = subprocess.run(
                 ["bash", str(release / "reassemble-usb-installer.sh")],
                 cwd=release,
-                check=True,
                 capture_output=True,
                 text=True,
+            )
+            self.assertEqual(
+                reassembled.returncode,
+                0,
+                f"reassembly failed\nstdout:\n{reassembled.stdout}\nstderr:\n{reassembled.stderr}",
             )
             rebuilt = release / "SynapseOS-Nebula-amd64.iso"
             self.assertEqual(hashlib.sha256(rebuilt.read_bytes()).hexdigest(), expected)
