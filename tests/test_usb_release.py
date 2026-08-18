@@ -46,6 +46,12 @@ class UsbReleaseTests(unittest.TestCase):
         self.assertNotIn("cat > release/RELEASE_NOTES.md <<EOF", workflow)
         self.assertIn("Path(\"release/RELEASE_NOTES.md\").write_text", workflow)
 
+    def test_existing_release_cannot_be_repointed_to_another_commit(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "release-usb-installer.yml").read_text(encoding="utf-8")
+
+        self.assertIn("targetCommitish", workflow)
+        self.assertIn("refusing to replace release", workflow)
+
     def test_usb_guide_documents_genesis_and_safe_flashing(self) -> None:
         guide = (ROOT / "USB_INSTALL.md").read_text(encoding="utf-8")
 
