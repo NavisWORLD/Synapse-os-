@@ -23,6 +23,12 @@ class UsbReleaseTests(unittest.TestCase):
         self.assertIn("build/build.sh", workflow)
         self.assertIn("genesis-installed-vm-smoke.sh", workflow)
 
+    def test_manual_release_defaults_to_repository_version(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "release-usb-installer.yml").read_text(encoding="utf-8")
+
+        self.assertIn("required: false", workflow)
+        self.assertIn("cat VERSION", workflow)
+
     def test_release_gate_reopens_iso_and_checks_genesis_payload(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "release-usb-installer.yml").read_text(encoding="utf-8")
 
