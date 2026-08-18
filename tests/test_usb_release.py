@@ -27,7 +27,8 @@ class UsbReleaseTests(unittest.TestCase):
         workflow = (ROOT / ".github" / "workflows" / "release-usb-installer.yml").read_text(encoding="utf-8")
 
         self.assertIn("required: false", workflow)
-        self.assertIn("cat VERSION", workflow)
+        self.assertIn("VERSION", workflow)
+        self.assertIn("TAG=\"v$(tr -d", workflow)
 
     def test_release_gate_reopens_iso_and_checks_genesis_payload(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "release-usb-installer.yml").read_text(encoding="utf-8")
