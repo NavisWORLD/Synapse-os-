@@ -1,0 +1,263 @@
+name: Publish USB installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional release tag override; blank uses v<VERSION>"
+        required: false
+        default: ""
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - VERSION
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: synapse-usb-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-verify-release-amd64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install host build, writer, and VM tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake ninja-build rustc cargo \
+            cpio debootstrap rsync xorriso squashfs-tools curl \
+            qemu-system-x86 qemu-utils ovmf \
+            parted dosfstools e2fsprogs grub-efi-amd64-bin grub2-common \
+            util-linux udev
+
+      - name: Install Debian 13 live-build and archive keyring
+        run: |
+          curl -fsSL -o /tmp/debian-archive-keyring.deb \
+            'https://deb.debian.org/debian/pool/main/d/debian-archive-keyring/debian-archive-keyring_2025.1_all.deb'
+          echo '9ea7778e443144ca490668737a8ab22dd3e748bb99e805e22ec055abeb3c7fac  /tmp/debian-archive-keyring.deb' | sha256sum -c -
+          curl -fsSL -o /tmp/live-build.deb \
+            'https://deb.debian.org/debian/pool/main/l/live-build/live-build_20250505+deb13u1_all.deb'
+          echo '58e09779881cbcc631c49ceb703413e0247a87db01823e597b2a1c40a2afd8f4  /tmp/live-build.deb' | sha256sum -c -
+          sudo dpkg -i /tmp/debian-archive-keyring.deb /tmp/live-build.deb
+          lb --version
+
+      - name: Validate source and SDKs
+        run: make check
+
+      - name: Build Synapse OS amd64 ISO
+        run: sudo env SYNAPSE_ARCH=amd64 ./build/build.sh
+
+      - name: Verify generated ISO checksum
+        run: sha256sum -c out/*.iso.sha256
+
+      - name: Verify final ISO carries the complete GENESIS payload
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -n "$ISO"
+          grep -a -q 'synapse.genesis=1' "$ISO"
+
+          rm -rf /tmp/synapse-release-image /tmp/synapse-release-root
+          mkdir -p /tmp/synapse-release-image /tmp/synapse-release-root
+          xorriso -osirrox on -indev "$ISO" \
+            -extract /live/filesystem.squashfs /tmp/synapse-release-image/filesystem.squashfs
+          xorriso -osirrox on -indev "$ISO" \
+            -extract /synapse-genesis/manifest.json /tmp/synapse-release-image/genesis-manifest.json
+
+          unsquashfs -f -d /tmp/synapse-release-root /tmp/synapse-release-image/filesystem.squashfs \
+            etc/os-release \
+            usr/local/bin/synapse \
+            usr/local/bin/synapse-control \
+            usr/local/bin/synapse-genesis-writer \
+            usr/bin/plasmashell \
+            usr/bin/calamares \
+            usr/bin/pipewire \
+            usr/bin/nmcli \
+            usr/lib/systemd/system/synapse-agent.service \
+            usr/lib/systemd/system/synapse-genesis-installer-api.service \
+            usr/lib/synapse/python/synapse/__init__.py \
+            usr/lib/synapse/python/synapse/hardware.py \
+            usr/lib/synapse/python/synapse/genesis.py \
+            usr/lib/synapse/python/synapse/genesis_runtime.py \
+            usr/lib/synapse/python/synapse/genesis_writer.py \
+            usr/include/synapse/synapse.h \
+            usr/share/synapse/hardware/profiles.json \
+            usr/share/synapse/phone-bootstrap.html \
+            usr/share/synapse/GENESIS.html \
+            usr/share/doc/synapse-os/LICENSE \
+            usr/share/doc/synapse-os/NOTICE \
+            usr/share/doc/synapse-os/PROVENANCE.md \
+            usr/share/doc/synapse-os/CITATION.cff \
+            usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg \
+            usr/share/sddm/themes/synapse-nebula/Main.qml \
+            usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth \
+            usr/share/grub/themes/synapse-nebula/theme.txt
+
+          grep -q '^ID=synapseos$' /tmp/synapse-release-root/etc/os-release
+          test -s /tmp/synapse-release-root/usr/local/bin/synapse
+          test -s /tmp/synapse-release-root/usr/local/bin/synapse-control
+          test -s /tmp/synapse-release-root/usr/local/bin/synapse-genesis-writer
+          test -s /tmp/synapse-release-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
+          test -s /tmp/synapse-release-root/usr/share/synapse/GENESIS.html
+          test -s /tmp/synapse-release-root/usr/share/synapse/phone-bootstrap.html
+          test -s /tmp/synapse-release-root/usr/share/synapse/hardware/profiles.json
+          test -s /tmp/synapse-release-root/usr/include/synapse/synapse.h
+          test -s /tmp/synapse-release-root/usr/bin/plasmashell
+          test -s /tmp/synapse-release-root/usr/bin/calamares
+          test -s /tmp/synapse-release-root/usr/bin/pipewire
+          test -s /tmp/synapse-release-root/usr/bin/nmcli
+          test -s /tmp/synapse-release-image/genesis-manifest.json
+          grep -q 'ConditionKernelCommandLine=synapse.genesis=1' \
+            /tmp/synapse-release-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
+          grep -q 'HOLD TO INSTALL SYNAPSE OS' /tmp/synapse-release-root/usr/share/synapse/GENESIS.html
+          grep -q '/v2/install/arm' /tmp/synapse-release-root/usr/share/synapse/GENESIS.html
+          grep -q '/v2/install/start' /tmp/synapse-release-root/usr/share/synapse/GENESIS.html
+          python3 scripts/genesis_manifest.py verify \
+            --manifest /tmp/synapse-release-image/genesis-manifest.json \
+            --image /tmp/synapse-release-image/filesystem.squashfs
+          unsquashfs -ll /tmp/synapse-release-image/filesystem.squashfs | grep 'libsynapse_abi\.so' >/dev/null
+
+      - name: Boot live USB image in QEMU
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -n "$ISO"
+          SYNAPSE_QEMU_LOG=/tmp/synapse-usb-release-live.log bash scripts/qemu-smoke.sh amd64 "$ISO"
+
+      - name: Perform GENESIS install and cold-boot installed disk
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -n "$ISO"
+          sudo bash scripts/genesis-installed-vm-smoke.sh "$ISO"
+
+      - name: Prepare GitHub-safe USB release assets
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -n "$ISO"
+          rm -rf release
+          bash scripts/package-usb-release.sh "$ISO" release
+          ls -lh release/
+
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -Eeuo pipefail
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
+            TAG="$GITHUB_REF_NAME"
+          elif [[ -n "${INPUT_TAG:-}" ]]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG="v$(tr -d '\n' < VERSION)"
+          fi
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Write release notes safely
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          tag = os.environ["TAG"]
+          sha = os.environ["GITHUB_SHA"]
+          notes = f"""# Synapse OS USB Installer {tag}
+
+          Verified amd64/UEFI installer for Synapse OS Nebula.
+
+          This release was built from commit `{sha}` and passed:
+
+          - repository source/SDK validation;
+          - full amd64 ISO build;
+          - SHA-256 verification;
+          - final ISO extraction and GENESIS payload verification;
+          - live UEFI/QEMU boot;
+          - real GENESIS install onto a disposable virtual disk;
+          - cold boot of the installed Synapse OS image.
+
+          GitHub limits each release asset to under 2 GiB, so the ISO is published as ordered parts named:
+
+          `SynapseOS-Nebula-amd64.iso.part-000`, `part-001`, ...
+
+          Download every ISO part plus:
+
+          - `SynapseOS-Nebula-amd64.iso.sha256`
+          - `SynapseOS-Nebula-amd64.iso.parts.sha256`
+          - `reassemble-usb-installer.ps1` on Windows, or
+          - `reassemble-usb-installer.sh` on macOS/Linux.
+
+          Run the helper beside the downloaded parts. It verifies every part, rebuilds `SynapseOS-Nebula-amd64.iso`, and verifies the final ISO SHA-256 before you flash it.
+
+          See `USB_INSTALL.md` in the repository for Rufus, balenaEtcher, Linux/macOS `dd`, GALLOP, and GENESIS instructions.
+          """
+          Path("release/RELEASE_NOTES.md").write_text(notes, encoding="utf-8")
+          PY
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -Eeuo pipefail
+          ASSETS=(
+            release/SynapseOS-Nebula-amd64.iso.part-*
+            release/SynapseOS-Nebula-amd64.iso.sha256
+            release/SynapseOS-Nebula-amd64.iso.parts.sha256
+            release/reassemble-usb-installer.sh
+            release/reassemble-usb-installer.ps1
+          )
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            EXISTING_TARGET="$(gh release view "$TAG" --json targetCommitish --jq .targetCommitish)"
+            if [[ "$EXISTING_TARGET" != "$GITHUB_SHA" ]]; then
+              echo "refusing to replace release $TAG: existing target $EXISTING_TARGET != $GITHUB_SHA" >&2
+              exit 1
+            fi
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
+            gh release edit "$TAG" \
+              --title "Synapse OS ${TAG} USB Installer" \
+              --notes-file release/RELEASE_NOTES.md \
+              --latest
+          else
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --target "$GITHUB_SHA" \
+              --title "Synapse OS ${TAG} USB Installer" \
+              --notes-file release/RELEASE_NOTES.md \
+              --latest
+          fi
+
+      - name: Preserve release bundle as workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-usb-installer-release
+          path: |
+            release/SynapseOS-Nebula-amd64.iso.part-*
+            release/SynapseOS-Nebula-amd64.iso.sha256
+            release/SynapseOS-Nebula-amd64.iso.parts.sha256
+            release/reassemble-usb-installer.sh
+            release/reassemble-usb-installer.ps1
+            release/RELEASE_NOTES.md
+          if-no-files-found: warn

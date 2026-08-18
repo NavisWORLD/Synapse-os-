@@ -6,6 +6,12 @@ Synapse OS is a reproducible Debian-based live/installable operating-system proj
 
 > Status: **Nebula alpha**. `amd64` is the required VM-certified build path. `arm64` and `riscv64` have architecture-aware build/QEMU machinery and remain explicitly **experimental** until their promotion gates pass. The ASUS Chromebook CX1700CKA / `GALLOP` is Reference Hardware #1 and remains a physical certification target until the real-device checklist passes.
 
+## USB installer
+
+For the complete ready-to-flash amd64/UEFI USB path, start with [`USB_INSTALL.md`](USB_INSTALL.md). It covers release download and reassembly, SHA-256 verification, Rufus, balenaEtcher, Linux/macOS `dd`, ASUS CX1700CKA / `GALLOP` UEFI boot, and the phone-controlled GENESIS install flow.
+
+The dedicated `Publish USB installer` workflow rebuilds the ISO from source, verifies its final payload, live-boots it, performs a real GENESIS install against a disposable virtual disk, cold-boots the installed system, and only then prepares the release assets.
+
 ## What is real in this repository
 
 - Bootable/installable **Debian 13 (trixie) amd64 live ISO recipe** with required QEMU guest gate
