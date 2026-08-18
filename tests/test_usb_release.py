@@ -23,6 +23,16 @@ class UsbReleaseTests(unittest.TestCase):
         self.assertIn("build/build.sh", workflow)
         self.assertIn("genesis-installed-vm-smoke.sh", workflow)
 
+    def test_release_gate_reopens_iso_and_checks_genesis_payload(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "release-usb-installer.yml").read_text(encoding="utf-8")
+
+        self.assertIn("filesystem.squashfs", workflow)
+        self.assertIn("/synapse-genesis/manifest.json", workflow)
+        self.assertIn("usr/share/synapse/GENESIS.html", workflow)
+        self.assertIn("usr/local/bin/synapse-genesis-writer", workflow)
+        self.assertIn("synapse-genesis-installer-api.service", workflow)
+        self.assertIn("scripts/genesis_manifest.py verify", workflow)
+
     def test_usb_guide_documents_genesis_and_safe_flashing(self) -> None:
         guide = (ROOT / "USB_INSTALL.md").read_text(encoding="utf-8")
 
