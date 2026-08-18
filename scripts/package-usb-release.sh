@@ -53,9 +53,9 @@ done
 
 bash -n "$RELEASE_DIR/reassemble-usb-installer.sh"
 if command -v pwsh >/dev/null 2>&1; then
-  pwsh -NoProfile -Command \
-    '$null = [scriptblock]::Create((Get-Content -Raw $args[0]))' \
-    "$RELEASE_DIR/reassemble-usb-installer.ps1"
+  SYNAPSE_PS_SCRIPT="$RELEASE_DIR/reassemble-usb-installer.ps1" \
+    pwsh -NoProfile -Command \
+      '$null = [scriptblock]::Create((Get-Content -Raw -LiteralPath $env:SYNAPSE_PS_SCRIPT))'
 fi
 
 STREAM_SHA="$(cat "$RELEASE_DIR/$NAME.part-"* | sha256sum | awk '{print $1}')"
