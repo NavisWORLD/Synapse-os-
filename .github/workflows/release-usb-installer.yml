@@ -55,6 +55,74 @@ jobs:
       - name: Verify generated ISO checksum
         run: sha256sum -c out/*.iso.sha256
 
+      - name: Verify final ISO carries the complete GENESIS payload
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -n "$ISO"
+          grep -a -q 'synapse.genesis=1' "$ISO"
+
+          rm -rf /tmp/synapse-release-image /tmp/synapse-release-root
+          mkdir -p /tmp/synapse-release-image /tmp/synapse-release-root
+          xorriso -osirrox on -indev "$ISO" \
+            -extract /live/filesystem.squashfs /tmp/synapse-release-image/filesystem.squashfs
+          xorriso -osirrox on -indev "$ISO" \
+            -extract /synapse-genesis/manifest.json /tmp/synapse-release-image/genesis-manifest.json
+
+          unsquashfs -f -d /tmp/synapse-release-root /tmp/synapse-release-image/filesystem.squashfs \
+            etc/os-release \
+            usr/local/bin/synapse \
+            usr/local/bin/synapse-control \
+            usr/local/bin/synapse-genesis-writer \
+            usr/bin/plasmashell \
+            usr/bin/calamares \
+            usr/bin/pipewire \
+            usr/bin/nmcli \
+            usr/lib/systemd/system/synapse-agent.service \
+            usr/lib/systemd/system/synapse-genesis-installer-api.service \
+            usr/lib/synapse/python/synapse/__init__.py \
+            usr/lib/synapse/python/synapse/hardware.py \
+            usr/lib/synapse/python/synapse/genesis.py \
+            usr/lib/synapse/python/synapse/genesis_runtime.py \
+            usr/lib/synapse/python/synapse/genesis_writer.py \
+            usr/include/synapse/synapse.h \
+            usr/share/synapse/hardware/profiles.json \
+            usr/share/synapse/phone-bootstrap.html \
+            usr/share/synapse/GENESIS.html \
+            usr/share/doc/synapse-os/LICENSE \
+            usr/share/doc/synapse-os/NOTICE \
+            usr/share/doc/synapse-os/PROVENANCE.md \
+            usr/share/doc/synapse-os/CITATION.cff \
+            usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg \
+            usr/share/sddm/themes/synapse-nebula/Main.qml \
+            usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth \
+            usr/share/grub/themes/synapse-nebula/theme.txt
+
+          grep -q '^ID=synapseos$' /tmp/synapse-release-root/etc/os-release
+          test -s /tmp/synapse-release-root/usr/local/bin/synapse
+          test -s /tmp/synapse-release-root/usr/local/bin/synapse-control
+          test -s /tmp/synapse-release-root/usr/local/bin/synapse-genesis-writer
+          test -s /tmp/synapse-release-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
+          test -s /tmp/synapse-release-root/usr/share/synapse/GENESIS.html
+          test -s /tmp/synapse-release-root/usr/share/synapse/phone-bootstrap.html
+          test -s /tmp/synapse-release-root/usr/share/synapse/hardware/profiles.json
+          test -s /tmp/synapse-release-root/usr/include/synapse/synapse.h
+          test -s /tmp/synapse-release-root/usr/bin/plasmashell
+          test -s /tmp/synapse-release-root/usr/bin/calamares
+          test -s /tmp/synapse-release-root/usr/bin/pipewire
+          test -s /tmp/synapse-release-root/usr/bin/nmcli
+          test -s /tmp/synapse-release-image/genesis-manifest.json
+          grep -q 'ConditionKernelCommandLine=synapse.genesis=1' \
+            /tmp/synapse-release-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
+          grep -q 'HOLD TO INSTALL SYNAPSE OS' /tmp/synapse-release-root/usr/share/synapse/GENESIS.html
+          grep -q '/v2/install/arm' /tmp/synapse-release-root/usr/share/synapse/GENESIS.html
+          grep -q '/v2/install/start' /tmp/synapse-release-root/usr/share/synapse/GENESIS.html
+          python3 scripts/genesis_manifest.py verify \
+            --manifest /tmp/synapse-release-image/genesis-manifest.json \
+            --image /tmp/synapse-release-image/filesystem.squashfs
+          unsquashfs -ll /tmp/synapse-release-image/filesystem.squashfs | grep 'libsynapse_abi\.so' >/dev/null
+
       - name: Boot live USB image in QEMU
         shell: bash
         run: |
@@ -72,7 +140,6 @@ jobs:
           sudo bash scripts/genesis-installed-vm-smoke.sh "$ISO"
 
       - name: Prepare stable USB release assets
-        id: assets
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -120,6 +187,7 @@ jobs:
           - repository source/SDK validation;
           - full amd64 ISO build;
           - SHA-256 verification;
+          - final ISO extraction and GENESIS payload verification;
           - live UEFI/QEMU boot;
           - real GENESIS install onto a disposable virtual disk;
           - cold boot of the installed Synapse OS image.
