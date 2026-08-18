@@ -40,6 +40,12 @@ class UsbReleaseTests(unittest.TestCase):
         self.assertIn("synapse-genesis-installer-api.service", workflow)
         self.assertIn("scripts/genesis_manifest.py verify", workflow)
 
+    def test_release_notes_are_generated_without_shell_command_substitution(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "release-usb-installer.yml").read_text(encoding="utf-8")
+
+        self.assertNotIn("cat > release/RELEASE_NOTES.md <<EOF", workflow)
+        self.assertIn("Path(\"release/RELEASE_NOTES.md\").write_text", workflow)
+
     def test_usb_guide_documents_genesis_and_safe_flashing(self) -> None:
         guide = (ROOT / "USB_INSTALL.md").read_text(encoding="utf-8")
 
