@@ -63,6 +63,12 @@ class UsbReleaseTests(unittest.TestCase):
         self.assertIn("dd", guide)
         self.assertIn("all data on the USB", guide)
 
+    def test_usb_guide_uses_platform_correct_dd_examples(self) -> None:
+        guide = (ROOT / "USB_INSTALL.md").read_text(encoding="utf-8")
+
+        self.assertIn("/dev/sdX bs=4M status=progress", guide)
+        self.assertIn("/dev/rdiskN bs=4m", guide)
+
 
 if __name__ == "__main__":
     unittest.main()
