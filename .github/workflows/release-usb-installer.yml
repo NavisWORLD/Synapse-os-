@@ -140,22 +140,52 @@ jobs:
           test -n "$ISO"
           sudo bash scripts/genesis-installed-vm-smoke.sh "$ISO"
 
-      - name: Prepare stable USB release assets
+      - name: Prepare GitHub-safe USB release assets
         shell: bash
         run: |
           set -Eeuo pipefail
+          NAME="SynapseOS-Nebula-amd64.iso"
           ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
           test -n "$ISO"
+          rm -rf release
           mkdir -p release
-          cp "$ISO" release/SynapseOS-Nebula-amd64.iso
+
+          ISO_SHA="$(sha256sum "$ISO" | awk '{print $1}')"
+          printf '%s  %s\n' "$ISO_SHA" "$NAME" > "release/${NAME}.sha256"
+
+          # GitHub release assets must each remain below 2 GiB. 1900 MiB
+          # leaves margin while keeping the number of parts small.
+          split -b 1900M -d -a 3 "$ISO" "release/${NAME}.part-"
+          cp scripts/reassemble-usb-installer.sh release/reassemble-usb-installer.sh
+          cp scripts/reassemble-usb-installer.ps1 release/reassemble-usb-installer.ps1
+          chmod 0755 release/reassemble-usb-installer.sh
+
           (
             cd release
-            sha256sum SynapseOS-Nebula-amd64.iso > SynapseOS-Nebula-amd64.iso.sha256
+            sha256sum "${NAME}.part-"* > "${NAME}.parts.sha256"
+            sha256sum -c "${NAME}.parts.sha256"
           )
-          sha256sum -c release/SynapseOS-Nebula-amd64.iso.sha256
-          ORIGINAL_CHECKSUM="$(find out -maxdepth 1 -name '*.iso.sha256' -print -quit)"
-          test -n "$ORIGINAL_CHECKSUM"
-          cp "$ORIGINAL_CHECKSUM" release/build-original.iso.sha256
+
+          for part in "release/${NAME}.part-"*; do
+            bytes="$(stat -c '%s' "$part")"
+            if (( bytes >= 2147483648 )); then
+              echo "release part exceeds GitHub's 2 GiB asset limit: $part ($bytes bytes)" >&2
+              exit 1
+            fi
+          done
+
+          bash -n release/reassemble-usb-installer.sh
+          if command -v pwsh >/dev/null 2>&1; then
+            pwsh -NoProfile -Command \
+              '$null = [scriptblock]::Create((Get-Content -Raw "release/reassemble-usb-installer.ps1"))'
+          fi
+
+          STREAM_SHA="$(cat "release/${NAME}.part-"* | sha256sum | awk '{print $1}')"
+          if [[ "$STREAM_SHA" != "$ISO_SHA" ]]; then
+            echo "split parts do not reconstruct the verified ISO" >&2
+            exit 1
+          fi
+
           ls -lh release/
 
       - name: Resolve release tag
@@ -188,7 +218,7 @@ jobs:
           sha = os.environ["GITHUB_SHA"]
           notes = f"""# Synapse OS USB Installer {tag}
 
-          Ready-to-flash amd64/UEFI installer for Synapse OS Nebula.
+          Verified amd64/UEFI installer for Synapse OS Nebula.
 
           This release was built from commit `{sha}` and passed:
 
@@ -200,10 +230,20 @@ jobs:
           - real GENESIS install onto a disposable virtual disk;
           - cold boot of the installed Synapse OS image.
 
-          Main download: `SynapseOS-Nebula-amd64.iso`
+          GitHub limits each release asset to under 2 GiB, so the ISO is published as ordered parts named:
 
-          Verify it with `SynapseOS-Nebula-amd64.iso.sha256` before flashing.
-          See `USB_INSTALL.md` in the repository for Windows, macOS, Linux, GALLOP, and GENESIS instructions.
+          `SynapseOS-Nebula-amd64.iso.part-000`, `part-001`, ...
+
+          Download every ISO part plus:
+
+          - `SynapseOS-Nebula-amd64.iso.sha256`
+          - `SynapseOS-Nebula-amd64.iso.parts.sha256`
+          - `reassemble-usb-installer.ps1` on Windows, or
+          - `reassemble-usb-installer.sh` on macOS/Linux.
+
+          Run the helper beside the downloaded parts. It verifies every part, rebuilds `SynapseOS-Nebula-amd64.iso`, and verifies the final ISO SHA-256 before you flash it.
+
+          See `USB_INSTALL.md` in the repository for Rufus, balenaEtcher, Linux/macOS `dd`, GALLOP, and GENESIS instructions.
           """
           Path("release/RELEASE_NOTES.md").write_text(notes, encoding="utf-8")
           PY
@@ -215,26 +255,27 @@ jobs:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -Eeuo pipefail
+          ASSETS=(
+            release/SynapseOS-Nebula-amd64.iso.part-*
+            release/SynapseOS-Nebula-amd64.iso.sha256
+            release/SynapseOS-Nebula-amd64.iso.parts.sha256
+            release/reassemble-usb-installer.sh
+            release/reassemble-usb-installer.ps1
+          )
+
           if gh release view "$TAG" >/dev/null 2>&1; then
             EXISTING_TARGET="$(gh release view "$TAG" --json targetCommitish --jq .targetCommitish)"
             if [[ "$EXISTING_TARGET" != "$GITHUB_SHA" ]]; then
               echo "refusing to replace release $TAG: existing target $EXISTING_TARGET != $GITHUB_SHA" >&2
               exit 1
             fi
-            gh release upload "$TAG" \
-              release/SynapseOS-Nebula-amd64.iso \
-              release/SynapseOS-Nebula-amd64.iso.sha256 \
-              release/build-original.iso.sha256 \
-              --clobber
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
             gh release edit "$TAG" \
               --title "Synapse OS ${TAG} USB Installer" \
               --notes-file release/RELEASE_NOTES.md \
               --latest
           else
-            gh release create "$TAG" \
-              release/SynapseOS-Nebula-amd64.iso \
-              release/SynapseOS-Nebula-amd64.iso.sha256 \
-              release/build-original.iso.sha256 \
+            gh release create "$TAG" "${ASSETS[@]}" \
               --target "$GITHUB_SHA" \
               --title "Synapse OS ${TAG} USB Installer" \
               --notes-file release/RELEASE_NOTES.md \
@@ -246,5 +287,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: synapse-usb-installer-release
-          path: release/
+          path: |
+            release/SynapseOS-Nebula-amd64.iso.part-*
+            release/SynapseOS-Nebula-amd64.iso.sha256
+            release/SynapseOS-Nebula-amd64.iso.parts.sha256
+            release/reassemble-usb-installer.sh
+            release/reassemble-usb-installer.ps1
+            release/RELEASE_NOTES.md
           if-no-files-found: warn
