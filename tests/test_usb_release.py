@@ -17,6 +17,12 @@ class UsbReleaseTests(unittest.TestCase):
         self.assertTrue(workflow.exists(), "USB installer release workflow is missing")
         self.assertTrue(guide.exists(), "USB installation guide is missing")
 
+    def test_readme_links_the_usb_installer_guide(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn("USB_INSTALL.md", readme)
+        self.assertIn("USB installer", readme.lower())
+
     def test_usb_release_workflow_publishes_iso_and_checksum(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "release-usb-installer.yml").read_text(encoding="utf-8")
 
