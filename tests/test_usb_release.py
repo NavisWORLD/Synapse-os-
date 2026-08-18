@@ -67,6 +67,13 @@ class UsbReleaseTests(unittest.TestCase):
         self.assertIn("reassemble-usb-installer.ps1", workflow)
         self.assertNotIn("release/SynapseOS-Nebula-amd64.iso \\", workflow)
 
+    def test_unix_reassembler_supports_stock_macos_bash_and_hash_tool(self) -> None:
+        helper = (ROOT / "scripts" / "reassemble-usb-installer.sh").read_text(encoding="utf-8")
+
+        self.assertNotIn("mapfile", helper)
+        self.assertIn("shasum -a 256", helper)
+        self.assertIn("sha256sum", helper)
+
     def test_release_packager_splits_and_reassembles_a_fixture(self) -> None:
         packager = ROOT / "scripts" / "package-usb-release.sh"
         with tempfile.TemporaryDirectory() as td:
