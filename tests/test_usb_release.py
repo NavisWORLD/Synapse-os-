@@ -1,3 +1,7 @@
+import hashlib
+import os
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -54,12 +58,49 @@ class UsbReleaseTests(unittest.TestCase):
 
     def test_large_iso_is_split_into_release_safe_parts_with_reassembly_helpers(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "release-usb-installer.yml").read_text(encoding="utf-8")
+        packager = (ROOT / "scripts" / "package-usb-release.sh").read_text(encoding="utf-8")
 
-        self.assertIn("split -b 1900M", workflow)
+        self.assertIn("package-usb-release.sh", workflow)
+        self.assertIn('PART_SIZE="${SYNAPSE_RELEASE_PART_SIZE:-1900M}"', packager)
         self.assertIn("SynapseOS-Nebula-amd64.iso.part-", workflow)
         self.assertIn("reassemble-usb-installer.sh", workflow)
         self.assertIn("reassemble-usb-installer.ps1", workflow)
-        self.assertNotIn("gh release upload \"$TAG\" \\\n              release/SynapseOS-Nebula-amd64.iso \\", workflow)
+        self.assertNotIn("release/SynapseOS-Nebula-amd64.iso \\", workflow)
+
+    def test_release_packager_splits_and_reassembles_a_fixture(self) -> None:
+        packager = ROOT / "scripts" / "package-usb-release.sh"
+        with tempfile.TemporaryDirectory() as td:
+            temp = Path(td)
+            source = temp / "fixture.iso"
+            release = temp / "release"
+            source.write_bytes((b"synapse-release-test\x00" * 400) + b"tail")
+            expected = hashlib.sha256(source.read_bytes()).hexdigest()
+
+            env = dict(os.environ)
+            env["SYNAPSE_RELEASE_PART_SIZE"] = "1K"
+            subprocess.run(
+                ["bash", str(packager), str(source), str(release)],
+                cwd=ROOT,
+                env=env,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            parts = sorted(release.glob("SynapseOS-Nebula-amd64.iso.part-*"))
+            self.assertGreater(len(parts), 1)
+            self.assertTrue((release / "reassemble-usb-installer.sh").exists())
+            self.assertTrue((release / "reassemble-usb-installer.ps1").exists())
+
+            subprocess.run(
+                ["bash", str(release / "reassemble-usb-installer.sh")],
+                cwd=release,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            rebuilt = release / "SynapseOS-Nebula-amd64.iso"
+            self.assertEqual(hashlib.sha256(rebuilt.read_bytes()).hexdigest(), expected)
 
     def test_usb_guide_documents_genesis_and_safe_flashing(self) -> None:
         guide = (ROOT / "USB_INSTALL.md").read_text(encoding="utf-8")
