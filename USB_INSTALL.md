@@ -83,16 +83,33 @@ SynapseOS-Nebula-amd64.iso: OK
 3. Choose the correct USB target.
 4. Flash and allow Etcher to verify the write.
 
-### Linux/macOS: `dd`
+### Linux: `dd`
 
-First identify the USB device carefully. The command below is only an example; replace `/dev/sdX` with the actual whole USB device.
+First identify the USB device carefully. Replace `/dev/sdX` with the actual whole USB device, not a numbered partition such as `/dev/sdX1`.
 
 ```bash
 sudo dd if=SynapseOS-Nebula-amd64.iso of=/dev/sdX bs=4M status=progress conv=fsync
 sync
 ```
 
-On macOS, the target will usually look like `/dev/rdiskN` rather than `/dev/sdX`.
+### macOS: `dd`
+
+First identify the USB disk:
+
+```bash
+diskutil list
+```
+
+Replace `N` below with the actual USB disk number. Unmount the whole disk before writing:
+
+```bash
+diskutil unmountDisk /dev/diskN
+sudo dd if=SynapseOS-Nebula-amd64.iso of=/dev/rdiskN bs=4m
+sync
+diskutil eject /dev/diskN
+```
+
+Using `/dev/rdiskN` writes through the raw disk device; `/dev/diskN` is still used for the `diskutil` unmount/eject operations.
 
 **Never guess the output device. `dd` will overwrite whatever device you name.**
 
