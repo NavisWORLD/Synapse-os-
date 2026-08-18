@@ -216,6 +216,11 @@ jobs:
         run: |
           set -Eeuo pipefail
           if gh release view "$TAG" >/dev/null 2>&1; then
+            EXISTING_TARGET="$(gh release view "$TAG" --json targetCommitish --jq .targetCommitish)"
+            if [[ "$EXISTING_TARGET" != "$GITHUB_SHA" ]]; then
+              echo "refusing to replace release $TAG: existing target $EXISTING_TARGET != $GITHUB_SHA" >&2
+              exit 1
+            fi
             gh release upload "$TAG" \
               release/SynapseOS-Nebula-amd64.iso \
               release/SynapseOS-Nebula-amd64.iso.sha256 \
