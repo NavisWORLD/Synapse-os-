@@ -30,6 +30,12 @@ class UsbFlashHtmlTests(unittest.TestCase):
         self.assertIn("requestDevice", html)
         self.assertIn("claimInterface", html)
         self.assertIn("SecurityError", html)
+        self.assertIn("NotFoundError", html)
+        self.assertNotIn("requestDevice({filters:[]})", html)
+        self.assertIn(
+            "requestDevice({filters:[{classCode:MSC_CLASS,subclassCode:SCSI_SUBCLASS,protocolCode:BOT_PROTOCOL}]})",
+            html,
+        )
 
     def test_direct_mode_is_restricted_to_usb_mass_storage_bot_scsi(self) -> None:
         html = (ROOT / "phone-bootstrap" / "FLASH_USB.html").read_text(encoding="utf-8")
