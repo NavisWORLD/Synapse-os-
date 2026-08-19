@@ -10,6 +10,8 @@ Synapse OS is a reproducible Debian-based live/installable operating-system proj
 
 For the complete ready-to-flash amd64/UEFI USB path, start with [`USB_INSTALL.md`](USB_INSTALL.md). It covers release download and reassembly, SHA-256 verification, Rufus, balenaEtcher, Linux/macOS `dd`, ASUS CX1700CKA / `GALLOP` UEFI boot, and the phone-controlled GENESIS install flow.
 
+For the phone-first USB media writer and direct browser capability experiment, see [`FLASH_USB.md`](FLASH_USB.md). The single-file `phone-bootstrap/FLASH_USB.html` probes direct WebUSB access first and falls back to a fixed-purpose authenticated local helper on port `8788` when raw browser mass-storage access is unavailable. It requires source-image SHA-256 verification and full read-back SHA-256 verification before reporting a bootable USB.
+
 The dedicated `Publish USB installer` workflow rebuilds the ISO from source, verifies its final payload, live-boots it, performs a real GENESIS install against a disposable virtual disk, cold-boots the installed system, and only then prepares the release assets.
 
 ## What is real in this repository
@@ -31,6 +33,7 @@ The dedicated `Publish USB installer` workflow rebuilds the ISO from source, ver
 - `synapse` system CLI: status, doctor, profiles, COSMOS probes, benchmark, `.syn` plans
 - COSMOS port map for 11434 / 11435 / 11501 / 8765 / 8081 / 8090
 - Phone Bootstrap local API/UI for authenticated laptop discovery and COSMOS installation
+- Phone-first USB media flasher UI with direct capability probing and authenticated local-helper fallback
 - Hardware certification registry with `GALLOP` as the first physical target
 - Local validation via `make check`
 - GitHub Actions ISO build + generated-filesystem verification + QEMU guest smoke test
@@ -252,6 +255,6 @@ Current Synapse-specific original material owned or controlled by Cory Davis / N
 
 Commercial deployment, production business use, hosted services, resale, redistribution, OEM/bundling, paid client work, commercial derivative products, and AI/ML training or model-development use require a separate written commercial license. See [`COMMERCIAL-LICENSING.md`](COMMERCIAL-LICENSING.md).
 
-Historical versions previously released under MIT retain their earlier license grants for those earlier copies and versions. See [`LICENSE-HISTORY.md`](LICENSE-HISTORY.md).
+Historical versions previously released under MIT retain their earlier license grants for those earlier copies or versions. See [`LICENSE-HISTORY.md`](LICENSE-HISTORY.md).
 
 The generated image contains Debian and other third-party components under their own licenses. The Synapse Source License does not override those third-party rights. See [`docs/LICENSING.md`](docs/LICENSING.md) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
