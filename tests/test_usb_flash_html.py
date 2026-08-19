@@ -63,11 +63,11 @@ class UsbFlashHtmlTests(unittest.TestCase):
 
     def test_helper_adapter_uses_fixed_purpose_routes(self) -> None:
         html = (ROOT / "phone-bootstrap" / "FLASH_USB.html").read_text(encoding="utf-8")
+        # The compact UI gets target + image identity from preflight. The helper
+        # server's separate /devices and /image reads are covered by HTTP tests.
         for route in (
             "/v1/health",
             "/v1/capabilities",
-            "/v1/devices",
-            "/v1/image",
             "/v1/preflight",
             "/v1/image/prepare",
             "/v1/flash/arm",
