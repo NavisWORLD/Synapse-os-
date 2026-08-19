@@ -1,0 +1,27 @@
+DOWNLOAD / BUILD INPUTS
+SynapseOS-Nebula-amd64.iso.part-000 ... part-N
+SynapseOS-Nebula-amd64.iso.parts.sha256
+SynapseOS-Nebula-amd64.iso.sha256
+
+KIT TOOLS
+START_HERE.md
+README_USB_INSTALL.md
+DOWNLOAD_INSTALLER_WINDOWS.ps1
+DOWNLOAD_INSTALLER_MAC_LINUX.sh
+reassemble-usb-installer.ps1
+reassemble-usb-installer.sh
+VERIFY_INSTALLER.ps1
+VERIFY_INSTALLER.sh
+FLASH_USB_WINDOWS.cmd
+FLASH_USB_WINDOWS.ps1
+FLASH_USB_MAC_LINUX.sh
+tools/download_release.py
+tools/synapse_usb_flasher.py
+phone/README.md
+phone/GENESIS.html
+phone/FLASH_USB.html
+docs/USB_INSTALL.md
+docs/FLASH_USB.md
+
+GENERATED LOCALLY AFTER REASSEMBLY
+SynapseOS-Nebula-amd64.iso
