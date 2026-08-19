@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Synapse OS Phone → USB Kit</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    body { margin:0; background:#070912; color:#f5f7ff; }
+    main { max-width:720px; margin:auto; padding:28px 18px 60px; }
+    .hero { padding:26px; border:1px solid #2d3350; border-radius:24px; background:linear-gradient(135deg,#11162b,#0b0e19); }
+    h1 { margin:0 0 10px; font-size:clamp(30px,8vw,52px); line-height:1; }
+    h2 { margin-top:30px; }
+    p,li { line-height:1.55; color:#d7dcf2; }
+    .badge { display:inline-block; padding:7px 11px; border-radius:999px; background:#1a2140; margin-bottom:14px; font-weight:700; }
+    .button { display:block; text-align:center; text-decoration:none; color:white; font-weight:800; padding:15px 18px; margin:12px 0; border-radius:16px; background:#263369; border:1px solid #4659a1; }
+    .warn { border:1px solid #856f2e; background:#241f0f; border-radius:18px; padding:16px; }
+    code,pre { background:#0d1020; border:1px solid #242a45; border-radius:12px; }
+    pre { padding:14px; overflow:auto; }
+    code { padding:2px 5px; }
+    .step { border-left:3px solid #586bd0; padding-left:14px; margin:20px 0; }
+    footer { margin-top:36px; opacity:.72; font-size:14px; }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="badge">SYNAPSE OS // PHONE USB KIT</div>
+    <h1>Start here.</h1>
+    <p>This page is safe to keep on your iPhone or USB as the offline checklist for the Synapse OS installer package.</p>
+    <a class="button" href="https://github.com/NavisWORLD/Synapse-os-/releases/latest">Open Latest Verified Release</a>
+    <a class="button" href="https://github.com/NavisWORLD/Synapse-os-/blob/main/USB_INSTALL.md">Open Full USB Install Guide</a>
+  </section>
+
+  <h2>1. Download on the phone</h2>
+  <div class="step">
+    <p>Download <code>SynapseOS-Phone-USB-Kit.zip</code> and <strong>every</strong> file matching:</p>
+    <pre>SynapseOS-Nebula-amd64.iso.part-*</pre>
+    <p>Keep the part files together and do not rename them.</p>
+  </div>
+
+  <h2>2. Move the folder to USB storage</h2>
+  <div class="step">
+    <p>Using the iPhone Files app, you can move the downloaded kit and ISO parts onto an external USB drive for storage/transfer.</p>
+  </div>
+
+  <div class="warn">
+    <strong>Important:</strong> copying files onto a USB does not make the USB bootable. A bootable installer requires the reconstructed ISO to be written as a raw disk image. Ordinary iPhone Files app copying cannot replace that flashing step.
+  </div>
+
+  <h2>3. Reconstruct and verify</h2>
+  <div class="step">
+    <p>On Windows run <code>reassemble-usb-installer.ps1</code>. On macOS/Linux run <code>reassemble-usb-installer.sh</code>.</p>
+    <p>The helpers verify every part and rebuild:</p>
+    <pre>SynapseOS-Nebula-amd64.iso</pre>
+  </div>
+
+  <h2>4. Flash, then boot</h2>
+  <div class="step">
+    <p>Flash the reconstructed ISO with Rufus, balenaEtcher, or the documented raw <code>dd</code> method. Then insert that flashed USB into the target amd64/UEFI machine and boot the USB entry.</p>
+    <p>For the ASUS CX1700CKA / GALLOP target, legitimate supported UEFI preparation is still required before booting Synapse/GENESIS.</p>
+  </div>
+
+  <footer>Synapse OS Nebula • phone-first staging kit • verified installer path</footer>
+</main>
+</body>
+</html>
