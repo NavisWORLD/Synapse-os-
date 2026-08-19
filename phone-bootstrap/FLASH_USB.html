@@ -3,52 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#04070b">
+<meta name="theme-color" content="#05080d">
 <title>SYNAPSE // FLASH USB</title>
 <style>
-:root{color-scheme:dark;--bg:#04070b;--panel:#0a111b;--line:#26364b;--text:#edf7ff;--muted:#8ba0b8;--cyan:#63c9ff;--green:#70ffb0;--amber:#ffd36f;--red:#ff6f83;--violet:#b69cff}
-*{box-sizing:border-box}html{min-height:100%;background:var(--bg)}
-body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -20%,#173253 0,transparent 42%),radial-gradient(circle at 105% 35%,#231943 0,transparent 36%),linear-gradient(180deg,#05090f,#020407 72%);color:var(--text);font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
-body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.12;background-image:linear-gradient(#fff1 1px,transparent 1px),linear-gradient(90deg,#fff1 1px,transparent 1px);background-size:38px 38px}
-main{position:relative;width:min(860px,100%);margin:auto;padding:18px 15px 72px}.hero{padding:16px 2px 8px}.eyebrow{font-size:11px;letter-spacing:.22em;color:var(--cyan);text-transform:uppercase}
-h1{font-size:clamp(36px,10vw,64px);line-height:.94;margin:8px 0 10px;letter-spacing:-.045em}.hero p{margin:0;color:var(--muted);max-width:720px}
-.card{position:relative;background:linear-gradient(180deg,#0d1622ee,#080d15f2);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 22px 70px #0008;overflow:hidden}
-.card:before{content:"";position:absolute;inset:0 auto auto 0;width:100%;height:1px;background:linear-gradient(90deg,transparent,#6bd4ff88,transparent)}
-.grid{display:grid;gap:11px}.two{grid-template-columns:repeat(2,minmax(0,1fr))}.three{grid-template-columns:repeat(3,minmax(0,1fr))}
-.label{font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted)}.value{margin-top:4px;word-break:break-word}.big{font-size:18px;font-weight:800}
-.ok{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}.cyan{color:var(--cyan)}
-input,select{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#050910;color:var(--text);font:inherit;outline:none}
-input:focus,select:focus{border-color:#4d93c4;box-shadow:0 0 0 3px #4d93c422}
-.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}
-button{position:relative;appearance:none;border:1px solid #35506e;border-radius:13px;background:#101b2a;color:var(--text);padding:13px 15px;font:inherit;font-weight:800;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
-button.primary{background:#123351;border-color:#4389bd}button.good{background:#103325;border-color:#3d9b6e}button:disabled{opacity:.35;cursor:not-allowed}
-pre{margin:10px 0 0;white-space:pre-wrap;word-break:break-word;background:#03060b;border:1px solid #192536;border-radius:12px;padding:12px;color:#bdd4eb;max-height:280px;overflow:auto}
-.statusline{display:flex;gap:9px;align-items:center}.dot{width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 18px currentColor}.dot.online{background:var(--green)}.dot.busy{background:var(--amber)}
-.meter{height:10px;border:1px solid #1b2b3f;background:#03060a;border-radius:999px;overflow:hidden;margin-top:10px}.meter>div{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--green));transition:width .18s ease}
-.warning{border-color:#713846;background:linear-gradient(180deg,#291017e8,#13080cf0)}.warning:before{background:linear-gradient(90deg,transparent,#ff6f83aa,transparent)}
-.warning h2{margin:2px 0 8px;color:#ff9aaa;font-size:20px}.warning p{margin:5px 0;color:#e8b5bd}
-.hold{width:100%;min-height:66px;margin-top:14px;background:#3a111a;border-color:#a03b4c;font-size:16px}.hold .fill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#7a1b2d,#b42a45);z-index:0}.hold span{position:relative;z-index:1}.hold.armed{border-color:#ff6f83;box-shadow:0 0 30px #ff456633}
-.tiny{font-size:11px;color:var(--muted)}.checks{display:grid;gap:7px;margin-top:10px}.check{display:grid;grid-template-columns:18px 1fr;gap:8px;padding:8px 9px;border-radius:10px;background:#050a11;border:1px solid #172435}.mark{color:var(--green)}
-.pill{display:inline-block;padding:4px 8px;border:1px solid #29405b;border-radius:999px;font-size:10px;margin:3px 4px 0 0}.hidden{display:none!important}
-@media(max-width:650px){.two,.three,.actions{grid-template-columns:1fr}h1{font-size:44px}.card{border-radius:15px}}
+:root{color-scheme:dark;--bg:#04070b;--panel:#0b121c;--line:#25364a;--text:#eef7ff;--muted:#8da3ba;--cyan:#67d0ff;--green:#75ffb3;--amber:#ffd36c;--red:#ff7185;--violet:#b59dff}
+*{box-sizing:border-box}html,body{min-height:100%;background:var(--bg)}body{margin:0;color:var(--text);font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;background:radial-gradient(circle at 50% -10%,#16314f 0,transparent 42%),radial-gradient(circle at 110% 45%,#251744 0,transparent 38%),#04070b}
+main{width:min(860px,100%);margin:auto;padding:18px 15px 64px}.hero{padding:14px 2px}.eyebrow,.label{font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted)}.eyebrow{color:var(--cyan);letter-spacing:.22em}h1{font-size:clamp(40px,10vw,66px);line-height:.94;letter-spacing:-.05em;margin:7px 0 10px}.hero p{color:var(--muted);max-width:760px;margin:0}
+.card{background:linear-gradient(180deg,#0e1722ef,#080d14f4);border:1px solid var(--line);border-radius:17px;padding:16px;margin:12px 0;box-shadow:0 22px 65px #0007}.grid{display:grid;gap:10px}.two{grid-template-columns:repeat(2,minmax(0,1fr))}.three{grid-template-columns:repeat(3,minmax(0,1fr))}.value{margin-top:4px;word-break:break-word}.big{font-size:18px;font-weight:800}.ok{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}.cyan{color:var(--cyan)}
+input{width:100%;padding:13px;border:1px solid var(--line);border-radius:11px;background:#050910;color:var(--text);font:inherit;outline:none}input:focus{border-color:#4d91bf;box-shadow:0 0 0 3px #4d91bf22}.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:11px}button{appearance:none;border:1px solid #35516f;border-radius:12px;background:#101b29;color:var(--text);padding:13px 14px;font:inherit;font-weight:800;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}button.primary{background:#123653;border-color:#438ec2}button:disabled{opacity:.35;cursor:not-allowed}
+pre{margin:10px 0 0;white-space:pre-wrap;word-break:break-word;background:#03060a;border:1px solid #192537;border-radius:11px;padding:11px;color:#bed4e9;max-height:250px;overflow:auto}.meter{height:10px;border:1px solid #1d2b3f;background:#03060a;border-radius:999px;overflow:hidden;margin-top:10px}.meter>div{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--green));transition:width .15s ease}
+.warning{border-color:#743644;background:linear-gradient(180deg,#291017ed,#13080cee)}.warning h2{margin:0 0 8px;color:#ff9aaa}.tiny{font-size:11px;color:var(--muted)}.checks{display:grid;gap:7px;margin-top:10px}.check{display:grid;grid-template-columns:18px 1fr;gap:8px;padding:8px;border:1px solid #182537;border-radius:9px;background:#050a11}.mark{color:var(--green)}
+.hold{position:relative;width:100%;min-height:66px;margin-top:13px;overflow:hidden;background:#391018;border-color:#a23b4d;font-size:16px}.hold .fill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#771a2c,#b52b45)}.hold span{position:relative;z-index:1}.hold.armed{box-shadow:0 0 28px #ff456633}
+@media(max-width:650px){.two,.three,.actions{grid-template-columns:1fr}.card{border-radius:14px}h1{font-size:45px}}
 </style>
 </head>
 <body>
 <main>
-<header class="hero">
-  <div class="eyebrow">SYNAPSE OS // PHONE MEDIA LAB</div>
-  <h1>FLASH // USB</h1>
-  <p>Real capability probe first. If the browser exposes a writable USB Mass Storage interface, this page can use bounded SCSI block writes. If the platform blocks it, the page says exactly where and can switch to the authenticated local helper on port 8788.</p>
-</header>
+<header class="hero"><div class="eyebrow">SYNAPSE OS // PHONE MEDIA LAB</div><h1>FLASH // USB</h1><p>A real capability experiment and a real verified media writer. Direct mode tries only USB Mass Storage + SCSI + Bulk-Only. If the browser blocks that protected interface, helper mode uses the same UI with the authenticated local service on port 8788.</p></header>
 
 <section class="card">
-  <div class="grid two">
+  <div class="grid three">
     <div><div class="label">State</div><div class="value big cyan" id="state">CAPABILITY CHECK</div></div>
     <div><div class="label">Mode</div><div class="value big" id="mode">UNDECIDED</div></div>
+    <div><div class="label">Progress</div><div class="value big" id="pct">0%</div></div>
   </div>
   <div class="meter"><div id="bar"></div></div>
-  <div class="grid three" style="margin-top:12px">
-    <div><div class="label">Progress</div><div class="value" id="pct">0%</div></div>
+  <div class="grid two" style="margin-top:11px">
     <div><div class="label">WebUSB</div><div class="value" id="webusb">checking</div></div>
     <div><div class="label">Secure context</div><div class="value" id="secure">checking</div></div>
   </div>
@@ -56,477 +36,113 @@ pre{margin:10px 0 0;white-space:pre-wrap;word-break:break-word;background:#03060
 </section>
 
 <section class="card">
-  <div class="label">1 // image</div>
+  <div class="label">1 // verified source image</div>
   <div class="grid two" style="margin-top:10px">
     <label><div class="label">Synapse ISO</div><input id="imageFile" type="file" accept=".iso,application/octet-stream"></label>
-    <label><div class="label">SHA-256 sidecar (optional)</div><input id="hashFile" type="file" accept=".sha256,text/plain"></label>
+    <label><div class="label">SHA-256 sidecar</div><input id="hashFile" type="file" accept=".sha256,text/plain"></label>
   </div>
   <label style="display:block;margin-top:10px"><div class="label">Expected SHA-256</div><input id="expectedHash" spellcheck="false" autocomplete="off" placeholder="64 hex characters"></label>
-  <div class="actions">
-    <button id="verifyImage" class="primary">VERIFY IMAGE</button>
-    <button id="clearImage">CLEAR</button>
-    <button id="loadLatest" disabled title="Reserved for a future signed release manifest path">PINNED RELEASE ONLY</button>
-  </div>
-  <pre id="imageLog">Choose the reconstructed Synapse OS ISO and its matching SHA-256.</pre>
+  <div class="actions"><button class="primary" id="verifyImage">VERIFY IMAGE</button><button id="clearImage">CLEAR IMAGE</button><button disabled>PINNED IMAGE ONLY</button></div>
+  <pre id="imageLog">Choose the reconstructed Synapse ISO and its matching checksum.</pre>
 </section>
 
 <section class="card">
-  <div class="label">2 // direct browser USB experiment</div>
-  <div class="actions">
-    <button id="probe" class="primary">RUN CAPABILITY CHECK</button>
-    <button id="chooseUsb">CHOOSE USB DEVICE</button>
-    <button id="directPreflight" disabled>DIRECT PREFLIGHT</button>
-  </div>
-  <div class="grid two" style="margin-top:12px">
-    <div><div class="label">USB identity</div><div class="value" id="usbIdentity">none selected</div></div>
-    <div><div class="label">MSC transport</div><div class="value" id="mscStatus">not probed</div></div>
-  </div>
-  <pre id="usbLog">The page will only accept USB Mass Storage class 0x08 / SCSI transparent 0x06 / Bulk-Only 0x50. A SecurityError is reported as a platform block, never as success.</pre>
+  <div class="label">2 // direct browser experiment</div>
+  <div class="actions"><button class="primary" id="probe">RUN CAPABILITY CHECK</button><button id="chooseUsb">CHOOSE USB DEVICE</button><button id="directPreflight" disabled>DIRECT PREFLIGHT</button></div>
+  <div class="grid two" style="margin-top:11px"><div><div class="label">USB identity</div><div class="value" id="usbIdentity">none selected</div></div><div><div class="label">MSC transport</div><div class="value" id="mscStatus">not probed</div></div></div>
+  <pre id="usbLog">Only class 0x08 / subclass 0x06 / protocol 0x50 is requested. SecurityError or NotFoundError is reported as a platform boundary, never success.</pre>
 </section>
 
 <section class="card">
-  <div class="label">3 // local helper fallback</div>
-  <div class="grid two" style="margin-top:10px">
-    <label><div class="label">Helper API</div><input id="helperBase" placeholder="http://synapse-os.local:8788"></label>
-    <label><div class="label">Pairing token</div><input id="helperToken" type="password" autocomplete="off" placeholder="one-boot token"></label>
-  </div>
-  <div class="actions">
-    <button id="connectHelper">CONNECT HELPER</button>
-    <button id="helperPrepare" disabled>VERIFY HELPER IMAGE</button>
-    <button id="helperPreflight" disabled>HELPER PREFLIGHT</button>
-  </div>
-  <pre id="helperLog">Fallback mode is fixed-purpose: no shell, no arbitrary disk path, no arbitrary image path, no arbitrary URL.</pre>
+  <div class="label">3 // authenticated local helper fallback</div>
+  <div class="grid two" style="margin-top:10px"><label><div class="label">Helper API</div><input id="helperBase" placeholder="http://synapse-os.local:8788"></label><label><div class="label">Pairing token</div><input id="helperToken" type="password" autocomplete="off" placeholder="one-boot token"></label></div>
+  <div class="actions"><button id="connectHelper">CONNECT HELPER</button><button id="helperPrepare" disabled>VERIFY HELPER IMAGE</button><button id="helperPreflight" disabled>HELPER PREFLIGHT</button></div>
+  <pre id="helperLog">Fixed-purpose API only. No arbitrary disk path, image path, repository URL, shell, or command execution.</pre>
 </section>
 
 <section class="card">
   <div class="label">Preflight</div>
-  <div class="grid two" style="margin-top:10px">
-    <div><div class="label">Target</div><div class="value" id="target">not verified</div></div>
-    <div><div class="label">Capacity</div><div class="value" id="capacity">not verified</div></div>
-    <div><div class="label">Image</div><div class="value" id="imageStatus">not verified</div></div>
-    <div><div class="label">Verification policy</div><div class="value">FULL SHA-256 READ-BACK</div></div>
-  </div>
-  <div class="checks" id="checks"><div class="tiny">No destructive action can be armed until preflight is complete.</div></div>
+  <div class="grid two" style="margin-top:10px"><div><div class="label">Target</div><div class="value" id="target">not verified</div></div><div><div class="label">Capacity</div><div class="value" id="capacity">not verified</div></div><div><div class="label">Image</div><div class="value" id="imageStatus">not verified</div></div><div><div class="label">Final verification</div><div class="value">FULL SHA-256 READ-BACK</div></div></div>
+  <div class="checks" id="checks"><div class="tiny">Flash remains locked until a mode-specific preflight succeeds.</div></div>
 </section>
 
 <section class="card warning">
   <h2>THIS ERASES THE SELECTED USB</h2>
-  <p>Only continue after the target identity and capacity above match the removable USB you intend to destroy.</p>
-  <p class="tiny">Direct mode is bounded to the USB device you explicitly grant to the browser. Helper mode selects one unique removable `TRAN=usb` disk server-side and refuses internal disks.</p>
+  <div class="tiny">Direct mode is bound to the explicitly granted USB device. Helper mode selects exactly one removable `TRAN=usb` disk server-side and refuses internal media. Keep power and the adapter stable until verification finishes.</div>
   <button class="hold" id="flash" disabled><div class="fill" id="holdFill"></div><span id="holdText">HOLD TO FLASH USB</span></button>
-  <div class="tiny" id="armInfo" style="margin-top:10px">Not armed.</div>
+  <div class="tiny" id="armInfo" style="margin-top:9px">Not armed.</div>
 </section>
 
-<section class="card">
-  <div class="grid two">
-    <div><div class="label">Operation</div><div class="value big" id="operation">IDLE</div></div>
-    <div><div class="label">Result</div><div class="value big" id="result">WAITING</div></div>
-  </div>
-  <pre id="opLog">No write has occurred.</pre>
-</section>
+<section class="card"><div class="grid two"><div><div class="label">Operation</div><div class="value big" id="operation">IDLE</div></div><div><div class="label">Result</div><div class="value big" id="result">WAITING</div></div></div><pre id="opLog">No write has occurred.</pre></section>
 </main>
 
 <script>
 (() => {
 'use strict';
-
 const HOLD_MS = 2500;
 const POLL_MS = 1200;
 const MSC_CLASS = 0x08;
 const SCSI_SUBCLASS = 0x06;
 const BOT_PROTOCOL = 0x50;
-const CHUNK_BYTES = 4 * 1024 * 1024;
+const HASH_CHUNK = 4 * 1024 * 1024;
 const DIRECT_BLOCK_CHUNK = 128;
+const $=id=>document.getElementById(id);
+const stateEl=$('state'),modeEl=$('mode'),pctEl=$('pct'),bar=$('bar'),webusbEl=$('webusb'),secureEl=$('secure'),capLog=$('capLog');
+const imageFile=$('imageFile'),hashFile=$('hashFile'),expectedHash=$('expectedHash'),imageLog=$('imageLog'),imageStatusEl=$('imageStatus');
+const chooseUsb=$('chooseUsb'),directPreflightBtn=$('directPreflight'),usbIdentity=$('usbIdentity'),mscStatus=$('mscStatus'),usbLog=$('usbLog');
+const helperBase=$('helperBase'),helperToken=$('helperToken'),helperPrepare=$('helperPrepare'),helperPreflightBtn=$('helperPreflight'),helperLog=$('helperLog');
+const targetEl=$('target'),capacityEl=$('capacity'),checks=$('checks'),flashBtn=$('flash'),holdFill=$('holdFill'),holdText=$('holdText'),armInfo=$('armInfo'),operation=$('operation'),result=$('result'),opLog=$('opLog');
+let currentMode=null,verifiedImage=null,directDevice=null,directTransport=null,directCapacity=null,directReady=false,helperReady=false,helperPreflightData=null,helperPoll=null,holdStart=0,holdTimer=null,holdRaf=null;
+helperBase.value=(location.protocol==='http:'&&location.port==='8788')?location.origin:'http://synapse-os.local:8788';
+helperToken.value=localStorage.getItem('synapse-usb-flash-token')||'';
+function setState(v){stateEl.textContent=v}function setMode(v){currentMode=v;modeEl.textContent=v||'UNDECIDED'}function setProgress(v){const n=Math.max(0,Math.min(100,Number(v)||0));bar.style.width=n+'%';pctEl.textContent=n.toFixed(0)+'%'}
+function fmtBytes(n){if(n==null)return'unknown';const u=['B','KiB','MiB','GiB','TiB'];let v=Number(n),i=0;while(v>=1024&&i<u.length-1){v/=1024;i++}return`${v.toFixed(i?1:0)} ${u[i]}`}
+function shortHash(s){s=String(s||'');return s.length>28?`${s.slice(0,15)}…${s.slice(-10)}`:s||'unknown'}function log(el,msg){el.textContent+=(el.textContent?'\n':'')+`[${new Date().toLocaleTimeString()}] ${msg}`;el.scrollTop=el.scrollHeight}
+function cancelHold(){if(holdTimer)clearTimeout(holdTimer);if(holdRaf)cancelAnimationFrame(holdRaf);holdTimer=holdRaf=null;holdStart=0;holdFill.style.width='0%';flashBtn.classList.remove('armed')}
+function fail(err,where='FAILED'){cancelHold();clearInterval(helperPoll);setState('FAILED');operation.textContent=where;result.textContent='FAILED';result.className='value big bad';flashBtn.disabled=true;log(opLog,err?.message||String(err));console.error(err)}
+function normalizeHash(v){return String(v||'').trim().toLowerCase().match(/\b[0-9a-f]{64}\b/)?.[0]||''}
+function bytesToHex(bytes){return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('')}
 
-const $ = id => document.getElementById(id);
-const stateEl=$('state'), modeEl=$('mode'), bar=$('bar'), pct=$('pct');
-const webusbEl=$('webusb'), secureEl=$('secure'), capLog=$('capLog');
-const imageFile=$('imageFile'), hashFile=$('hashFile'), expectedHash=$('expectedHash'), imageLog=$('imageLog');
-const probeBtn=$('probe'), chooseUsb=$('chooseUsb'), directPreflightBtn=$('directPreflight');
-const usbIdentity=$('usbIdentity'), mscStatus=$('mscStatus'), usbLog=$('usbLog');
-const helperBase=$('helperBase'), helperToken=$('helperToken'), connectHelper=$('connectHelper'), helperPrepare=$('helperPrepare'), helperPreflightBtn=$('helperPreflight'), helperLog=$('helperLog');
-const targetEl=$('target'), capacityEl=$('capacity'), imageStatusEl=$('imageStatus'), checks=$('checks');
-const flashBtn=$('flash'), holdFill=$('holdFill'), holdText=$('holdText'), armInfo=$('armInfo');
-const operation=$('operation'), result=$('result'), opLog=$('opLog');
-
-let currentMode = null;
-let selectedFile = null;
-let verifiedImage = null;
-let directDevice = null;
-let directTransport = null;
-let directCapacity = null;
-let directReady = false;
-let helperReady = false;
-let helperPreflightData = null;
-let holdStart = 0;
-let holdTimer = null;
-let holdRaf = null;
-let helperPoll = null;
-
-helperBase.value = (location.protocol === 'http:' && location.port === '8788') ? location.origin : 'http://synapse-os.local:8788';
-helperToken.value = localStorage.getItem('synapse-usb-flash-token') || '';
-
-function setState(value){ stateEl.textContent=value; }
-function setMode(value){ currentMode=value; modeEl.textContent=value || 'UNDECIDED'; }
-function setProgress(value){ const n=Math.max(0,Math.min(100,Number(value)||0)); bar.style.width=n+'%'; pct.textContent=n.toFixed(0)+'%'; }
-function fmtBytes(n){ if(n==null)return 'unknown'; const u=['B','KiB','MiB','GiB','TiB']; let v=Number(n),i=0; while(v>=1024&&i<u.length-1){v/=1024;i++;} return `${v.toFixed(i?1:0)} ${u[i]}`; }
-function shortHash(s){ s=String(s||''); return s.length>28 ? `${s.slice(0,16)}…${s.slice(-10)}` : s || 'unknown'; }
-function log(el,msg){ const line=`[${new Date().toLocaleTimeString()}] ${msg}`; el.textContent=(el.textContent ? el.textContent+'\n' : '')+line; el.scrollTop=el.scrollHeight; }
-function fail(err, where='FAILED'){
-  const msg = err?.message || String(err || 'unknown error');
-  setState('FAILED'); result.textContent='FAILED'; result.className='value big bad'; operation.textContent=where; flashBtn.disabled=true; cancelHold(); log(opLog,msg); console.error(err);
+class IncrementalSHA256{
+ constructor(){this.h=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);this.buf=new Uint8Array(64);this.bufLen=0;this.bytes=0;this.finished=false}
+ static rotr(x,n){return(x>>>n)|(x<<(32-n))}
+ _block(block){const K=IncrementalSHA256.K,w=new Uint32Array(64),dv=new DataView(block.buffer,block.byteOffset,block.byteLength);for(let i=0;i<16;i++)w[i]=dv.getUint32(i*4,false);for(let i=16;i<64;i++){const a=w[i-15],b=w[i-2],s0=IncrementalSHA256.rotr(a,7)^IncrementalSHA256.rotr(a,18)^(a>>>3),s1=IncrementalSHA256.rotr(b,17)^IncrementalSHA256.rotr(b,19)^(b>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0}let[a,b,c,d,e,f,g,h]=this.h;for(let i=0;i<64;i++){const S1=IncrementalSHA256.rotr(e,6)^IncrementalSHA256.rotr(e,11)^IncrementalSHA256.rotr(e,25),ch=(e&f)^((~e)&g),t1=(h+S1+ch+K[i]+w[i])>>>0,S0=IncrementalSHA256.rotr(a,2)^IncrementalSHA256.rotr(a,13)^IncrementalSHA256.rotr(a,22),maj=(a&b)^(a&c)^(b&c),t2=(S0+maj)>>>0;h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0}const v=[a,b,c,d,e,f,g,h];for(let i=0;i<8;i++)this.h[i]=(this.h[i]+v[i])>>>0}
+ update(data){if(this.finished)throw new Error('SHA-256 already finalized');const src=data instanceof Uint8Array?data:new Uint8Array(data);this.bytes+=src.length;let off=0;while(off<src.length){const take=Math.min(64-this.bufLen,src.length-off);this.buf.set(src.subarray(off,off+take),this.bufLen);this.bufLen+=take;off+=take;if(this.bufLen===64){this._block(this.buf);this.bufLen=0}}return this}
+ digest(){if(this.finished)throw new Error('SHA-256 already finalized');const bitHi=Math.floor((this.bytes*8)/0x100000000),bitLo=(this.bytes*8)>>>0;this.buf[this.bufLen++]=0x80;if(this.bufLen>56){while(this.bufLen<64)this.buf[this.bufLen++]=0;this._block(this.buf);this.bufLen=0}while(this.bufLen<56)this.buf[this.bufLen++]=0;const dv=new DataView(this.buf.buffer);dv.setUint32(56,bitHi,false);dv.setUint32(60,bitLo,false);this._block(this.buf);this.finished=true;const out=new Uint8Array(32),odv=new DataView(out.buffer);for(let i=0;i<8;i++)odv.setUint32(i*4,this.h[i],false);return out}
+ hex(){return bytesToHex(this.digest())}
 }
-function normalizeHash(v){ return String(v||'').trim().toLowerCase().match(/\b[0-9a-f]{64}\b/)?.[0] || ''; }
-function bytesToHex(bytes){ return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join(''); }
+IncrementalSHA256.K=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+async function sha256File(file,onProgress){const h=new IncrementalSHA256();for(let off=0;off<file.size;off+=HASH_CHUNK){const end=Math.min(file.size,off+HASH_CHUNK);h.update(new Uint8Array(await file.slice(off,end).arrayBuffer()));onProgress?.(end/file.size);await new Promise(r=>setTimeout(r,0))}return h.hex()}
+async function verifyImageBeforeFlash(){const file=imageFile.files?.[0];if(!file)throw new Error('Choose the Synapse OS ISO first.');if(!/\.iso$/i.test(file.name))throw new Error('Selected image must end in .iso.');let expected=normalizeHash(expectedHash.value);const side=hashFile.files?.[0];if(side){const parsed=normalizeHash(await side.text());if(!parsed)throw new Error('SHA-256 sidecar has no valid digest.');if(expected&&expected!==parsed)throw new Error('Pasted digest and sidecar digest disagree.');expected=parsed;expectedHash.value=parsed}if(!expected)throw new Error('Provide the matching SHA-256 digest or sidecar.');setState('IMAGE READY');operation.textContent='HASHING SOURCE';setProgress(0);const actual=await sha256File(file,p=>setProgress(p*100));if(actual!==expected)throw new Error(`SOURCE HASH MISMATCH\nexpected ${expected}\nactual   ${actual}`);verifiedImage={file,name:file.name,size:file.size,sha256:actual};imageStatusEl.textContent=`${file.name} • ${fmtBytes(file.size)} • ${shortHash(actual)}`;imageStatusEl.className='value ok';log(imageLog,`SHA-256 verified: ${actual}`);setProgress(0);updateFlashGate();return verifiedImage}
 
-class IncrementalSHA256 {
-  constructor(){
-    this.h = new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
-    this.buf = new Uint8Array(64); this.bufLen=0; this.bytes=0; this.finished=false;
-  }
-  static rotr(x,n){ return (x>>>n)|(x<<(32-n)); }
-  _block(block){
-    const K=IncrementalSHA256.K, w=new Uint32Array(64), dv=new DataView(block.buffer,block.byteOffset,block.byteLength);
-    for(let i=0;i<16;i++) w[i]=dv.getUint32(i*4,false);
-    for(let i=16;i<64;i++){
-      const a=w[i-15],b=w[i-2];
-      const s0=IncrementalSHA256.rotr(a,7)^IncrementalSHA256.rotr(a,18)^(a>>>3);
-      const s1=IncrementalSHA256.rotr(b,17)^IncrementalSHA256.rotr(b,19)^(b>>>10);
-      w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;
-    }
-    let [a,b,c,d,e,f,g,h]=this.h;
-    for(let i=0;i<64;i++){
-      const S1=IncrementalSHA256.rotr(e,6)^IncrementalSHA256.rotr(e,11)^IncrementalSHA256.rotr(e,25);
-      const ch=(e&f)^((~e)&g);
-      const t1=(h+S1+ch+K[i]+w[i])>>>0;
-      const S0=IncrementalSHA256.rotr(a,2)^IncrementalSHA256.rotr(a,13)^IncrementalSHA256.rotr(a,22);
-      const maj=(a&b)^(a&c)^(b&c);
-      const t2=(S0+maj)>>>0;
-      h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
-    }
-    const v=[a,b,c,d,e,f,g,h]; for(let i=0;i<8;i++) this.h[i]=(this.h[i]+v[i])>>>0;
-  }
-  update(data){
-    if(this.finished) throw new Error('SHA-256 already finalized');
-    const src=data instanceof Uint8Array?data:new Uint8Array(data); this.bytes += src.length;
-    let off=0;
-    while(off<src.length){
-      const take=Math.min(64-this.bufLen,src.length-off);
-      this.buf.set(src.subarray(off,off+take),this.bufLen); this.bufLen+=take; off+=take;
-      if(this.bufLen===64){ this._block(this.buf); this.bufLen=0; }
-    }
-    return this;
-  }
-  digest(){
-    if(this.finished) throw new Error('SHA-256 already finalized');
-    const bitHi=Math.floor((this.bytes*8)/0x100000000), bitLo=(this.bytes*8)>>>0;
-    this.buf[this.bufLen++]=0x80;
-    if(this.bufLen>56){ while(this.bufLen<64)this.buf[this.bufLen++]=0; this._block(this.buf); this.bufLen=0; }
-    while(this.bufLen<56)this.buf[this.bufLen++]=0;
-    const dv=new DataView(this.buf.buffer); dv.setUint32(56,bitHi,false); dv.setUint32(60,bitLo,false); this._block(this.buf);
-    this.finished=true;
-    const out=new Uint8Array(32), odv=new DataView(out.buffer); for(let i=0;i<8;i++)odv.setUint32(i*4,this.h[i],false);
-    return out;
-  }
-  hex(){ return bytesToHex(this.digest()); }
+function capabilitySnapshot(){const info={secureContext:window.isSecureContext,webusb:!!navigator.usb,showOpenFilePicker:typeof window.showOpenFilePicker==='function',userAgent:navigator.userAgent,platform:navigator.platform||'unknown'};secureEl.textContent=String(info.secureContext);secureEl.className='value '+(info.secureContext?'ok':'warn');webusbEl.textContent=String(info.webusb);webusbEl.className='value '+(info.webusb?'ok':'warn');capLog.textContent=JSON.stringify(info,null,2);setMode(info.webusb&&info.secureContext?'DIRECT CANDIDATE':'HELPER FALLBACK');return info}
+function findMscBotInterface(device){if(!device.configuration)return null;for(const iface of device.configuration.interfaces)for(const alt of iface.alternates)if(alt.interfaceClass===MSC_CLASS&&alt.interfaceSubclass===SCSI_SUBCLASS&&alt.interfaceProtocol===BOT_PROTOCOL){const inEp=alt.endpoints.find(e=>e.direction==='in'&&e.type==='bulk'),outEp=alt.endpoints.find(e=>e.direction==='out'&&e.type==='bulk');if(inEp&&outEp)return{interfaceNumber:iface.interfaceNumber,alternateSetting:alt.alternateSetting,inEndpoint:inEp.endpointNumber,outEndpoint:outEp.endpointNumber}}return null}
+class BulkOnlyTransport{
+ constructor(device,iface){this.device=device;this.iface=iface;this.tag=1}
+ _cbw(cdb,length,dirIn,tag){const b=new ArrayBuffer(31),v=new DataView(b);v.setUint32(0,0x43425355,true);v.setUint32(4,tag,true);v.setUint32(8,length,true);v.setUint8(12,dirIn?0x80:0);v.setUint8(13,0);v.setUint8(14,cdb.length);new Uint8Array(b,15,16).fill(0);new Uint8Array(b,15,cdb.length).set(cdb);return new Uint8Array(b)}
+ async _ok(r,label){if(!r||r.status!=='ok')throw new Error(`${label} USB transfer failed: ${r?.status||'unknown'}`)}
+ async command(cdb,{dataOut=null,dataInLength=0}={}){const tag=this.tag++>>>0,xfer=dataOut?dataOut.byteLength:dataInLength,dirIn=dataInLength>0;await this._ok(await this.device.transferOut(this.iface.outEndpoint,this._cbw(cdb,xfer,dirIn,tag)),'CBW');let data=null;if(dataOut)await this._ok(await this.device.transferOut(this.iface.outEndpoint,dataOut),'DATA OUT');if(dataInLength){const r=await this.device.transferIn(this.iface.inEndpoint,dataInLength);if(!r||r.status!=='ok'||!r.data)throw new Error(`DATA IN failed: ${r?.status||'unknown'}`);data=new Uint8Array(r.data.buffer,r.data.byteOffset,r.data.byteLength)}const csw=await this.device.transferIn(this.iface.inEndpoint,13);if(!csw||csw.status!=='ok'||!csw.data||csw.data.byteLength<13)throw new Error('Missing USB Mass Storage CSW.');const v=new DataView(csw.data.buffer,csw.data.byteOffset,csw.data.byteLength);if(v.getUint32(0,true)!==0x53425355)throw new Error('Invalid CSW signature.');if(v.getUint32(4,true)!==tag)throw new Error('CSW tag mismatch.');if(v.getUint8(12)!==0)throw new Error(`SCSI command failed with CSW status ${v.getUint8(12)}.`);return data}
+ async readCapacity(){const c=new Uint8Array(10);c[0]=0x25;const d=await this.command(c,{dataInLength:8}),v=new DataView(d.buffer,d.byteOffset,d.byteLength),last=v.getUint32(0,false),blockSize=v.getUint32(4,false);if(last===0xffffffff)throw new Error('Direct v1 does not support READ CAPACITY(16) media.');if(!blockSize||(blockSize&(blockSize-1))!==0)throw new Error(`Unexpected block size ${blockSize}.`);return{lastLba:last,blockSize,blocks:last+1,bytes:(last+1)*blockSize}}
+ _rw10(op,lba,blocks){if(lba<0||lba>0xffffffff||blocks<1||blocks>0xffff)throw new Error('READ/WRITE(10) range invalid.');const c=new Uint8Array(10);c[0]=op;c[2]=(lba>>>24)&255;c[3]=(lba>>>16)&255;c[4]=(lba>>>8)&255;c[5]=lba&255;c[7]=(blocks>>>8)&255;c[8]=blocks&255;return c}
+ async write10(lba,blocks,data,blockSize){void blockSize;return this.command(this._rw10(0x2a,lba,blocks),{dataOut:data})}async read10(lba,blocks,blockSize){return this.command(this._rw10(0x28,lba,blocks),{dataInLength:blocks*blockSize})}async syncCache(){const c=new Uint8Array(10);c[0]=0x35;await this.command(c)}
 }
-IncrementalSHA256.K = new Uint32Array([
-  0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
-  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
-  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
-  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
-  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
-  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
-]);
+async function selectDirectDevice(){if(!window.isSecureContext)throw new Error('Direct WebUSB requires a secure context.');if(!navigator.usb)throw new Error('navigator.usb is not exposed by this browser.');setState('DEVICE SELECTION');let device;try{device=await navigator.usb.requestDevice({filters:[{classCode:MSC_CLASS,subclassCode:SCSI_SUBCLASS,protocolCode:BOT_PROTOCOL}]})}catch(err){const e=new Error(`USB chooser ${err?.name||'Error'}: ${err?.message||err}`);e.platformCode=err?.name||'Error';throw e}await device.open();if(!device.configuration)await device.selectConfiguration(device.configurations?.[0]?.configurationValue||1);const iface=findMscBotInterface(device);if(!iface){await device.close().catch(()=>{});throw new Error('Granted device does not expose the required MSC/SCSI/Bulk-Only interface.')}try{await device.claimInterface(iface.interfaceNumber);if(iface.alternateSetting)await device.selectAlternateInterface(iface.interfaceNumber,iface.alternateSetting)}catch(err){const e=new Error(`${err?.name||'Error'} while claiming Mass Storage interface: ${err?.message||err}`);e.platformCode=err?.name||'Error';throw e}directDevice=device;directTransport=new BulkOnlyTransport(device,iface);usbIdentity.textContent=`VID ${device.vendorId?.toString(16).padStart(4,'0')} • PID ${device.productId?.toString(16).padStart(4,'0')} • ${device.productName||'USB'} • ${device.serialNumber||'no serial'}`;mscStatus.textContent='MSC BOT CLAIMED';mscStatus.className='value ok';directPreflightBtn.disabled=false;setMode('DIRECT WEBUSB');log(usbLog,'Mass Storage Bulk-Only interface claimed. No write has occurred.')}
+async function directPreflight(){if(!verifiedImage)await verifyImageBeforeFlash();if(!directTransport)await selectDirectDevice();setState('PREFLIGHT');operation.textContent='DIRECT PREFLIGHT';const cap=await directTransport.readCapacity();if(cap.bytes<verifiedImage.size)throw new Error(`USB ${fmtBytes(cap.bytes)} is smaller than image ${fmtBytes(verifiedImage.size)}.`);directCapacity=cap;targetEl.textContent=usbIdentity.textContent;capacityEl.textContent=`${fmtBytes(cap.bytes)} • ${cap.blockSize} B blocks`;checks.innerHTML='';[['source image SHA-256',true],['MSC BOT interface claimed',true],['explicit browser device grant',true],['capacity >= image',true],['full read-back required',true]].forEach(([n,ok])=>{const row=document.createElement('div');row.className='check';row.innerHTML=`<div class="mark">${ok?'✓':'×'}</div><div>${n}</div>`;checks.appendChild(row)});directReady=true;helperReady=false;setMode('DIRECT WEBUSB');updateFlashGate();log(usbLog,`Direct preflight ready: ${fmtBytes(cap.bytes)}.`)}
+function directFingerprint(){return directDevice?[directDevice.vendorId,directDevice.productId,directDevice.serialNumber||'',directDevice.productName||'',directCapacity?.bytes||0].join(':'):''}
+async function verifyDirectReadback(){if(!directTransport||!directCapacity||!verifiedImage)throw new Error('Direct read-back prerequisites missing.');const{blockSize}=directCapacity,totalBlocks=Math.ceil(verifiedImage.size/blockSize),h=new IncrementalSHA256();let lba=0,remaining=verifiedImage.size;while(lba<totalBlocks&&remaining>0){const blocks=Math.min(DIRECT_BLOCK_CHUNK,totalBlocks-lba),data=await directTransport.read10(lba,blocks,blockSize),take=Math.min(remaining,data.length);h.update(data.subarray(0,take));remaining-=take;lba+=blocks;const done=verifiedImage.size-remaining;setProgress(80+(done/verifiedImage.size)*19);operation.textContent=`VERIFYING ${fmtBytes(done)} / ${fmtBytes(verifiedImage.size)}`;await new Promise(r=>setTimeout(r,0))}if(remaining)throw new Error(`Short read-back: ${remaining} bytes missing.`);return h.hex()}
+async function flashDirect(){if(!directReady||!verifiedImage||!directTransport||!directCapacity)throw new Error('Direct preflight is not ready.');const bound={fingerprint:directFingerprint(),sha256:verifiedImage.sha256,size:verifiedImage.size,expires:Date.now()+120000};setState('ARMED');armInfo.textContent=`DIRECT ARM • ${shortHash(bound.fingerprint)} • ${shortHash(bound.sha256)}`;if(bound.fingerprint!==directFingerprint()||bound.sha256!==verifiedImage.sha256||Date.now()>bound.expires)throw new Error('Direct authorization changed or expired.');const{blockSize}=directCapacity,totalBlocks=Math.ceil(verifiedImage.size/blockSize);let lba=0,off=0;setState('FLASHING');result.textContent='WRITING';result.className='value big warn';while(lba<totalBlocks){const blocks=Math.min(DIRECT_BLOCK_CHUNK,totalBlocks-lba),byteCount=blocks*blockSize,end=Math.min(verifiedImage.size,off+byteCount),raw=new Uint8Array(await verifiedImage.file.slice(off,end).arrayBuffer()),padded=new Uint8Array(byteCount);padded.set(raw);await directTransport.write10(lba,blocks,padded,blockSize);lba+=blocks;off=end;setProgress((off/verifiedImage.size)*80);operation.textContent=`FLASHING ${fmtBytes(off)} / ${fmtBytes(verifiedImage.size)}`;await new Promise(r=>setTimeout(r,0))}await directTransport.syncCache();setState('VERIFYING');operation.textContent='FULL USB READ-BACK';const readback=await verifyDirectReadback();if(readback!==verifiedImage.sha256)throw new Error(`READ-BACK HASH MISMATCH\nexpected ${verifiedImage.sha256}\nactual   ${readback}`);setState('BOOTABLE USB VERIFIED');setProgress(100);operation.textContent='COMPLETE';result.textContent='BOOTABLE USB VERIFIED';result.className='value big ok';log(opLog,`Full read-back SHA-256 verified: ${readback}`)}
 
-async function sha256File(file, onProgress){
-  const h=new IncrementalSHA256();
-  for(let off=0;off<file.size;off+=CHUNK_BYTES){
-    const end=Math.min(file.size,off+CHUNK_BYTES);
-    h.update(new Uint8Array(await file.slice(off,end).arrayBuffer()));
-    if(onProgress) onProgress(end/file.size);
-    await new Promise(r=>setTimeout(r,0));
-  }
-  return h.hex();
-}
+function helperRoot(){return helperBase.value.trim().replace(/\/$/,'')}function helperHeaders(){return{'Content-Type':'application/json','X-Synapse-Token':helperToken.value.trim()}}async function helperCall(path,options={}){const res=await fetch(helperRoot()+path,{...options,headers:{...helperHeaders(),...(options.headers||{})}}),data=await res.json().catch(()=>({ok:false,error:{message:`HTTP ${res.status}`}}));if(!res.ok||data.ok===false)throw new Error(data?.error?.message||`HTTP ${res.status}`);return data}
+async function connectToHelper(){const res=await fetch(helperRoot()+'/v1/health'),h=await res.json();if(!res.ok||!h.ok)throw new Error('USB helper health check failed.');localStorage.setItem('synapse-usb-flash-token',helperToken.value.trim());await helperCall('/v1/capabilities');setMode('LOCAL HELPER');helperPrepare.disabled=false;helperPreflightBtn.disabled=false;log(helperLog,`Connected to ${h.service} API ${h.api_version}.`)}
+async function prepareHelperImage(){const d=await helperCall('/v1/image/prepare',{method:'POST',body:'{}'});imageStatusEl.textContent=`${d.image.filename} • ${fmtBytes(d.image.size)} • ${shortHash(d.image.sha256)}`;imageStatusEl.className='value ok'}
+async function helperPreflight(){const d=await helperCall('/v1/preflight'),p=d.preflight;if(!p.ready)throw new Error('Helper preflight is not ready.');helperPreflightData=p;targetEl.textContent=`${p.target.path} • ${p.target.model||'USB'} • ${p.target.serial||'no serial'}`;capacityEl.textContent=fmtBytes(p.target.size);imageStatusEl.textContent=`${p.image.filename} • ${fmtBytes(p.image.size)} • ${shortHash(p.image.sha256)}`;checks.innerHTML='';(p.checks||[]).forEach(c=>{const row=document.createElement('div');row.className='check';row.innerHTML=`<div class="mark">${c.ok?'✓':'×'}</div><div>${c.name}</div>`;checks.appendChild(row)});helperReady=true;directReady=false;setMode('LOCAL HELPER');setState('PREFLIGHT');updateFlashGate();log(helperLog,'Helper preflight ready; one unique removable USB was selected server-side.')}
+async function flashHelper(){if(!helperReady||!helperPreflightData)throw new Error('Helper preflight is not ready.');const a=(await helperCall('/v1/flash/arm',{method:'POST',body:'{}'})).arm;setState('ARMED');armInfo.textContent=`HELPER ARM • ${shortHash(a.target_fingerprint)} • expires ${new Date(a.expires_at*1000).toLocaleTimeString()}`;await helperCall('/v1/flash/start',{method:'POST',body:JSON.stringify({challenge_id:a.challenge_id,acknowledgement:a.acknowledgement})});setState('FLASHING');result.textContent='WRITING';result.className='value big warn';clearInterval(helperPoll);helperPoll=setInterval(async()=>{try{const s=(await helperCall('/v1/flash/status')).flash;setProgress(s.progress||0);operation.textContent=String(s.phase||'unknown').toUpperCase();if(s.phase==='verifying')setState('VERIFYING');if(s.phase==='failed'){clearInterval(helperPoll);throw new Error(s.error||'helper flash failed')}if(s.phase==='complete'){clearInterval(helperPoll);const r=(await helperCall('/v1/flash/receipt')).receipt;if(!r?.verified||!r.readback_sha256||r.readback_sha256!==r.image?.sha256)throw new Error('Helper completed without a matching full read-back receipt.');setState('BOOTABLE USB VERIFIED');setProgress(100);operation.textContent='COMPLETE';result.textContent='BOOTABLE USB VERIFIED';result.className='value big ok';log(opLog,JSON.stringify(r,null,2))}}catch(err){clearInterval(helperPoll);fail(err,'HELPER')}},POLL_MS)}
 
-async function verifyImageBeforeFlash(){
-  selectedFile=imageFile.files?.[0]||null;
-  if(!selectedFile) throw new Error('Choose the Synapse OS ISO first.');
-  if(!/\.iso$/i.test(selectedFile.name)) throw new Error('The selected image must be an .iso file.');
-  let expected=normalizeHash(expectedHash.value);
-  const hf=hashFile.files?.[0];
-  if(hf){
-    const text=await hf.text(); const parsed=normalizeHash(text);
-    if(!parsed) throw new Error('SHA-256 sidecar does not contain a 64-character digest.');
-    if(expected && expected!==parsed) throw new Error('Pasted SHA-256 and sidecar SHA-256 disagree.');
-    expected=parsed; expectedHash.value=parsed;
-  }
-  if(!expected) throw new Error('Provide the expected SHA-256 or choose the matching .sha256 sidecar.');
-  setState('IMAGE READY'); operation.textContent='HASHING SOURCE'; setProgress(0);
-  const actual=await sha256File(selectedFile,p=>setProgress(p*100));
-  if(actual!==expected) throw new Error(`SOURCE HASH MISMATCH\nexpected ${expected}\nactual   ${actual}`);
-  verifiedImage={file:selectedFile,sha256:actual,size:selectedFile.size,name:selectedFile.name};
-  imageStatusEl.textContent=`${selectedFile.name} • ${fmtBytes(selectedFile.size)} • ${shortHash(actual)}`;
-  imageStatusEl.className='value ok'; log(imageLog,`SHA-256 verified: ${actual}`); setProgress(0);
-  updateFlashGate();
-  return verifiedImage;
-}
-
-function capabilitySnapshot(){
-  const hasUSB=!!navigator.usb;
-  const info={
-    secureContext: window.isSecureContext,
-    webusb: hasUSB,
-    showOpenFilePicker: typeof window.showOpenFilePicker==='function',
-    showDirectoryPicker: typeof window.showDirectoryPicker==='function',
-    userAgent:navigator.userAgent,
-    platform:navigator.platform||'unknown'
-  };
-  secureEl.textContent=String(info.secureContext); secureEl.className='value '+(info.secureContext?'ok':'warn');
-  webusbEl.textContent=String(info.webusb); webusbEl.className='value '+(info.webusb?'ok':'warn');
-  capLog.textContent=JSON.stringify(info,null,2);
-  if(hasUSB && info.secureContext){ setMode('DIRECT CANDIDATE'); }
-  else { setMode('HELPER FALLBACK'); }
-  return info;
-}
-
-function findMscBotInterface(device){
-  const cfg=device.configuration;
-  if(!cfg) return null;
-  for(const iface of cfg.interfaces){
-    for(const alt of iface.alternates){
-      if(alt.interfaceClass===MSC_CLASS && alt.interfaceSubclass===SCSI_SUBCLASS && alt.interfaceProtocol===BOT_PROTOCOL){
-        const inEp=alt.endpoints.find(e=>e.direction==='in' && e.type==='bulk');
-        const outEp=alt.endpoints.find(e=>e.direction==='out' && e.type==='bulk');
-        if(inEp && outEp) return {interfaceNumber:iface.interfaceNumber,alternateSetting:alt.alternateSetting,inEndpoint:inEp.endpointNumber,outEndpoint:outEp.endpointNumber};
-      }
-    }
-  }
-  return null;
-}
-
-class BulkOnlyTransport {
-  constructor(device,iface){ this.device=device; this.iface=iface; this.tag=1; }
-  _cbw(cdb,length,dirIn){
-    const b=new ArrayBuffer(31),v=new DataView(b);
-    v.setUint32(0,0x43425355,true); v.setUint32(4,this.tag,true); v.setUint32(8,length,true);
-    v.setUint8(12,dirIn?0x80:0x00); v.setUint8(13,0); v.setUint8(14,cdb.length);
-    new Uint8Array(b,15,16).fill(0); new Uint8Array(b,15,cdb.length).set(cdb);
-    return new Uint8Array(b);
-  }
-  async _checkOut(result,label){ if(!result || result.status!=='ok') throw new Error(`${label} USB transfer failed: ${result?.status||'unknown'}`); }
-  async command(cdb,{dataOut=null,dataInLength=0}={}){
-    const tag=this.tag++>>>0, xfer=dataOut?dataOut.byteLength:dataInLength, dirIn=dataInLength>0;
-    const cbw=this._cbw(cdb,xfer,dirIn); new DataView(cbw.buffer).setUint32(4,tag,true);
-    await this._checkOut(await this.device.transferOut(this.iface.outEndpoint,cbw),'CBW');
-    let data=null;
-    if(dataOut) await this._checkOut(await this.device.transferOut(this.iface.outEndpoint,dataOut),'DATA OUT');
-    if(dataInLength){
-      const r=await this.device.transferIn(this.iface.inEndpoint,dataInLength);
-      if(!r || r.status!=='ok' || !r.data) throw new Error(`DATA IN USB transfer failed: ${r?.status||'unknown'}`);
-      data=new Uint8Array(r.data.buffer,r.data.byteOffset,r.data.byteLength);
-    }
-    const csw=await this.device.transferIn(this.iface.inEndpoint,13);
-    if(!csw || csw.status!=='ok' || !csw.data || csw.data.byteLength<13) throw new Error('Missing USB Mass Storage CSW.');
-    const cv=new DataView(csw.data.buffer,csw.data.byteOffset,csw.data.byteLength);
-    if(cv.getUint32(0,true)!==0x53425355) throw new Error('Invalid USB Mass Storage CSW signature.');
-    if(cv.getUint32(4,true)!==tag) throw new Error('USB Mass Storage CSW tag mismatch.');
-    const status=cv.getUint8(12); if(status!==0) throw new Error(`SCSI command failed with CSW status ${status}.`);
-    return data;
-  }
-  async readCapacity(){
-    const cdb=new Uint8Array(10); cdb[0]=0x25;
-    const data=await this.command(cdb,{dataInLength:8}); const v=new DataView(data.buffer,data.byteOffset,data.byteLength);
-    const last=v.getUint32(0,false), blockSize=v.getUint32(4,false);
-    if(last===0xffffffff) throw new Error('Direct v1 does not support READ CAPACITY(16) / >2TiB media.');
-    if(!blockSize || (blockSize & (blockSize-1))!==0) throw new Error(`Unexpected block size ${blockSize}.`);
-    return {lastLba:last,blockSize,blocks:last+1,bytes:(last+1)*blockSize};
-  }
-  _rw10(op,lba,blocks){
-    if(lba<0 || lba>0xffffffff || blocks<1 || blocks>0xffff) throw new Error('SCSI READ/WRITE(10) range invalid.');
-    const c=new Uint8Array(10); c[0]=op; c[2]=(lba>>>24)&255;c[3]=(lba>>>16)&255;c[4]=(lba>>>8)&255;c[5]=lba&255;c[7]=(blocks>>>8)&255;c[8]=blocks&255; return c;
-  }
-  async write10(lba,blocks,data,blockSize){ return this.command(this._rw10(0x2a,lba,blocks),{dataOut:data}); }
-  async read10(lba,blocks,blockSize){ return this.command(this._rw10(0x28,lba,blocks),{dataInLength:blocks*blockSize}); }
-  async syncCache(){ const c=new Uint8Array(10);c[0]=0x35;await this.command(c); }
-}
-
-async function selectDirectDevice(){
-  if(!window.isSecureContext) throw new Error('Direct WebUSB requires a secure context. Use the local helper if this page is not trusted as a secure origin.');
-  if(!navigator.usb) throw new Error('navigator.usb is not exposed by this browser. This is a platform capability boundary, not a flash failure.');
-  setState('DEVICE SELECTION');
-  let device;
-  try{
-    device=await navigator.usb.requestDevice({filters:[]});
-  }catch(err){
-    throw new Error(`USB chooser failed: ${err?.name||'Error'}: ${err?.message||err}`);
-  }
-  await device.open();
-  if(!device.configuration){
-    const value=device.configurations?.[0]?.configurationValue || 1;
-    await device.selectConfiguration(value);
-  }
-  const iface=findMscBotInterface(device);
-  if(!iface){
-    await device.close().catch(()=>{});
-    throw new Error('Selected USB device does not expose MSC class 0x08 / SCSI subclass 0x06 / BOT protocol 0x50 with bulk endpoints.');
-  }
-  try{
-    await device.claimInterface(iface.interfaceNumber);
-    if(iface.alternateSetting) await device.selectAlternateInterface(iface.interfaceNumber,iface.alternateSetting);
-  }catch(err){
-    const name=err?.name||'Error';
-    const detail=`${name}: ${err?.message||err}`;
-    mscStatus.textContent='BLOCKED BY PLATFORM'; mscStatus.className='value warn';
-    if(name==='SecurityError') throw new Error(`SecurityError while claiming USB Mass Storage interface. The browser/OS protected the storage interface: ${detail}`);
-    throw new Error(`Could not claim USB Mass Storage interface: ${detail}`);
-  }
-  directDevice=device; directTransport=new BulkOnlyTransport(device,iface);
-  usbIdentity.textContent=`VID ${device.vendorId?.toString(16).padStart(4,'0')} • PID ${device.productId?.toString(16).padStart(4,'0')} • ${device.productName||'USB'} • ${device.serialNumber||'no serial'}`;
-  mscStatus.textContent='MSC BOT CLAIMED'; mscStatus.className='value ok'; directPreflightBtn.disabled=false;
-  setMode('DIRECT WEBUSB'); log(usbLog,'Mass Storage Bulk-Only interface claimed. No write has occurred.');
-  return device;
-}
-
-async function directPreflight(){
-  if(!verifiedImage) await verifyImageBeforeFlash();
-  if(!directTransport) await selectDirectDevice();
-  setState('PREFLIGHT'); operation.textContent='DIRECT PREFLIGHT';
-  const cap=await directTransport.readCapacity(); directCapacity=cap;
-  if(cap.bytes<verifiedImage.size) throw new Error(`USB capacity ${fmtBytes(cap.bytes)} is smaller than image ${fmtBytes(verifiedImage.size)}.`);
-  targetEl.textContent=usbIdentity.textContent; capacityEl.textContent=`${fmtBytes(cap.bytes)} • ${cap.blockSize} B blocks`;
-  checks.innerHTML='';
-  [
-    ['source image SHA-256',true],
-    ['MSC BOT interface claimed',true],
-    ['removable USB explicitly selected',true],
-    ['capacity >= image',cap.bytes>=verifiedImage.size],
-    ['full read-back verification required',true]
-  ].forEach(([name,ok])=>{const row=document.createElement('div');row.className='check';row.innerHTML=`<div class="mark">${ok?'✓':'×'}</div><div>${name}</div>`;checks.appendChild(row);});
-  directReady=true; helperReady=false; updateFlashGate(); setProgress(0); log(usbLog,`Direct preflight ready: ${fmtBytes(cap.bytes)} target.`);
-}
-
-function directFingerprint(){
-  if(!directDevice) return '';
-  return [directDevice.vendorId,directDevice.productId,directDevice.serialNumber||'',directDevice.productName||'',directCapacity?.bytes||0].join(':');
-}
-
-async function flashDirect(){
-  if(!directReady || !verifiedImage || !directTransport || !directCapacity) throw new Error('Direct preflight is not ready.');
-  const bound={fingerprint:directFingerprint(),sha256:verifiedImage.sha256,size:verifiedImage.size,expires:Date.now()+120000};
-  setState('ARMED'); armInfo.textContent=`DIRECT ARM • ${shortHash(bound.fingerprint)} • ${shortHash(bound.sha256)}`;
-  if(bound.fingerprint!==directFingerprint() || bound.sha256!==verifiedImage.sha256 || Date.now()>bound.expires) throw new Error('Direct authorization changed or expired.');
-  const {blockSize}=directCapacity;
-  const totalBlocks=Math.ceil(verifiedImage.size/blockSize);
-  setState('FLASHING'); operation.textContent='DIRECT RAW WRITE'; result.textContent='WRITING'; result.className='value big warn';
-  let lba=0,sourceOffset=0;
-  while(lba<totalBlocks){
-    const blocks=Math.min(DIRECT_BLOCK_CHUNK,totalBlocks-lba);
-    const bytes=blocks*blockSize;
-    const end=Math.min(verifiedImage.size,sourceOffset+bytes);
-    const raw=new Uint8Array(await verifiedImage.file.slice(sourceOffset,end).arrayBuffer());
-    const padded=new Uint8Array(bytes); padded.set(raw);
-    await directTransport.write10(lba,blocks,padded,blockSize);
-    lba+=blocks; sourceOffset=end;
-    setProgress((sourceOffset/verifiedImage.size)*80);
-    operation.textContent=`FLASHING ${fmtBytes(sourceOffset)} / ${fmtBytes(verifiedImage.size)}`;
-    await new Promise(r=>setTimeout(r,0));
-  }
-  await directTransport.syncCache();
-  setState('VERIFYING'); operation.textContent='FULL USB READ-BACK';
-  const readback = await verifyDirectReadback();
-  if(readback!==verifiedImage.sha256) throw new Error(`READ-BACK HASH MISMATCH\nexpected ${verifiedImage.sha256}\nactual   ${readback}`);
-  setState('BOOTABLE USB VERIFIED');
-  setProgress(100); operation.textContent='COMPLETE'; result.textContent='BOOTABLE USB VERIFIED'; result.className='value big ok';
-  log(opLog,`Full read-back SHA-256 verified: ${readback}`);
-}
-
-async function verifyDirectReadback(){
-  if(!directTransport || !directCapacity || !verifiedImage) throw new Error('Direct read-back prerequisites missing.');
-  const {blockSize}=directCapacity, totalBlocks=Math.ceil(verifiedImage.size/blockSize), h=new IncrementalSHA256();
-  let lba=0,remaining=verifiedImage.size;
-  while(lba<totalBlocks && remaining>0){
-    const blocks=Math.min(DIRECT_BLOCK_CHUNK,totalBlocks-lba);
-    const data=await directTransport.read10(lba,blocks,blockSize);
-    const take=Math.min(remaining,data.length); h.update(data.subarray(0,take));
-    remaining-=take;lba+=blocks;
-    const done=verifiedImage.size-remaining; setProgress(80+(done/verifiedImage.size)*19);
-    operation.textContent=`VERIFYING ${fmtBytes(done)} / ${fmtBytes(verifiedImage.size)}`;
-    await new Promise(r=>setTimeout(r,0));
-  }
-  if(remaining!==0) throw new Error(`Short USB read-back: ${remaining} bytes missing.`);
-  return h.hex();
-}
-
-function helperRoot(){ return helperBase.value.trim().replace(/\/$/,''); }
-function helperHeaders(){ return {'Content-Type':'application/json','X-Synapse-Token':helperToken.value.trim()}; }
-async function helperCall(path,options={}){
-  const res=await fetch(helperRoot()+path,{...options,headers:{...helperHeaders(),...(options.headers||{})}});
-  const data=await res.json().catch(()=>({ok:false,error:{code:'BAD_RESPONSE',message:`HTTP ${res.status}`}}));
-  if(!res.ok || data.ok===false){const e=new Error(data?.error?.message||`HTTP ${res.status}`);e.code=data?.error?.code||`HTTP_${res.status}`;throw e;}
-  return data;
-}
-async function connectToHelper(){
-  const res=await fetch(helperRoot()+'/v1/health'); const h=await res.json(); if(!res.ok||!h.ok)throw new Error('USB helper health check failed.');
-  localStorage.setItem('synapse-usb-flash-token',helperToken.value.trim());
-  await helperCall('/v1/capabilities'); setMode('LOCAL HELPER'); helperPrepare.disabled=false; helperPreflightBtn.disabled=false; log(helperLog,`Connected to ${h.service} API ${h.api_version}.`);
-}
-async function prepareHelperImage(){ const d=await helperCall('/v1/image/prepare',{method:'POST',body:'{}'}); imageStatusEl.textContent=`${d.image.filename} • ${fmtBytes(d.image.size)} • ${shortHash(d.image.sha256)}`; imageStatusEl.className='value ok'; return d.image; }
-async function helperPreflight(){
-  const data=await helperCall('/v1/preflight'); const p=data.preflight; helperPreflightData=p;
-  if(!p.ready) throw new Error('Helper preflight is not ready.');
-  targetEl.textContent=`${p.target.path} • ${p.target.model||'USB'} • ${p.target.serial||'no serial'}`;
-  capacityEl.textContent=fmtBytes(p.target.size); imageStatusEl.textContent=`${p.image.filename} • ${fmtBytes(p.image.size)} • ${shortHash(p.image.sha256)}`;
-  checks.innerHTML=''; (p.checks||[]).forEach(c=>{const row=document.createElement('div');row.className='check';row.innerHTML=`<div class="mark">${c.ok?'✓':'×'}</div><div>${c.name}</div>`;checks.appendChild(row);});
-  helperReady=true; directReady=false; setState('PREFLIGHT'); updateFlashGate(); log(helperLog,'Helper preflight ready. Server selected one unique removable USB disk.');
-}
-async function flashHelper(){
-  if(!helperReady || !helperPreflightData) throw new Error('Helper preflight is not ready.');
-  const a=(await helperCall('/v1/flash/arm',{method:'POST',body:'{}'})).arm;
-  setState('ARMED'); armInfo.textContent=`HELPER ARM • ${shortHash(a.target_fingerprint)} • expires ${new Date(a.expires_at*1000).toLocaleTimeString()}`;
-  await helperCall('/v1/flash/start',{method:'POST',body:JSON.stringify({challenge_id:a.challenge_id,acknowledgement:a.acknowledgement})});
-  setState('FLASHING'); operation.textContent='HELPER RAW WRITE'; result.textContent='WRITING'; result.className='value big warn';
-  clearInterval(helperPoll);
-  helperPoll=setInterval(async()=>{
-    try{
-      const s=(await helperCall('/v1/flash/status')).flash; setProgress(s.progress||0); operation.textContent=String(s.phase||'unknown').toUpperCase(); log(helperLog,s.message||s.phase||'status');
-      if(s.phase==='verifying') setState('VERIFYING');
-      if(s.phase==='failed'){clearInterval(helperPoll);throw new Error(s.error||'helper flash failed');}
-      if(s.phase==='complete'){
-        clearInterval(helperPoll); const r=(await helperCall('/v1/flash/receipt')).receipt;
-        if(!r?.verified || !r.readback_sha256 || r.readback_sha256!==r.image?.sha256) throw new Error('Helper reported complete without a matching full read-back receipt.');
-        setState('BOOTABLE USB VERIFIED'); setProgress(100); operation.textContent='COMPLETE'; result.textContent='BOOTABLE USB VERIFIED'; result.className='value big ok'; log(opLog,JSON.stringify(r,null,2));
-      }
-    }catch(err){clearInterval(helperPoll);fail(err,'HELPER');}
-  },POLL_MS);
-}
-
-function updateFlashGate(){ flashBtn.disabled = !(directReady || helperReady); holdText.textContent='HOLD TO FLASH USB'; }
-function cancelHold(){ if(holdTimer)clearTimeout(holdTimer);if(holdRaf)cancelAnimationFrame(holdRaf);holdTimer=null;holdRaf=null;holdStart=0;holdFill.style.width='0%';flashBtn.classList.remove('armed'); }
-function startHold(ev){
-  if(flashBtn.disabled)return; ev.preventDefault(); cancelHold(); holdStart=performance.now(); flashBtn.classList.add('armed');
-  const tick=()=>{if(!holdStart)return;const p=Math.min(1,(performance.now()-holdStart)/HOLD_MS);holdFill.style.width=(p*100)+'%';if(p<1)holdRaf=requestAnimationFrame(tick);};tick();
-  holdTimer=setTimeout(async()=>{cancelHold();try{if(currentMode==='DIRECT WEBUSB')await flashDirect();else if(currentMode==='LOCAL HELPER')await flashHelper();else throw new Error('Select direct or helper mode first.');}catch(err){fail(err,'FLASH');}},HOLD_MS);
-}
-
-$('verifyImage').addEventListener('click',()=>verifyImageBeforeFlash().catch(err=>fail(err,'IMAGE VERIFY')));
-$('clearImage').addEventListener('click',()=>{imageFile.value='';hashFile.value='';expectedHash.value='';selectedFile=null;verifiedImage=null;directReady=false;helperReady=false;imageStatusEl.textContent='not verified';setProgress(0);updateFlashGate();});
-hashFile.addEventListener('change',async()=>{const f=hashFile.files?.[0];if(f){const h=normalizeHash(await f.text());if(h)expectedHash.value=h;}});
-probeBtn.addEventListener('click',()=>{setState('CAPABILITY CHECK');capabilitySnapshot();});
-chooseUsb.addEventListener('click',()=>selectDirectDevice().catch(err=>{log(usbLog,err.message);if(err.message.includes('SecurityError')){setMode('HELPER FALLBACK');mscStatus.textContent='SecurityError';}else fail(err,'USB SELECTION');}));
-directPreflightBtn.addEventListener('click',()=>directPreflight().catch(err=>fail(err,'DIRECT PREFLIGHT')));
-connectHelper.addEventListener('click',()=>connectToHelper().catch(err=>fail(err,'HELPER CONNECT')));
-helperPrepare.addEventListener('click',()=>prepareHelperImage().catch(err=>fail(err,'HELPER IMAGE')));
-helperPreflightBtn.addEventListener('click',()=>helperPreflight().catch(err=>fail(err,'HELPER PREFLIGHT')));
-for(const ev of ['pointerdown']) flashBtn.addEventListener(ev,startHold);
-for(const ev of ['pointerup','pointercancel','pointerleave']) flashBtn.addEventListener(ev,cancelHold);
-window.addEventListener('beforeunload',()=>{clearInterval(helperPoll); if(directDevice?.opened) directDevice.close().catch(()=>{});});
-
-capabilitySnapshot();
-setState('CAPABILITY CHECK');
+function updateFlashGate(){flashBtn.disabled=!(directReady||helperReady);holdText.textContent='HOLD TO FLASH USB'}
+function startHold(ev){if(flashBtn.disabled)return;ev.preventDefault();cancelHold();holdStart=performance.now();flashBtn.classList.add('armed');const tick=()=>{if(!holdStart)return;const p=Math.min(1,(performance.now()-holdStart)/HOLD_MS);holdFill.style.width=(p*100)+'%';if(p<1)holdRaf=requestAnimationFrame(tick)};tick();holdTimer=setTimeout(async()=>{cancelHold();try{if(currentMode==='DIRECT WEBUSB')await flashDirect();else if(currentMode==='LOCAL HELPER')await flashHelper();else throw new Error('Select direct or helper mode first.')}catch(err){fail(err,'FLASH')}},HOLD_MS)}
+$('verifyImage').addEventListener('click',()=>verifyImageBeforeFlash().catch(e=>fail(e,'IMAGE VERIFY')));$('clearImage').addEventListener('click',()=>{imageFile.value='';hashFile.value='';expectedHash.value='';verifiedImage=null;directReady=helperReady=false;imageStatusEl.textContent='not verified';setProgress(0);updateFlashGate()});hashFile.addEventListener('change',async()=>{const f=hashFile.files?.[0];if(f){const h=normalizeHash(await f.text());if(h)expectedHash.value=h}});$('probe').addEventListener('click',()=>{setState('CAPABILITY CHECK');capabilitySnapshot()});
+chooseUsb.addEventListener('click',()=>selectDirectDevice().catch(err=>{log(usbLog,err.message);if(['SecurityError','NotFoundError','NotSupportedError'].includes(err.platformCode)||err.message.includes('navigator.usb')){setMode('HELPER FALLBACK');setState('CAPABILITY CHECK');mscStatus.textContent='BLOCKED / UNAVAILABLE';mscStatus.className='value warn'}else fail(err,'USB SELECTION')}));directPreflightBtn.addEventListener('click',()=>directPreflight().catch(e=>fail(e,'DIRECT PREFLIGHT')));$('connectHelper').addEventListener('click',()=>connectToHelper().catch(e=>fail(e,'HELPER CONNECT')));helperPrepare.addEventListener('click',()=>prepareHelperImage().catch(e=>fail(e,'HELPER IMAGE')));helperPreflightBtn.addEventListener('click',()=>helperPreflight().catch(e=>fail(e,'HELPER PREFLIGHT')));flashBtn.addEventListener('pointerdown',startHold);for(const ev of['pointerup','pointercancel','pointerleave'])flashBtn.addEventListener(ev,cancelHold);window.addEventListener('beforeunload',()=>{clearInterval(helperPoll);if(directDevice?.opened)directDevice.close().catch(()=>{})});
+capabilitySnapshot();setState('CAPABILITY CHECK');
 })();
 </script>
 </body>
