@@ -1,0 +1,31 @@
+SYNAPSE OS PHONE → USB RELEASE CHECKLIST
+========================================
+
+Download from the latest release:
+https://github.com/NavisWORLD/Synapse-os-/releases/latest
+
+SMALL KIT BUNDLE
+----------------
+SynapseOS-Phone-USB-Kit.zip
+
+LARGE INSTALLER PARTS — DOWNLOAD EVERY MATCHING FILE
+----------------------------------------------------
+SynapseOS-Nebula-amd64.iso.part-*
+
+VERIFY / REASSEMBLY FILES
+-------------------------
+SynapseOS-Nebula-amd64.iso.parts.sha256
+SynapseOS-Nebula-amd64.iso.sha256
+reassemble-usb-installer.ps1
+reassemble-usb-installer.sh
+
+EXPECTED RECONSTRUCTED IMAGE
+----------------------------
+SynapseOS-Nebula-amd64.iso
+
+IMPORTANT
+---------
+Keep all ISO parts in one folder and do not rename them.
+Copying these files to a USB is only staging/transfer.
+It does not create bootable media.
+The reconstructed ISO must be flashed as a raw disk image before the USB can boot Synapse OS.
