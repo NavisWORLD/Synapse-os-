@@ -47,7 +47,7 @@ console.log(h.hex());
 
     def test_chunk_boundary_vector(self) -> None:
         self.assertEqual(
-            "f7c3bc1d808e04732adf679965ccc34ca7ae3441f938e6053d7b7b61545ab5be",
+            "2816597888e4a0d3a36b82b83316ab32680eb8f00f8cd3b904d681246d285a0e",
             self._hash([b"a" * 63, b"a", b"a" * 36]),
         )
 
