@@ -35,7 +35,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             build-essential cmake ninja-build rustc cargo \
-            cpio debootstrap rsync xorriso squashfs-tools curl \
+            cpio debootstrap rsync xorriso squashfs-tools curl zip \
             qemu-system-x86 qemu-utils ovmf \
             parted dosfstools e2fsprogs grub-efi-amd64-bin grub2-common \
             util-linux udev
@@ -152,6 +152,22 @@ jobs:
           test -n "$ISO"
           rm -rf release
           bash scripts/package-usb-release.sh "$ISO" release
+
+          rm -rf release/phone-kit
+          mkdir -p release/phone-kit
+          cp -a PHONE_USB_KIT/. release/phone-kit/
+          cp USB_INSTALL.md release/phone-kit/USB_INSTALL.md
+          cp release/SynapseOS-Nebula-amd64.iso.sha256 release/phone-kit/
+          cp release/SynapseOS-Nebula-amd64.iso.parts.sha256 release/phone-kit/
+          cp release/reassemble-usb-installer.sh release/phone-kit/
+          cp release/reassemble-usb-installer.ps1 release/phone-kit/
+          (
+            cd release/phone-kit
+            zip -qr ../SynapseOS-Phone-USB-Kit.zip .
+          )
+          sha256sum release/SynapseOS-Phone-USB-Kit.zip > release/SynapseOS-Phone-USB-Kit.zip.sha256
+          test -s release/SynapseOS-Phone-USB-Kit.zip
+          test -s release/SynapseOS-Phone-USB-Kit.zip.sha256
           ls -lh release/
 
       - name: Resolve release tag
@@ -200,14 +216,9 @@ jobs:
 
           `SynapseOS-Nebula-amd64.iso.part-000`, `part-001`, ...
 
-          Download every ISO part plus:
+          For phone-first staging, download `SynapseOS-Phone-USB-Kit.zip` plus every ISO part. The kit ZIP contains the offline start page, checklist, checksums, reassembly helpers, and full USB guide.
 
-          - `SynapseOS-Nebula-amd64.iso.sha256`
-          - `SynapseOS-Nebula-amd64.iso.parts.sha256`
-          - `reassemble-usb-installer.ps1` on Windows, or
-          - `reassemble-usb-installer.sh` on macOS/Linux.
-
-          Run the helper beside the downloaded parts. It verifies every part, rebuilds `SynapseOS-Nebula-amd64.iso`, and verifies the final ISO SHA-256 before you flash it.
+          The large ISO parts are intentionally separate. Copying the files onto a USB is only staging; the reconstructed ISO must still be flashed as a raw disk image before the USB can boot.
 
           See `USB_INSTALL.md` in the repository for Rufus, balenaEtcher, Linux/macOS `dd`, GALLOP, and GENESIS instructions.
           """
@@ -227,6 +238,8 @@ jobs:
             release/SynapseOS-Nebula-amd64.iso.parts.sha256
             release/reassemble-usb-installer.sh
             release/reassemble-usb-installer.ps1
+            release/SynapseOS-Phone-USB-Kit.zip
+            release/SynapseOS-Phone-USB-Kit.zip.sha256
           )
 
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -259,5 +272,7 @@ jobs:
             release/SynapseOS-Nebula-amd64.iso.parts.sha256
             release/reassemble-usb-installer.sh
             release/reassemble-usb-installer.ps1
+            release/SynapseOS-Phone-USB-Kit.zip
+            release/SynapseOS-Phone-USB-Kit.zip.sha256
             release/RELEASE_NOTES.md
           if-no-files-found: warn
