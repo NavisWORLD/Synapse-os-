@@ -1,1 +1,0 @@
-TDD red phase: flasher tests are intentionally committed before implementation.
