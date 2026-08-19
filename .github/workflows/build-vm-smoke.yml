@@ -59,7 +59,7 @@ jobs:
       - name: Verify ISO checksum
         run: sha256sum -c out/*.iso.sha256
 
-      - name: Verify generated live filesystem and GENESIS payload
+      - name: Verify generated live filesystem, GENESIS, and USB flasher payload
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -75,6 +75,7 @@ jobs:
             usr/local/bin/synapse \
             usr/local/bin/synapse-control \
             usr/local/bin/synapse-genesis-writer \
+            usr/local/bin/synapse-usb-flash-server \
             usr/bin/plasmashell \
             usr/bin/calamares \
             usr/bin/pipewire \
@@ -85,10 +86,13 @@ jobs:
             usr/lib/synapse/python/synapse/genesis.py \
             usr/lib/synapse/python/synapse/genesis_runtime.py \
             usr/lib/synapse/python/synapse/genesis_writer.py \
+            usr/lib/synapse/python/synapse/usb_flash.py \
+            usr/lib/synapse/python/synapse/usb_flash_server.py \
             usr/include/synapse/synapse.h \
             usr/share/synapse/hardware/profiles.json \
             usr/share/synapse/phone-bootstrap.html \
             usr/share/synapse/GENESIS.html \
+            usr/share/synapse/FLASH_USB.html \
             usr/share/doc/synapse-os/LICENSE \
             usr/share/doc/synapse-os/NOTICE \
             usr/share/doc/synapse-os/COMMERCIAL-LICENSING.md \
@@ -106,11 +110,15 @@ jobs:
           test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/genesis.py
           test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/genesis_runtime.py
           test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/genesis_writer.py
+          test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/usb_flash.py
+          test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/usb_flash_server.py
           test -s /tmp/synapse-root/usr/include/synapse/synapse.h
           test -s /tmp/synapse-root/usr/share/synapse/hardware/profiles.json
           test -s /tmp/synapse-root/usr/share/synapse/phone-bootstrap.html
           test -s /tmp/synapse-root/usr/share/synapse/GENESIS.html
+          test -s /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           test -s /tmp/synapse-root/usr/local/bin/synapse-genesis-writer
+          test -x /tmp/synapse-root/usr/local/bin/synapse-usb-flash-server
           test -s /tmp/synapse-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
           test -s /tmp/synapse-image/genesis-manifest.json
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/LICENSE
@@ -131,6 +139,13 @@ jobs:
           grep -q 'HOLD TO INSTALL SYNAPSE OS' /tmp/synapse-root/usr/share/synapse/GENESIS.html
           grep -q '/v2/install/arm' /tmp/synapse-root/usr/share/synapse/GENESIS.html
           grep -q '/v2/install/start' /tmp/synapse-root/usr/share/synapse/GENESIS.html
+          grep -q 'HOLD TO FLASH USB' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
+          grep -q 'BOOTABLE USB VERIFIED' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
+          grep -q 'navigator.usb' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
+          grep -q 'DEFAULT_PORT = 8788' /tmp/synapse-root/usr/lib/synapse/python/synapse/usb_flash_server.py
+          ! grep -q '/shell' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
+          ! grep -q '/exec' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
+          test ! -e /tmp/synapse-root/etc/systemd/system/multi-user.target.wants/synapse-usb-flash.service
           python3 scripts/genesis_manifest.py verify \
             --manifest /tmp/synapse-image/genesis-manifest.json \
             --image /tmp/synapse-image/filesystem.squashfs
