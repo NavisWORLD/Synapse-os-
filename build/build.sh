@@ -102,12 +102,20 @@ fi
 mkdir -p config/includes.chroot config/hooks/live
 rsync -a "$REPO_ROOT/rootfs/" config/includes.chroot/
 chmod 0755 config/includes.chroot/usr/local/bin/synflow
+chmod 0755 config/includes.chroot/usr/local/bin/synapse-usb-flash-server
 mkdir -p config/includes.chroot/usr/lib/synapse/python
 rsync -a "$REPO_ROOT/src/synapse" config/includes.chroot/usr/lib/synapse/python/
 mkdir -p config/includes.chroot/usr/src/synapse-sdk-c
 rsync -a "$REPO_ROOT/sdk/c/" config/includes.chroot/usr/src/synapse-sdk-c/
 mkdir -p config/includes.chroot/usr/share/synapse/hardware
 cp "$REPO_ROOT/hardware/profiles.json" config/includes.chroot/usr/share/synapse/hardware/profiles.json
+
+# Keep the installed phone USB flasher byte-identical to the source control
+# surface used for phone testing. The privileged helper is not auto-enabled;
+# this only ships the UI and explicit owner-started launcher.
+mkdir -p config/includes.chroot/usr/share/synapse
+install -m 0644 "$REPO_ROOT/phone-bootstrap/FLASH_USB.html" \
+  config/includes.chroot/usr/share/synapse/FLASH_USB.html
 
 # Ship the controlling first-party license and provenance notices inside every
 # generated Synapse OS image. Third-party package licenses remain available
