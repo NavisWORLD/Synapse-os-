@@ -2,6 +2,8 @@
 
 This guide covers the complete amd64/UEFI USB installation path for Synapse OS Nebula, including the ASUS Chromebook CX1700CKA / GALLOP GENESIS target.
 
+For the new phone-first media writer and the direct WebUSB capability experiment, see [`FLASH_USB.md`](FLASH_USB.md). `FLASH_USB.html` can probe direct browser USB Mass Storage access and, when the platform blocks it, use the fixed-purpose authenticated local helper on port `8788`. It does not report a successful bootable USB until the source image and full USB read-back SHA-256 both match.
+
 The release pipeline builds and verifies the complete ISO, then publishes it in ordered release parts so every GitHub Release asset stays below GitHub's per-file size limit. The release package contains:
 
 ```text
