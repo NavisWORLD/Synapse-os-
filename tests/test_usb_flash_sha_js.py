@@ -33,6 +33,16 @@ console.log(h.hex());
         self.assertEqual(0, proc.returncode, proc.stderr)
         return proc.stdout.strip()
 
+    def test_complete_browser_script_has_valid_javascript_syntax(self) -> None:
+        source = HTML.read_text(encoding="utf-8")
+        start = source.index("<script>") + len("<script>")
+        end = source.index("</script>", start)
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "flash-usb.js"
+            path.write_text(source[start:end], encoding="utf-8")
+            proc = subprocess.run(["node", "--check", str(path)], capture_output=True, text=True, timeout=10)
+        self.assertEqual(0, proc.returncode, proc.stderr)
+
     def test_empty_vector(self) -> None:
         self.assertEqual(
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
