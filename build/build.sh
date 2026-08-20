@@ -110,6 +110,13 @@ rsync -a "$REPO_ROOT/sdk/c/" config/includes.chroot/usr/src/synapse-sdk-c/
 mkdir -p config/includes.chroot/usr/share/synapse/hardware
 cp "$REPO_ROOT/hardware/profiles.json" config/includes.chroot/usr/share/synapse/hardware/profiles.json
 
+# Apple Intel support is additive and currently limited to the amd64 live image.
+# It reuses the existing GENESIS writer rather than introducing a second disk writer.
+if [[ "$ARCH" == "amd64" ]]; then
+  mkdir -p config/includes.chroot/usr/share/synapse/apple-intel
+  rsync -a "$REPO_ROOT/APPLE_INTEL/" config/includes.chroot/usr/share/synapse/apple-intel/
+fi
+
 # Keep the installed phone USB flasher byte-identical to the source control
 # surface used for phone testing. The privileged helper is not auto-enabled;
 # this only ships the UI and explicit owner-started launcher.
