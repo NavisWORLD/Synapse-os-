@@ -42,8 +42,8 @@ def test_broker_timer_is_not_enabled_by_default():
     assert "systemctl enable synapse-zeref-ibm-broker.timer" not in hook
 
 
-def test_default_config_points_to_local_persistent_qc67_assets():
+def test_default_config_points_to_verified_qc67_assets():
     config = (ROOT / "rootfs/etc/synapse/zeref.json").read_text(encoding="utf-8")
-    assert "/var/lib/synapse/zeref/qc67/serving/cosmos_native_server.py" in config
-    assert "/var/lib/synapse/zeref/qc67/qc67_cosmo.pt" in config
+    assert "/var/lib/synapse/zeref/qc67/serving/cosmos_serve.py" in config
+    assert "/var/lib/synapse/zeref/qc67/weights/spark_cst.pt" in config
     assert "/run/synapse/zeref/ibm-receipt.json" in config
