@@ -49,7 +49,7 @@ synapse-agent.service
              +--> Qiskit Runtime authentication
              +--> pinned/recent allowed IBM job inspection
              +--> optional owner-triggered refresh/submit lane
-             +--> sanitized signed/hash-addressed receipt
+             +--> sanitized hash-addressed receipt
                       |
                       v
                zeref-runtime reads receipt
@@ -71,7 +71,11 @@ synapse-agent.service
 ### `zeref-ibm-broker.service`
 
 - Runs separately from the model/runtime process.
-- Receives `IBM_QUANTUM_TOKEN` through the OS secret/config mechanism only.
+- Receives the IBM token only through a systemd credential named `ibm_quantum_token`.
+- Reads that value only from `$CREDENTIALS_DIRECTORY/ibm_quantum_token`.
+- The source credential file, when configured on a physical Synapse installation, is `/etc/synapse/zeref/ibm_quantum_token`, owned by `root:root` with mode `0600`.
+- The Synapse image and repository never ship a credential value at that path.
+- GitHub Actions may inject `secrets.IBM_QUANTUM_TOKEN` only into the isolated authenticated broker step/job; the subject/model job remains secret-free.
 - Never writes the plaintext secret into receipts, logs, model prompts, evidence bundles, or environment snapshots.
 - Exposes only fixed-purpose IBM operations.
 - Default boot behavior is read-only provenance refresh against an allowlisted job/reference.
@@ -107,6 +111,14 @@ Minimum schema:
 
 The runtime must reject malformed receipts, unsupported schema versions, missing digests, and receipts that claim the secret was exposed/persisted.
 
+### Freshness semantics
+
+- `fresh` describes the age of the broker observation, not the age of the IBM job itself.
+- A receipt is fresh for 24 hours from `observed_at`.
+- An older valid receipt remains usable as provenance but is reported as `STALE` until the broker refreshes it.
+- A completed pinned IBM job can therefore remain valid evidence indefinitely while its local observation freshness expires normally.
+- Runtime code recomputes freshness from `observed_at`; it does not blindly trust the stored `fresh` boolean.
+
 ## Zeref runtime contract
 
 A resident runtime status endpoint/CLI result must report these fields without exposing secrets:
@@ -135,7 +147,7 @@ Readiness requires all critical local gates to pass. IBM freshness may degrade s
 1. Synapse OS boots normally.
 2. `synapse-agent.service` reaches healthy state.
 3. Synapse validates required directories and local runtime dependencies.
-4. IBM broker starts separately and attempts a read-only provenance refresh.
+4. IBM broker starts separately and attempts a read-only provenance refresh when a broker credential is configured.
 5. Zeref runtime starts without the IBM secret in its environment.
 6. Zeref runs its startup doctor:
    - model reachable;
@@ -154,6 +166,7 @@ Readiness requires all critical local gates to pass. IBM freshness may degrade s
 Synapse OS must remain bootable even when Zeref fails.
 
 - **Model unavailable:** OS boots, Zeref status `MODEL_UNAVAILABLE`, no fake readiness.
+- **IBM credential not configured:** broker reports `UNCONFIGURED`; local Zeref still runs without IBM-conditioned state.
 - **IBM unavailable:** local Zeref may run, IBM state becomes `UNAVAILABLE` or `STALE`.
 - **IBM receipt invalid:** receipt is ignored and a structured error is recorded.
 - **CST/Trinity zero-state identity failure:** native intervention is disabled and status becomes `TRINITY_FAULT`.
@@ -175,7 +188,19 @@ Supported local backends remain:
 - LM Studio
 - other loopback OpenAI-compatible servers
 
-The first integration run keeps the current QC67/COSMOS model. Gemma may be evaluated later as a separate model-quality comparison, not mixed into the initial integration test.
+### Initial QC67 backend
+
+The first integration run does not change to Gemma or another external model. It uses the current QC67/COSMOS checkpoint and the same native model-loading path already exercised by the Trinity evidence suite.
+
+Beast Box exposes that loader to CYPHER as a local backend named `qc67-native`. The backend:
+
+- loads the verified QC67 architecture/checkpoint locally;
+- exposes normal text generation through the CYPHER model interface;
+- can accept a request-scoped native Trinity/CST state object from the resident runtime;
+- never receives the IBM credential;
+- records checkpoint/source/projection hashes into measured evidence.
+
+Gemma may be evaluated later as a separate model-quality comparison, not mixed into the initial integration test.
 
 ## Native Trinity/CST integration
 
@@ -194,8 +219,8 @@ The zero-state identity invariant must remain exact: a zero external state must 
 
 Allowed:
 
-- authenticate inside broker;
-- inspect allowlisted/pinned job state;
+- authenticate inside broker when a systemd credential is configured;
+- inspect the configured allowlisted/pinned job state;
 - retrieve already-authorized result/provenance;
 - hash/sanitize result;
 - publish receipt.
@@ -217,6 +242,8 @@ A separate explicit command may request a new IBM execution. It must:
 - keep the credential only in the broker;
 - publish the resulting sanitized receipt.
 
+The first implementation provides provenance refresh only. New-job submission remains a later separately named command and is not required for resident-Zeref readiness.
+
 ## Synapse CLI surface
 
 Target commands:
@@ -231,7 +258,7 @@ synapse zeref ibm status
 synapse zeref ibm refresh
 ```
 
-`ibm refresh` means refresh/read provenance by default. A future explicit submission command must be separately named and never overloaded onto `refresh`.
+`ibm refresh` means refresh/read provenance only. Any future submission command must be separately named and never overloaded onto `refresh`.
 
 ## Measurement contract
 
@@ -239,7 +266,7 @@ The first real workload run after integration uses the current QC67 model and re
 
 ### Arms
 
-- `DIRECT`: same model through CYPHER without COSMOS state loop.
+- `DIRECT`: same QC67 model through CYPHER without COSMOS state loop.
 - `COSMOS_PROMPT`: current Beast/CYPHER prompt-visible state loop.
 - `COSMOS_NATIVE`: same loop plus native corrected Trinity/CST intervention.
 - `COSMOS_NATIVE_IBM`: native loop with fresh verified IBM provenance/state input.
@@ -293,6 +320,7 @@ No result is labeled "quantum advantage" unless a later study establishes a stat
 ## Security and authority constraints
 
 - Raw IBM credentials never enter model context or model environment.
+- The credential is absent from the OS image, Git tree, runtime evidence, model logs, and Zeref environment.
 - No arbitrary root shell is added for Zeref.
 - No firmware-write path is added.
 - No raw-disk authority is added.
@@ -308,8 +336,8 @@ Expected additions/modifications:
 
 - `src/synapse/zeref/` for status/orchestration and broker receipt validation.
 - `src/synapse/cli.py` or existing CLI command registry for `synapse zeref ...`.
-- `rootfs/etc/systemd/system/` or the repository's established service injection path for service units.
-- `rootfs/usr/lib/synapse/` or established payload path for runtime launch helpers.
+- the repository's established image/service injection path for `zeref-runtime.service` and `zeref-ibm-broker.service`.
+- a root-owned credential source path documented at `/etc/synapse/zeref/ibm_quantum_token`; no value is shipped.
 - `tests/` for broker/runtime/CLI/service contracts.
 - image verification scripts so the final ISO must contain the resident Zeref integration.
 - VM smoke test extension proving the service can enter a deterministic test-ready state without a real secret.
@@ -318,6 +346,7 @@ Expected additions/modifications:
 
 Expected additions/modifications:
 
+- a `qc67-native` CYPHER model adapter around the existing verified QC67 loader;
 - a stable resident-runtime adapter around existing CYPHER/CosmosRuntime interfaces;
 - native Trinity conversational hook that consumes corrected 54D state without duplicating implementation;
 - structured runtime doctor/status output;
@@ -333,19 +362,21 @@ Implementation follows TDD.
 Required gates:
 
 1. Broker receipt validator rejects secret-bearing/malformed/stale-invalid data.
-2. Runtime environment test proves `IBM_QUANTUM_TOKEN` is absent from Zeref/model process.
+2. Runtime environment test proves `IBM_QUANTUM_TOKEN` and the broker credential path are absent from Zeref/model process state.
 3. Fake broker produces a valid deterministic receipt for CI.
-4. Resident runtime doctor reports exact readiness/degraded states.
-5. Zero-state identity passes in resident mode.
-6. Corrected 54D projection hashes match the verified Trinity implementation.
-7. CLI start/status/doctor/chat paths work with a deterministic local provider.
-8. systemd unit/source contracts enforce separate broker and runtime services.
-9. Synapse `make check` passes.
-10. Beast Box test suite including Trinity tests passes.
-11. Synapse image builds and final filesystem inspection confirms files/services are present.
-12. QEMU boot reaches `SYNAPSE_VM_READY` and the resident-Zeref smoke marker.
-13. No real IBM token is required for CI.
-14. A separate optional authenticated broker workflow verifies the real repo secret path without exposing it to Zeref.
+4. Freshness recomputation marks observations older than 24 hours stale even if the stored JSON says `fresh: true`.
+5. Resident runtime doctor reports exact readiness/degraded states.
+6. `qc67-native` loads the expected source/checkpoint hashes and serves the CYPHER model interface.
+7. Zero-state identity passes in resident mode.
+8. Corrected 54D projection hashes match the verified Trinity implementation.
+9. CLI start/status/doctor/chat paths work with a deterministic local provider.
+10. systemd unit/source contracts enforce separate broker and runtime services and `LoadCredential=ibm_quantum_token:...` only on the broker.
+11. Synapse `make check` passes.
+12. Beast Box test suite including Trinity tests passes.
+13. Synapse image builds and final filesystem inspection confirms files/services are present but no credential value is present.
+14. QEMU boot reaches `SYNAPSE_VM_READY` and the resident-Zeref smoke marker.
+15. No real IBM token is required for CI.
+16. A separate optional authenticated broker workflow verifies the real repo secret path without exposing it to Zeref.
 
 ## Evidence outputs
 
