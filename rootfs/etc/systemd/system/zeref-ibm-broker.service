@@ -1,0 +1,27 @@
+[Unit]
+Description=Synapse Zeref IBM Quantum provenance broker
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/synapse/secrets/ibm-quantum-token
+
+[Service]
+Type=oneshot
+Environment=PYTHONPATH=/usr/lib/synapse/python
+LoadCredential=IBM_QUANTUM_TOKEN:/etc/synapse/secrets/ibm-quantum-token
+ExecStart=/usr/local/lib/synapse/zeref-ibm-broker
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+ReadWritePaths=/var/lib/synapse/zeref/ibm
+
+[Install]
+WantedBy=multi-user.target
