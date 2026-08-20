@@ -29,3 +29,12 @@ class CoreTests(unittest.TestCase):
         result = core.benchmark(size_mb=1)
         self.assertGreater(result["sha256_mib_s"], 0)
         self.assertGreater(result["temp_write_mib_s"], 0)
+
+    @mock.patch("synapse.core.Path.is_socket", return_value=False)
+    def test_doctor_includes_fail_soft_resident_zeref_section(self, _):
+        result = core.doctor()
+        self.assertIn("zeref", result)
+        self.assertIn(result["zeref"]["state"], {"OFFLINE", "DEGRADED", "READY", "READY_NO_IBM", "READY_STALE_IBM"})
+        self.assertFalse(result["zeref"]["socket_reachable"])
+        self.assertIn("credential_exposed_to_subject", result["zeref"])
+        self.assertFalse(result["zeref"]["credential_exposed_to_subject"])
