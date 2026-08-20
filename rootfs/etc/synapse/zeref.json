@@ -2,7 +2,7 @@
   "socket": "/run/synapse/zeref/zeref.sock",
   "receipt": "/run/synapse/zeref/ibm-receipt.json",
   "runtime_config": "/var/lib/synapse/zeref/beastbox.json",
-  "native_server": "/var/lib/synapse/zeref/qc67/serving/cosmos_native_server.py",
-  "checkpoint": "/var/lib/synapse/zeref/qc67/qc67_cosmo.pt",
+  "native_server": "/var/lib/synapse/zeref/qc67/serving/cosmos_serve.py",
+  "checkpoint": "/var/lib/synapse/zeref/qc67/weights/spark_cst.pt",
   "max_new_tokens": 192
 }
