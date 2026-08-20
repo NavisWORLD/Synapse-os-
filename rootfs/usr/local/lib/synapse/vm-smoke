@@ -89,6 +89,29 @@ check_file "wallpaper" /usr/share/wallpapers/SynapseOS/contents/images/3840x2160
 check_file "sddm-theme" /usr/share/sddm/themes/synapse-nebula/Main.qml
 check_file "plymouth-theme" /usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth
 check_file "grub-theme" /usr/share/grub/themes/synapse-nebula/theme.txt
+
+# Resident Zeref integration is certified independently of a real IBM secret.
+# The VM requires the runtime, model, service boundaries, and fail-soft status
+# command to exist. A real credential remains an external owner provision.
+check_cmd "full-zeref-command" full-zeref
+run_check "zeref-python-package" python3 -c 'import sys; sys.path.insert(0, "/usr/lib/synapse/python"); import synapse.zeref; import beastbox.full_zeref'
+run_check "zeref-torch" python3 -c 'import torch; assert torch.__version__'
+check_file "zeref-runtime-unit" /usr/lib/systemd/user/zeref-runtime.service
+check_file "zeref-ibm-broker-unit" /etc/systemd/system/zeref-ibm-broker.service
+check_file "zeref-runtime-config" /etc/synapse/zeref.json
+check_file "zeref-ibm-config" /etc/synapse/zeref-ibm.json
+check_file "zeref-provenance" /usr/share/synapse/zeref/provenance.json
+check_file "zeref-native-server" /usr/share/synapse/zeref/qc67/serving/cosmos_serve.py
+check_file "zeref-checkpoint" /usr/share/synapse/zeref/qc67/weights/spark_cst.pt
+check_file "zeref-runtime-launcher" /usr/local/lib/synapse/zeref-runtime
+check_file "zeref-broker-launcher" /usr/local/lib/synapse/zeref-ibm-broker
+run_check "zeref-runtime-global-enable" test -L /etc/systemd/user/default.target.wants/zeref-runtime.service
+run_check "zeref-broker-enable" test -L /etc/systemd/system/multi-user.target.wants/zeref-ibm-broker.service
+run_check "zeref-status-fail-soft" synapse zeref status
+run_check "zeref-no-embedded-secret" sh -c '! test -e /etc/synapse/secrets/ibm-quantum-token'
+
+echo "SYNAPSE_ZEREF_READY"
+
 run_check "synapse-status" synapse status
 run_check "synapse-doctor" synapse doctor
 run_check "synapse-agent" systemctl is-active --quiet synapse-agent.service
