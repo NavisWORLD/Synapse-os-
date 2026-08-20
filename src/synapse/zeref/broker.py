@@ -52,7 +52,10 @@ def _atomic_json(path: str | Path, value: dict[str, Any]) -> None:
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
-        os.chmod(temp_name, 0o600)
+        # The receipt is intentionally sanitized and contains no credential. It
+        # must be readable by the unprivileged resident runtime while the real
+        # token remains private inside systemd's credential directory.
+        os.chmod(temp_name, 0o644)
         os.replace(temp_name, target)
     finally:
         try:
