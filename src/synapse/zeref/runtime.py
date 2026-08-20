@@ -17,9 +17,9 @@ DEFAULT_CONFIG = Path("/etc/synapse/zeref.json")
 @dataclass(frozen=True)
 class ResidentConfig:
     full_zeref: str = "full-zeref"
-    beastbox_config: str = "/var/lib/synapse/zeref/beastbox.json"
-    native_server: str = "/var/lib/synapse/zeref/qc67/serving/cosmos_serve.py"
-    checkpoint: str = "/var/lib/synapse/zeref/qc67/weights/spark_cst.pt"
+    beastbox_config: str = "~/.local/state/synapse-zeref/beastbox.json"
+    native_server: str = "/usr/share/synapse/zeref/qc67/serving/cosmos_serve.py"
+    checkpoint: str = "/usr/share/synapse/zeref/qc67/weights/spark_cst.pt"
     ibm_receipt: str = "/var/lib/synapse/zeref/ibm/latest.json"
     socket_path: str = ""
     max_new_tokens: int = 192
@@ -52,8 +52,7 @@ class ResidentConfig:
 
 def sanitized_subject_env(environ: Mapping[str, str] | None = None) -> dict[str, str]:
     source = os.environ if environ is None else environ
-    clean = {str(k): str(v) for k, v in source.items() if str(k) != "IBM_QUANTUM_TOKEN"}
-    return clean
+    return {str(k): str(v) for k, v in source.items() if str(k) != "IBM_QUANTUM_TOKEN"}
 
 
 def build_full_zeref_argv(
@@ -69,13 +68,13 @@ def build_full_zeref_argv(
         config.full_zeref,
         command,
         "--config",
-        config.beastbox_config,
+        str(Path(config.beastbox_config).expanduser()),
         "--native-server",
-        config.native_server,
+        str(Path(config.native_server).expanduser()),
         "--checkpoint",
-        config.checkpoint,
+        str(Path(config.checkpoint).expanduser()),
         "--ibm-receipt",
-        config.ibm_receipt,
+        str(Path(config.ibm_receipt).expanduser()),
         "--max-new-tokens",
         str(int(config.max_new_tokens)),
     ]
@@ -114,7 +113,7 @@ def _binary_available(binary: str) -> bool:
 
 
 def _receipt_state(path: str | Path, *, now: int | float | None = None) -> tuple[str, dict[str, Any] | None, str | None]:
-    source = Path(path)
+    source = Path(path).expanduser()
     if not source.exists():
         return "missing", None, None
     try:
@@ -164,7 +163,10 @@ def resident_request(socket_path: str | Path, request: Mapping[str, Any], *, tim
 def zeref_status(config: ResidentConfig, *, now: int | float | None = None) -> dict[str, Any]:
     sock = config.resolved_socket()
     receipt_state, receipt, receipt_error = _receipt_state(config.ibm_receipt, now=now)
-    model_available = _binary_available(config.full_zeref)
+    command_available = _binary_available(config.full_zeref)
+    source_available = Path(config.native_server).expanduser().is_file()
+    checkpoint_available = Path(config.checkpoint).expanduser().is_file()
+    model_available = bool(command_available and source_available and checkpoint_available)
     socket_ready = sock.exists() and sock.is_socket()
     state = derive_readiness(
         model_available=model_available,
@@ -189,7 +191,13 @@ def zeref_status(config: ResidentConfig, *, now: int | float | None = None) -> d
         "state": state,
         "ready": state == "READY",
         "integration_ready": True,
-        "model": {"command": config.full_zeref, "available": model_available},
+        "model": {
+            "command": config.full_zeref,
+            "command_available": command_available,
+            "native_server_available": source_available,
+            "checkpoint_available": checkpoint_available,
+            "available": model_available,
+        },
         "socket": {"path": str(sock), "ready": socket_ready},
         "ibm": ibm,
         "config": {k: v for k, v in asdict(config).items() if k != "socket_path"},
