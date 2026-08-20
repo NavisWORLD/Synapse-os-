@@ -105,8 +105,8 @@ def load_config(path: str | Path = DEFAULT_CONFIG) -> dict[str, Any]:
             "socket": str(DEFAULT_SOCKET),
             "receipt": str(DEFAULT_RECEIPT),
             "runtime_config": "/var/lib/synapse/zeref/beastbox.json",
-            "native_server": "/var/lib/synapse/zeref/qc67/serving/cosmos_native_server.py",
-            "checkpoint": "/var/lib/synapse/zeref/qc67/qc67_cosmo.pt",
+            "native_server": "/var/lib/synapse/zeref/qc67/serving/cosmos_serve.py",
+            "checkpoint": "/var/lib/synapse/zeref/qc67/weights/spark_cst.pt",
             "max_new_tokens": 192,
         }
     value = json.loads(config_path.read_text(encoding="utf-8"))
