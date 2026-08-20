@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
 import tempfile
 import unittest
 from pathlib import Path
 
+from synapse.cli import build_parser
 from synapse.zeref.receipt import load_receipt, validate_receipt
 from synapse.zeref.runtime import (
     ResidentConfig,
@@ -91,6 +91,21 @@ class ZerefRuntimeTests(unittest.TestCase):
         self.assertEqual(derive_readiness(model_available=True, receipt_state="stale", socket_ready=True), "IBM_STALE")
         self.assertEqual(derive_readiness(model_available=True, receipt_state="fresh", socket_ready=False), "STOPPED")
         self.assertEqual(derive_readiness(model_available=True, receipt_state="fresh", socket_ready=True), "READY")
+
+
+class ZerefCliTests(unittest.TestCase):
+    def test_parser_exposes_full_zeref_surface(self):
+        parser = build_parser()
+        self.assertEqual(parser.parse_args(["zeref", "status"]).zeref_command, "status")
+        self.assertEqual(parser.parse_args(["zeref", "doctor"]).zeref_command, "doctor")
+        self.assertEqual(parser.parse_args(["zeref", "start"]).zeref_command, "start")
+        self.assertEqual(parser.parse_args(["zeref", "stop"]).zeref_command, "stop")
+        chat = parser.parse_args(["zeref", "chat", "hello"])
+        self.assertEqual(chat.zeref_command, "chat")
+        self.assertEqual(chat.message, "hello")
+        ibm = parser.parse_args(["zeref", "ibm", "refresh"])
+        self.assertEqual(ibm.zeref_command, "ibm")
+        self.assertEqual(ibm.ibm_command, "refresh")
 
 
 if __name__ == "__main__":
