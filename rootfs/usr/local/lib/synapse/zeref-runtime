@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+export PYTHONPATH="/usr/lib/synapse/python${PYTHONPATH:+:$PYTHONPATH}"
+
+if ! command -v full-zeref >/dev/null 2>&1; then
+  echo "ZEREF_FULL_STATE=MODEL_UNAVAILABLE"
+  exit 0
+fi
+
+CONFIG=/etc/synapse/zeref.json
+if [ ! -s "$CONFIG" ]; then
+  echo "ZEREF_FULL_STATE=CONFIG_UNAVAILABLE"
+  exit 0
+fi
+
+exec /usr/bin/python3 -m synapse.zeref.runtime serve --config "$CONFIG"
