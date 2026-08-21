@@ -7,13 +7,15 @@ check: test lint license-audit c cpp rust python-sdk arch-config
 
 test:
 	PYTHONPATH=src:. $(PYTHON) -m unittest discover -s tests -v
+	$(PYTHON) -m unittest discover -s APPLE_INTEL/tests -v
 
 lint:
-	$(PYTHON) -m compileall -q src tests scripts
+	$(PYTHON) -m compileall -q src tests scripts APPLE_INTEL
 	$(PYTHON) -m py_compile rootfs/usr/local/bin/synapse-control
 	$(PYTHON) -c 'import xml.etree.ElementTree as ET; ET.parse("rootfs/usr/share/icons/hicolor/scalable/apps/synapse-os.svg"); ET.parse("rootfs/usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg")'
 	bash -n build/build.sh build/clean.sh scripts/validate-tree.sh scripts/qemu-smoke.sh scripts/genesis-installed-vm-smoke.sh
-	sh -n build/hooks/010-synapse.hook.chroot build/hooks/020-phone-bootstrap.hook.chroot build/hooks/030-native-sdk.hook.chroot rootfs/usr/local/bin/synapse rootfs/usr/local/bin/synapse-phone-bootstrap rootfs/usr/local/bin/synapse-genesis-writer rootfs/usr/local/bin/synapse-usb-flash-server rootfs/usr/local/lib/synapse/vm-smoke rootfs/usr/local/bin/synflow
+	find APPLE_INTEL -type f \( -name '*.sh' -o -name '*.command' \) -print0 | xargs -0 -r bash -n
+	sh -n build/hooks/010-synapse.hook.chroot build/hooks/020-phone-bootstrap.hook.chroot build/hooks/030-native-sdk.hook.chroot build/hooks/040-apple-intel.hook.chroot rootfs/usr/local/bin/synapse rootfs/usr/local/bin/synapse-phone-bootstrap rootfs/usr/local/bin/synapse-genesis-writer rootfs/usr/local/bin/synapse-usb-flash-server rootfs/usr/local/lib/synapse/vm-smoke rootfs/usr/local/bin/synflow
 	./scripts/validate-tree.sh
 
 license-audit:
