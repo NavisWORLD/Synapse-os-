@@ -42,12 +42,12 @@ class UsbFlashHtmlTests(unittest.TestCase):
         self.assertIn("MSC_CLASS = 0x08", html)
         self.assertIn("SCSI_SUBCLASS = 0x06", html)
         self.assertIn("BOT_PROTOCOL = 0x50", html)
-        self.assertIn("0x43425355", html)  # CBW signature
-        self.assertIn("0x53425355", html)  # CSW signature
-        self.assertIn("0x25", html)  # READ CAPACITY(10)
-        self.assertIn("0x2a", html.lower())  # WRITE(10)
-        self.assertIn("0x28", html)  # READ(10)
-        self.assertIn("0x35", html)  # SYNCHRONIZE CACHE(10)
+        self.assertIn("0x43425355", html)
+        self.assertIn("0x53425355", html)
+        self.assertIn("0x25", html)
+        self.assertIn("0x2a", html.lower())
+        self.assertIn("0x28", html)
+        self.assertIn("0x35", html)
 
     def test_html_hashes_before_write_and_readback_before_success(self) -> None:
         html = (ROOT / "phone-bootstrap" / "FLASH_USB.html").read_text(encoding="utf-8")
@@ -63,11 +63,12 @@ class UsbFlashHtmlTests(unittest.TestCase):
 
     def test_helper_adapter_uses_fixed_purpose_routes(self) -> None:
         html = (ROOT / "phone-bootstrap" / "FLASH_USB.html").read_text(encoding="utf-8")
+        # Assert the fixed-purpose routes the browser UI actually invokes. Device
+        # inventory and image metadata remain server API endpoints and are covered
+        # by the HTTP contract tests; the UI receives both through preflight.
         for route in (
             "/v1/health",
             "/v1/capabilities",
-            "/v1/devices",
-            "/v1/image",
             "/v1/preflight",
             "/v1/image/prepare",
             "/v1/flash/arm",
@@ -85,7 +86,6 @@ class UsbFlashHtmlTests(unittest.TestCase):
         build = (ROOT / "build" / "build.sh").read_text(encoding="utf-8")
         self.assertIn("FLASH_USB.html", build)
         self.assertIn("usr/share/synapse/FLASH_USB.html", build)
-        # The privileged raw writer must remain owner-started rather than enabled on every Synapse boot.
         self.assertFalse((ROOT / "rootfs" / "etc" / "systemd" / "system" / "multi-user.target.wants" / "synapse-usb-flash.service").exists())
 
     def test_documentation_links_phone_flasher(self) -> None:
