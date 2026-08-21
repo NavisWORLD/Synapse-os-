@@ -14,6 +14,8 @@ from synapse.zeref.runtime import (
     sanitized_subject_env,
 )
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 class ZerefReceiptTests(unittest.TestCase):
     def base_receipt(self):
@@ -91,6 +93,17 @@ class ZerefRuntimeTests(unittest.TestCase):
         self.assertEqual(derive_readiness(model_available=True, receipt_state="stale", socket_ready=True), "IBM_STALE")
         self.assertEqual(derive_readiness(model_available=True, receipt_state="fresh", socket_ready=False), "STOPPED")
         self.assertEqual(derive_readiness(model_available=True, receipt_state="fresh", socket_ready=True), "READY")
+
+
+class ZerefBuildContractTests(unittest.TestCase):
+    def test_build_accepts_preverified_qc67_bundle_without_weakening_hashes(self):
+        build = (ROOT / "build" / "build.sh").read_text(encoding="utf-8")
+        self.assertIn("SYNAPSE_QC67_LOCAL_DIR", build)
+        self.assertIn("preverified QC67 bundle is missing", build)
+        self.assertIn("955805d45f7b407ef5cc9b6efe178d9a5f63df5b32eaf539d9aedcbb2967f1dc", build)
+        self.assertIn("02a509f9c2a20f63c38dca186c082bfdc2603aa8b6f1f903ec19a0e709218d87", build)
+        self.assertIn("aa0cb13c1e67d459db280a53b6407dfc2b5b5f3fd6f640bc43686b70d799acd1", build)
+        self.assertIn("hf_credential_embedded\": false", build)
 
 
 class ZerefCliTests(unittest.TestCase):
