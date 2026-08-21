@@ -14,6 +14,10 @@ QC67_REPO="phera-ra/QC67_cosmo"
 QC67_ARCH_SHA256="955805d45f7b407ef5cc9b6efe178d9a5f63df5b32eaf539d9aedcbb2967f1dc"
 QC67_SERVER_SHA256="02a509f9c2a20f63c38dca186c082bfdc2603aa8b6f1f903ec19a0e709218d87"
 QC67_CHECKPOINT_SHA256="aa0cb13c1e67d459db280a53b6407dfc2b5b5f3fd6f640bc43686b70d799acd1"
+# Optional credential-free source directory prepared by an outer broker job.
+# It must contain architecture/, serving/, and weights/ with the exact files
+# above. The same SHA-256 gates apply whether bytes are local or fetched.
+QC67_LOCAL_DIR="${SYNAPSE_QC67_LOCAL_DIR:-}"
 
 eval "$(python3 "$REPO_ROOT/scripts/arch_matrix.py" shell "$REQUESTED_ARCH")"
 ARCH="$SYNAPSE_ARCH_NORMALIZED"
@@ -31,8 +35,8 @@ if [[ "$HOST_ARCH" != "$ARCH" ]]; then
 fi
 
 if [[ "${SYNAPSE_DRY_RUN:-0}" == "1" ]]; then
-  printf 'arch=%s\nhost_arch=%s\nforeign=%s\nkernel=%s\nbinary_image=%s\nsupport_state=%s\nqemu_static=%s\n' \
-    "$ARCH" "$HOST_ARCH" "$FOREIGN" "$SYNAPSE_KERNEL_PACKAGE" "$SYNAPSE_BINARY_IMAGE" "$SYNAPSE_SUPPORT_STATE" "$SYNAPSE_QEMU_STATIC"
+  printf 'arch=%s\nhost_arch=%s\nforeign=%s\nkernel=%s\nbinary_image=%s\nsupport_state=%s\nqemu_static=%s\nqc67_local_bundle=%s\n' \
+    "$ARCH" "$HOST_ARCH" "$FOREIGN" "$SYNAPSE_KERNEL_PACKAGE" "$SYNAPSE_BINARY_IMAGE" "$SYNAPSE_SUPPORT_STATE" "$SYNAPSE_QEMU_STATIC" "${QC67_LOCAL_DIR:+configured}"
   exit 0
 fi
 
@@ -130,29 +134,43 @@ mkdir -p config/includes.chroot/usr/src/cosmos-beast-box
 rsync -a --exclude='.git' "$ZEREF_SOURCE_STAGE/" config/includes.chroot/usr/src/cosmos-beast-box/
 
 # Bundle the exact QC67 native implementation and checkpoint already used by
-# the measured Trinity experiment. Every downloaded byte is SHA-256 pinned.
+# the measured Trinity experiment. The preferred certification path supplies a
+# preverified local bundle from a credential-isolated broker job. Direct public
+# fetch remains available only when the upstream repo permits it. In both cases
+# every byte must pass the same immutable SHA-256 gate before entering the ISO.
 QC67_ROOT="config/includes.chroot/usr/share/synapse/zeref/qc67"
 mkdir -p "$QC67_ROOT/architecture" "$QC67_ROOT/serving" "$QC67_ROOT/weights"
-fetch_qc67() {
+stage_qc67() {
   local rel="$1"
   local digest="$2"
   local dest="$QC67_ROOT/$rel"
-  curl -fsSL "https://huggingface.co/${QC67_REPO}/resolve/main/${rel}?download=true" -o "$dest"
+  if [[ -n "$QC67_LOCAL_DIR" ]]; then
+    local src="$QC67_LOCAL_DIR/$rel"
+    if [[ ! -f "$src" ]]; then
+      echo "error: preverified QC67 bundle is missing $src" >&2
+      exit 2
+    fi
+    install -m 0644 "$src" "$dest"
+  else
+    curl -fsSL "https://huggingface.co/${QC67_REPO}/resolve/main/${rel}?download=true" -o "$dest"
+  fi
   printf '%s  %s\n' "$digest" "$dest" | sha256sum -c -
 }
-fetch_qc67 architecture/cosmos_spark_cst.py "$QC67_ARCH_SHA256"
-fetch_qc67 serving/cosmos_serve.py "$QC67_SERVER_SHA256"
-fetch_qc67 weights/spark_cst.pt "$QC67_CHECKPOINT_SHA256"
+stage_qc67 architecture/cosmos_spark_cst.py "$QC67_ARCH_SHA256"
+stage_qc67 serving/cosmos_serve.py "$QC67_SERVER_SHA256"
+stage_qc67 weights/spark_cst.pt "$QC67_CHECKPOINT_SHA256"
 cat > config/includes.chroot/usr/share/synapse/zeref/provenance.json <<EOF
 {
   "schema": "synapse.zeref.bundle.v1",
   "beastbox_commit": "$ZEREF_BEASTBOX_COMMIT",
   "beastbox_repo": "NavisWORLD/The-beast-box-",
   "qc67_repo": "$QC67_REPO",
+  "qc67_source": "$(if [[ -n "$QC67_LOCAL_DIR" ]]; then printf preverified-local-bundle; else printf upstream-fetch; fi)",
   "architecture_sha256": "$QC67_ARCH_SHA256",
   "native_server_sha256": "$QC67_SERVER_SHA256",
   "checkpoint_sha256": "$QC67_CHECKPOINT_SHA256",
-  "ibm_credential_embedded": false
+  "ibm_credential_embedded": false,
+  "hf_credential_embedded": false
 }
 EOF
 
