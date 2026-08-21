@@ -6,6 +6,15 @@ VERSION="$(tr -d '\n' < "$REPO_ROOT/VERSION")"
 SUITE="${SYNAPSE_SUITE:-trixie}"
 REQUESTED_ARCH="${SYNAPSE_ARCH:-$(dpkg --print-architecture 2>/dev/null || uname -m)}"
 
+# Resident Full Zeref is pinned by immutable source/model identities. These are
+# intentionally not branch names or "latest" aliases.
+ZEREF_BEASTBOX_COMMIT="${ZEREF_BEASTBOX_COMMIT:-e81399d1d040ad23d13bcc49b038a0b6c16ec74d}"
+ZEREF_BEASTBOX_REPO="https://github.com/NavisWORLD/The-beast-box-.git"
+QC67_REPO="phera-ra/QC67_cosmo"
+QC67_ARCH_SHA256="955805d45f7b407ef5cc9b6efe178d9a5f63df5b32eaf539d9aedcbb2967f1dc"
+QC67_SERVER_SHA256="02a509f9c2a20f63c38dca186c082bfdc2603aa8b6f1f903ec19a0e709218d87"
+QC67_CHECKPOINT_SHA256="aa0cb13c1e67d459db280a53b6407dfc2b5b5f3fd6f640bc43686b70d799acd1"
+
 eval "$(python3 "$REPO_ROOT/scripts/arch_matrix.py" shell "$REQUESTED_ARCH")"
 ARCH="$SYNAPSE_ARCH_NORMALIZED"
 WORK="$REPO_ROOT/.work/live-build-$ARCH"
@@ -35,7 +44,7 @@ if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   echo "error: live-build needs root for chroot/mount operations; run: sudo ./build/build.sh" >&2
   exit 2
 fi
-for cmd in lb rsync sha256sum python3 xorriso; do
+for cmd in lb rsync sha256sum python3 xorriso git curl; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "error: missing $cmd" >&2; exit 2; }
 done
 python3 - "$WORK" "$REPO_ROOT" <<'PYSAFE'
@@ -109,6 +118,43 @@ mkdir -p config/includes.chroot/usr/src/synapse-sdk-c
 rsync -a "$REPO_ROOT/sdk/c/" config/includes.chroot/usr/src/synapse-sdk-c/
 mkdir -p config/includes.chroot/usr/share/synapse/hardware
 cp "$REPO_ROOT/hardware/profiles.json" config/includes.chroot/usr/share/synapse/hardware/profiles.json
+
+# Stage an immutable Beast Box snapshot. The .git directory is excluded from
+# the image and no credentials are used or copied by this build step.
+ZEREF_SOURCE_STAGE="$WORK/.zeref-beastbox"
+rm -rf "$ZEREF_SOURCE_STAGE"
+git clone --no-checkout "$ZEREF_BEASTBOX_REPO" "$ZEREF_SOURCE_STAGE"
+git -C "$ZEREF_SOURCE_STAGE" checkout --detach "$ZEREF_BEASTBOX_COMMIT"
+test "$(git -C "$ZEREF_SOURCE_STAGE" rev-parse HEAD)" = "$ZEREF_BEASTBOX_COMMIT"
+mkdir -p config/includes.chroot/usr/src/cosmos-beast-box
+rsync -a --exclude='.git' "$ZEREF_SOURCE_STAGE/" config/includes.chroot/usr/src/cosmos-beast-box/
+
+# Bundle the exact QC67 native implementation and checkpoint already used by
+# the measured Trinity experiment. Every downloaded byte is SHA-256 pinned.
+QC67_ROOT="config/includes.chroot/usr/share/synapse/zeref/qc67"
+mkdir -p "$QC67_ROOT/architecture" "$QC67_ROOT/serving" "$QC67_ROOT/weights"
+fetch_qc67() {
+  local rel="$1"
+  local digest="$2"
+  local dest="$QC67_ROOT/$rel"
+  curl -fsSL "https://huggingface.co/${QC67_REPO}/resolve/main/${rel}?download=true" -o "$dest"
+  printf '%s  %s\n' "$digest" "$dest" | sha256sum -c -
+}
+fetch_qc67 architecture/cosmos_spark_cst.py "$QC67_ARCH_SHA256"
+fetch_qc67 serving/cosmos_serve.py "$QC67_SERVER_SHA256"
+fetch_qc67 weights/spark_cst.pt "$QC67_CHECKPOINT_SHA256"
+cat > config/includes.chroot/usr/share/synapse/zeref/provenance.json <<EOF
+{
+  "schema": "synapse.zeref.bundle.v1",
+  "beastbox_commit": "$ZEREF_BEASTBOX_COMMIT",
+  "beastbox_repo": "NavisWORLD/The-beast-box-",
+  "qc67_repo": "$QC67_REPO",
+  "architecture_sha256": "$QC67_ARCH_SHA256",
+  "native_server_sha256": "$QC67_SERVER_SHA256",
+  "checkpoint_sha256": "$QC67_CHECKPOINT_SHA256",
+  "ibm_credential_embedded": false
+}
+EOF
 
 # Keep the installed phone USB flasher byte-identical to the source control
 # surface used for phone testing. The privileged helper is not auto-enabled;
@@ -189,4 +235,5 @@ sha256sum "$ISO" > "$ISO.sha256"
 echo "Synapse OS image: $ISO"
 echo "GENESIS boot mode: live failsafe entry (synapse.genesis=1)"
 echo "GENESIS manifest: /synapse-genesis/manifest.json"
+echo "Resident Zeref Beast Box commit: $ZEREF_BEASTBOX_COMMIT"
 echo "Checksum: $ISO.sha256"

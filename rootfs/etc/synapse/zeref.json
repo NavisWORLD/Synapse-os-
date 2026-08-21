@@ -1,0 +1,11 @@
+{
+  "full_zeref": "full-zeref",
+  "beastbox_config": "~/.local/state/synapse-zeref/beastbox.json",
+  "native_server": "/usr/share/synapse/zeref/qc67/serving/cosmos_serve.py",
+  "checkpoint": "/usr/share/synapse/zeref/qc67/weights/spark_cst.pt",
+  "ibm_receipt": "/var/lib/synapse/zeref/ibm/latest.json",
+  "socket_path": "",
+  "max_new_tokens": 192,
+  "require_fresh_ibm": false,
+  "native_enabled": true
+}

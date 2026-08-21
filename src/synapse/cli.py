@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 
 from . import __version__
 from .core import benchmark, cosmos_probe, doctor, dump_json, current_power_profile, set_profile, system_status
 from .dsl import apply as apply_plan, parse_file
+from .zeref.runtime import ResidentConfig, resident_request, zeref_doctor, zeref_status
 
 
 def _human_status(data: dict) -> str:
@@ -41,9 +43,67 @@ def build_parser() -> argparse.ArgumentParser:
     cosmos = sub.add_parser("cosmos")
     csub = cosmos.add_subparsers(dest="cosmos_command", required=True)
     csub.add_parser("probe")
+
+    zeref = sub.add_parser("zeref", help="resident Full Zeref runtime")
+    zeref.add_argument("--config", default="/etc/synapse/zeref.json")
+    zsub = zeref.add_subparsers(dest="zeref_command", required=True)
+    zsub.add_parser("status")
+    zsub.add_parser("doctor")
+    zsub.add_parser("start")
+    zsub.add_parser("stop")
+    zchat = zsub.add_parser("chat")
+    zchat.add_argument("message")
+    zibm = zsub.add_parser("ibm")
+    ibmsub = zibm.add_subparsers(dest="ibm_command", required=True)
+    ibmsub.add_parser("status")
+    ibmsub.add_parser("refresh")
+
     plan = sub.add_parser("apply")
     plan.add_argument("path")
     return p
+
+
+def _systemctl(args: list[str], *, user: bool) -> dict:
+    command = ["systemctl"] + (["--user"] if user else []) + args
+    proc = subprocess.run(command, capture_output=True, text=True, check=False)
+    return {
+        "ok": proc.returncode == 0,
+        "command": command,
+        "returncode": proc.returncode,
+        "stdout": proc.stdout.strip(),
+        "stderr": proc.stderr.strip(),
+    }
+
+
+def _zeref_command(args) -> int:
+    config = ResidentConfig.load(args.config)
+    if args.zeref_command == "status":
+        print(dump_json(zeref_status(config)))
+        return 0
+    if args.zeref_command == "doctor":
+        data = zeref_doctor(config)
+        print(dump_json(data))
+        return 0 if data.get("state") not in {"IBM_INVALID", "RUNTIME_FAULT"} else 2
+    if args.zeref_command == "start":
+        data = _systemctl(["start", "zeref-runtime.service"], user=True)
+        print(dump_json(data))
+        return 0 if data["ok"] else 2
+    if args.zeref_command == "stop":
+        data = _systemctl(["stop", "zeref-runtime.service"], user=True)
+        print(dump_json(data))
+        return 0 if data["ok"] else 2
+    if args.zeref_command == "chat":
+        result = resident_request(config.resolved_socket(), {"op": "chat", "text": args.message})
+        print(str(result.get("response", dump_json(result))))
+        return 0
+    if args.zeref_command == "ibm":
+        if args.ibm_command == "status":
+            print(dump_json(zeref_status(config)["ibm"]))
+            return 0
+        data = _systemctl(["start", "zeref-ibm-broker.service"], user=False)
+        print(dump_json(data))
+        return 0 if data["ok"] else 2
+    return 2
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -66,10 +126,12 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
         elif args.command == "cosmos":
             print(dump_json(cosmos_probe()))
+        elif args.command == "zeref":
+            return _zeref_command(args)
         elif args.command == "apply":
             print(dump_json(apply_plan(parse_file(args.path))))
         return 0
-    except (ValueError, OSError) as exc:
+    except (ValueError, OSError, RuntimeError) as exc:
         print(f"synapse: {exc}", file=sys.stderr)
         return 2
 

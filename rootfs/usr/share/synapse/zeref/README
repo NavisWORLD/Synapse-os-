@@ -1,0 +1,23 @@
+SYNAPSE OS // RESIDENT FULL ZEREF
+
+This directory contains the immutable QC67 model/runtime assets shipped by the
+Synapse image. Mutable conversation memory/state lives in the user's home.
+Sanitized IBM provenance lives at /var/lib/synapse/zeref/ibm/latest.json.
+
+The IBM credential is NOT part of this image. An owner may provision it at:
+  /etc/synapse/secrets/ibm-quantum-token
+
+Only zeref-ibm-broker.service loads that credential. The resident model process
+does not receive it.
+
+Commands:
+  synapse zeref status
+  synapse zeref doctor
+  synapse zeref start
+  synapse zeref stop
+  synapse zeref chat "hello"
+  synapse zeref ibm status
+  sudo synapse zeref ibm refresh
+
+A broker refresh retrieves the pinned existing IBM job. It does not submit a
+new IBM workload.

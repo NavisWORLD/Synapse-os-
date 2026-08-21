@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+export PYTHONPATH="/usr/lib/synapse/python${PYTHONPATH:+:$PYTHONPATH}"
+: "${CREDENTIALS_DIRECTORY:?systemd credential directory missing}"
+CREDENTIAL="$CREDENTIALS_DIRECTORY/IBM_QUANTUM_TOKEN"
+
+if [ ! -s "$CREDENTIAL" ]; then
+  echo "IBM_BROKER=NO_CREDENTIAL" >&2
+  exit 2
+fi
+
+mkdir -p /var/lib/synapse/zeref/ibm
+exec /usr/bin/python3 -m synapse.zeref.broker refresh \
+  --config /etc/synapse/zeref-ibm.json \
+  --credential-file "$CREDENTIAL"

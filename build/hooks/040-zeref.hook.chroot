@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+
+SOURCE=/usr/src/cosmos-beast-box
+if [ ! -s "$SOURCE/pyproject.toml" ]; then
+  echo "error: pinned Beast Box source missing from image build" >&2
+  exit 1
+fi
+
+# Beast Box core has no mandatory third-party dependencies. Torch is supplied
+# by Debian's python3-torch package. IBM Runtime dependencies are broker-only,
+# but installed in the OS so the fixed-purpose broker can refresh the pinned
+# hardware job when the owner supplies the system credential.
+python3 -m pip install --break-system-packages --no-cache-dir --no-deps "$SOURCE"
+python3 -m pip install --break-system-packages --no-cache-dir \
+  'qiskit>=2.5.0,<3' \
+  'qiskit-ibm-runtime>=0.47.0,<1'
+
+command -v full-zeref >/dev/null 2>&1
+full-zeref --help >/dev/null
+python3 - <<'PY'
+import torch
+import beastbox
+from beastbox.full_zeref import subject_environment_safe
+from beastbox.quantum_divergence.trinity_state import balance_54_blocks
+assert subject_environment_safe({"PATH": "/usr/bin"}) is True
+assert len(balance_54_blocks([0.0] * 54)) == 54
+print("ZEREF_IMAGE_RUNTIME=PASS")
+PY

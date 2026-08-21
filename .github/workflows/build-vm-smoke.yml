@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, feature/resident-zeref-ibm-broker]
 
 permissions:
   contents: read
@@ -150,6 +150,10 @@ jobs:
             --manifest /tmp/synapse-image/genesis-manifest.json \
             --image /tmp/synapse-image/filesystem.squashfs
           unsquashfs -ll /tmp/synapse-image/filesystem.squashfs | grep 'libsynapse_abi\.so' >/dev/null
+          unsquashfs -ll /tmp/synapse-image/filesystem.squashfs | grep 'zeref-runtime.service' >/dev/null
+          unsquashfs -ll /tmp/synapse-image/filesystem.squashfs | grep 'zeref-ibm-broker.service' >/dev/null
+          unsquashfs -ll /tmp/synapse-image/filesystem.squashfs | grep 'usr/share/synapse/zeref/qc67/weights/spark_cst.pt' >/dev/null
+          unsquashfs -ll /tmp/synapse-image/filesystem.squashfs | grep 'usr/share/synapse/zeref/provenance.json' >/dev/null
           grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/sddm/themes/synapse-nebula/Main.qml
           grep -q 'Synapse Nebula' /tmp/synapse-root/usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth
           grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/grub/themes/synapse-nebula/theme.txt
@@ -161,6 +165,7 @@ jobs:
           ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
           test -n "$ISO"
           SYNAPSE_QEMU_LOG=/tmp/synapse-vm/serial.log bash scripts/qemu-smoke.sh amd64 "$ISO"
+          grep -q 'SYNAPSE_ZEREF_READY' /tmp/synapse-vm/serial.log
 
       - name: Install to disposable NBD disk and boot installed Synapse
         shell: bash

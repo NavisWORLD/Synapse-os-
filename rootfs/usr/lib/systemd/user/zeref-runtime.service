@@ -1,0 +1,25 @@
+[Unit]
+Description=Synapse resident Full Zeref cognitive runtime
+After=default.target
+
+[Service]
+Type=simple
+Environment=PYTHONPATH=/usr/lib/synapse/python
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+WorkingDirectory=%h
+ExecStart=/usr/local/lib/synapse/zeref-runtime
+Restart=no
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+
+[Install]
+WantedBy=default.target
