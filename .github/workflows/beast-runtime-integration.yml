@@ -1,0 +1,31 @@
+name: Beast runtime and native SDK
+on:
+  push:
+    branches: [main, integration/beast-runtime-kit-001]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-and-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Require native toolchain
+        run: |
+          command -v gcc
+          command -v g++
+          command -v cmake
+          command -v ninja
+          command -v cargo
+      - name: Download and verify pinned release
+        run: |
+          curl --fail --location --retry 3 --max-time 120 https://github.com/NavisWORLD/The-beast-box-/releases/download/v0.4.0/cosmos_beast_box-0.4.0-py3-none-any.whl -o "$RUNNER_TEMP/cosmos_beast_box-0.4.0-py3-none-any.whl"
+          echo "e0c2e5f55d594bfdfc0ba1d74ab9d9fd18f683cc0fb153aec3730b2ae428fdd3  $RUNNER_TEMP/cosmos_beast_box-0.4.0-py3-none-any.whl" | sha256sum --check
+      - name: Full checks including clean installed release restart
+        env:
+          SYNAPSE_BEAST_RELEASE_WHEEL: ${{ runner.temp }}/cosmos_beast_box-0.4.0-py3-none-any.whl
+        run: make check

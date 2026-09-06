@@ -10,6 +10,7 @@ synapse = "synapse.cli:main"
 synflow = "synapse.flow_cli:main"
 synlsp = "synapse.lsp:serve"
 synapse-usb = "synapse.usb_writer:main"
+synapse-beast = "synapse.beast_runtime:main"
 
 [build-system]
 requires = ["setuptools>=68"]
