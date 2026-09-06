@@ -99,7 +99,8 @@ class ImageManifest:
 
 def _fingerprint(prefix: str, fields: dict[str, Any]) -> str:
     material = json.dumps(fields, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
-    return f"sha256:{hashlib.sha256(prefix.encode('utf-8') + b'\0' + material).hexdigest()}"
+    digest = hashlib.sha256(prefix.encode("utf-8") + bytes([0]) + material).hexdigest()
+    return f"sha256:{digest}"
 
 
 def _boolish(value: Any) -> bool:
