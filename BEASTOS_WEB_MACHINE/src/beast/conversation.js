@@ -3,6 +3,15 @@ import { BridgeClient } from '../authority/client.js';
 const bridge = new BridgeClient();
 const $ = (id) => document.getElementById(id);
 
+function ensureConversationStyles() {
+  if (document.querySelector('link[data-beastos-conversation]')) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = '/src/beast/conversation.css';
+  link.dataset.beastosConversation = 'true';
+  document.head.append(link);
+}
+
 function resultText(response) {
   const result = response?.result;
   if (typeof result === 'string') return result;
@@ -68,6 +77,7 @@ async function sendTurn() {
 }
 
 function buildConversationPanel() {
+  ensureConversationStyles();
   if ($('conversation')) return;
   const machine = $('machine');
   if (!machine) return;
