@@ -16,7 +16,7 @@ async function sendBeastTurn(page, text) {
 test('real Beast continuity survives brain swap while authority resets', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /YOUR AI SYSTEM/i })).toBeVisible();
-  await expect(page.locator('#cap-bridge')).toHaveText('CONNECTED');
+  await expect(page.locator('#cap-bridge')).toHaveText('AUTHORIZED');
   await expect(page.locator('#beast-runtime-live')).toHaveText('CONNECTED');
 
   await clockIn(page, 'Brain A');
