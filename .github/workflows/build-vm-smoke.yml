@@ -26,10 +26,127 @@ jobs:
       - name: Validate source, SDKs, architecture registry
         run: make check
 
-  build-and-boot-amd64:
+  beastos-browser:
     needs: source-validation
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned browser test runner
+        working-directory: BEASTOS_WEB_MACHINE
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Materialize exact Beast Box v0.6.0 kit
+        run: |
+          set -Eeuo pipefail
+          python3 BEASTOS_WEB_MACHINE/scripts/fetch-beast-kit.py \
+            --destination /tmp/beast-box-combined-0.6.0.zip \
+            --extract-to /tmp/beast-kit > /tmp/beast-kit-receipt.json
+          python3 -m venv /tmp/beast-runtime
+          /tmp/beast-runtime/bin/pip install --no-index --no-deps \
+            /tmp/beast-kit/cosmos_beast_box-0.6.0-py3-none-any.whl
+          printf '%s' '{"schema":"beastbox-request-v1","operation":"init"}' | \
+            /tmp/beast-runtime/bin/beastbox runtime exchange \
+              --data-dir /tmp/beast-data \
+              --provider reference \
+              --model 'COSMOS reference' > /tmp/beast-init.json
+          python3 - <<'PY'
+          import json
+          body = json.load(open('/tmp/beast-init.json', encoding='utf-8'))
+          assert body['schema'] == 'beastbox-response-v1'
+          assert body['ok'] is True
+          PY
+      - name: Launch authenticated loopback BeastOS Web bridge
+        run: |
+          set -Eeuo pipefail
+          PYTHONPATH="$GITHUB_WORKSPACE" python3 -m BEASTOS_WEB_MACHINE.bridge.server \
+            --listen 127.0.0.1 \
+            --port 8790 \
+            --web-root "$GITHUB_WORKSPACE/BEASTOS_WEB_MACHINE" \
+            --beast-executable /tmp/beast-runtime/bin/beastbox \
+            --beast-data-dir /tmp/beast-data \
+            --beast-runtime-provider reference \
+            --beast-model 'COSMOS reference' \
+            > /tmp/beastos-web.log 2>&1 &
+          echo $! > /tmp/beastos-web.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8790/v1/health && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8790/v1/health
+      - name: Browser E2E
+        working-directory: BEASTOS_WEB_MACHINE
+        run: npx playwright test -c playwright.config.mjs
+      - name: Build browser evidence receipts and MP4
+        if: always()
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          mkdir -p BEASTOS_WEB_MACHINE/test-results/evidence
+          find BEASTOS_WEB_MACHINE/test-results -type f -name '*.webm' -print0 | while IFS= read -r -d '' video; do
+            ffmpeg -loglevel error -y -i "$video" -c:v libx264 -pix_fmt yuv420p "${video%.webm}.mp4"
+          done
+          cp /tmp/beast-kit-receipt.json BEASTOS_WEB_MACHINE/test-results/evidence/BEAST_KIT_RECEIPT.json
+          cp /tmp/beast-init.json BEASTOS_WEB_MACHINE/test-results/evidence/BEAST_INIT.json
+          cp /tmp/beastos-web.log BEASTOS_WEB_MACHINE/test-results/evidence/BEASTOS_WEB.log
+          python3 - <<'PY'
+          import json, os, platform
+          from pathlib import Path
+          root = Path('BEASTOS_WEB_MACHINE/test-results/evidence')
+          result_path = Path('BEASTOS_WEB_MACHINE/test-results/results.json')
+          result = json.loads(result_path.read_text()) if result_path.is_file() else {}
+          receipt = {
+              'schema': 'beastos-browser-evidence-v1',
+              'synapse_commit': os.environ['GITHUB_SHA'],
+              'beast_release': 'v0.6.0',
+              'beast_provider': 'reference',
+              'provider_classification': 'Beast Box deterministic reference provider; not a language model',
+              'physical_hardware_validated': False,
+              'browser': 'Playwright Chromium',
+              'os': platform.platform(),
+              'tests': result.get('stats', {}),
+          }
+          (root / 'RECEIPT.json').write_text(json.dumps(receipt, indent=2, sort_keys=True) + '\n')
+          (root / 'TRANSCRIPT.txt').write_text(
+              '1. Open BeastOS Web in Chromium.\n'
+              '2. Verify authenticated localhost bridge and real Beast runtime exchange.\n'
+              '3. Clock in Brain A and create a Beast continuity turn.\n'
+              '4. Grant filesystem.write to Brain A.\n'
+              '5. Clock in Brain B and verify the prior authority grant is gone.\n'
+              '6. Continue through the same Beast data directory and inspect continuity.\n'
+              '7. Exercise denied camera permission and temporary file scope.\n'
+              '8. Exercise master privacy revocation.\n'
+              '9. Reload the installed PWA shell offline and verify API state is not fabricated.\n'
+          )
+          PY
+          (
+            cd BEASTOS_WEB_MACHINE/test-results
+            find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          )
+      - name: Stop BeastOS Web bridge
+        if: always()
+        run: |
+          if test -s /tmp/beastos-web.pid; then kill "$(cat /tmp/beastos-web.pid)" 2>/dev/null || true; fi
+      - name: Preserve browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beastos-browser-evidence-${{ github.sha }}
+          path: BEASTOS_WEB_MACHINE/test-results/
+          if-no-files-found: warn
+
+  build-and-boot-amd64:
+    needs: [source-validation, beastos-browser]
+    runs-on: ubuntu-latest
+    timeout-minutes: 85
     steps:
       - uses: actions/checkout@v4
 
@@ -59,7 +176,7 @@ jobs:
       - name: Verify ISO checksum
         run: sha256sum -c out/*.iso.sha256
 
-      - name: Verify generated live filesystem, GENESIS, and USB flasher payload
+      - name: Verify generated live filesystem, BeastOS Web, GENESIS, and USB flasher payload
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -74,12 +191,15 @@ jobs:
             etc/systemd/system/synapse-agent.service \
             usr/local/bin/synapse \
             usr/local/bin/synapse-control \
+            usr/local/bin/synapse-beastos-web \
             usr/local/bin/synapse-genesis-writer \
             usr/local/bin/synapse-usb-flash-server \
+            usr/bin/qemu-system-x86_64 \
             usr/bin/plasmashell \
             usr/bin/calamares \
             usr/bin/pipewire \
             usr/bin/nmcli \
+            opt/synapse/beast-runtime/bin/beastbox \
             usr/lib/systemd/system/synapse-genesis-installer-api.service \
             usr/lib/synapse/python/synapse/__init__.py \
             usr/lib/synapse/python/synapse/hardware.py \
@@ -89,7 +209,15 @@ jobs:
             usr/lib/synapse/python/synapse/usb_flash.py \
             usr/lib/synapse/python/synapse/usb_flash_server.py \
             usr/include/synapse/synapse.h \
+            usr/share/applications/beastos-web.desktop \
+            usr/share/icons/hicolor/scalable/apps/beastos-web.svg \
             usr/share/synapse/hardware/profiles.json \
+            usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html \
+            usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js \
+            usr/share/synapse/beast-kit/beast-v0.6.0.json \
+            usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json \
+            usr/share/synapse/beast-kit/RELEASE_PROVENANCE.json \
+            usr/share/synapse/beast-kit/SHA256SUMS \
             usr/share/synapse/phone-bootstrap.html \
             usr/share/synapse/GENESIS.html \
             usr/share/synapse/FLASH_USB.html \
@@ -119,6 +247,13 @@ jobs:
           test -s /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           test -s /tmp/synapse-root/usr/local/bin/synapse-genesis-writer
           test -x /tmp/synapse-root/usr/local/bin/synapse-usb-flash-server
+          test -x /tmp/synapse-root/usr/local/bin/synapse-beastos-web
+          test -x /tmp/synapse-root/opt/synapse/beast-runtime/bin/beastbox
+          test -x /tmp/synapse-root/usr/bin/qemu-system-x86_64
+          test -s /tmp/synapse-root/usr/share/applications/beastos-web.desktop
+          test -s /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
+          test -s /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js
+          test -s /tmp/synapse-root/usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json
           test -s /tmp/synapse-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
           test -s /tmp/synapse-image/genesis-manifest.json
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/LICENSE
@@ -143,9 +278,18 @@ jobs:
           grep -q 'BOOTABLE USB VERIFIED' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           grep -q 'navigator.usb' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           grep -q 'DEFAULT_PORT = 8788' /tmp/synapse-root/usr/lib/synapse/python/synapse/usb_flash_server.py
+          grep -q 'v0.6.0' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.6.0.json
+          grep -q '331f03c5d6a4aab0b2e32314293e36c7a94be393' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.6.0.json
+          grep -q 'c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.6.0.json
+          grep -q 'c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2' /tmp/synapse-root/usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json
+          grep -q 'runtime exchange' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
+          grep -q '127.0.0.1' /tmp/synapse-root/usr/local/bin/synapse-beastos-web
+          ! grep -q '/shell' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
+          ! grep -q '/exec' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
           ! grep -q '/shell' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           ! grep -q '/exec' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           test ! -e /tmp/synapse-root/etc/systemd/system/multi-user.target.wants/synapse-usb-flash.service
+          test ! -e /tmp/synapse-root/etc/systemd/system/multi-user.target.wants/synapse-beastos-web.service
           python3 scripts/genesis_manifest.py verify \
             --manifest /tmp/synapse-image/genesis-manifest.json \
             --image /tmp/synapse-image/filesystem.squashfs
