@@ -63,11 +63,12 @@ class UsbFlashHtmlTests(unittest.TestCase):
 
     def test_helper_adapter_uses_fixed_purpose_routes(self) -> None:
         html = (ROOT / "phone-bootstrap" / "FLASH_USB.html").read_text(encoding="utf-8")
+        # Assert the fixed-purpose routes the browser helper actually invokes.
+        # Read-only /v1/devices and /v1/image are server API routes covered by
+        # test_usb_flash_http; the UI does not need to call them directly.
         for route in (
             "/v1/health",
             "/v1/capabilities",
-            "/v1/devices",
-            "/v1/image",
             "/v1/preflight",
             "/v1/image/prepare",
             "/v1/flash/arm",
