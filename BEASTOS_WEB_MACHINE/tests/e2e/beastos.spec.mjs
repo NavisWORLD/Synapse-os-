@@ -34,9 +34,9 @@ test('real Beast continuity survives brain swap while authority resets', async (
   await expect(page.locator('#beast-inspect-output')).not.toContainText(/unavailable|error/i);
 
   await page.locator('#trace-refresh').click();
+  await expect(page.locator('#trace-output')).toContainText('brain_clock_in');
+  await expect(page.locator('#trace-output')).toContainText('beast_chat');
   const trace = await page.locator('#trace-output').textContent();
-  expect(trace).toContain('brain_clock_in');
-  expect(trace).toContain('beast_chat');
   expect(trace).not.toContain('BeastOS browser continuity seed alpha.');
 });
 
