@@ -1,0 +1,11 @@
+{
+  "name": "BeastOS Web Machine",
+  "short_name": "BeastOS Web",
+  "description": "Synapse OS browser cockpit for Beast Box continuity, scoped device authority and disposable machines.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#030611",
+  "theme_color": "#050914",
+  "icons": [{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
