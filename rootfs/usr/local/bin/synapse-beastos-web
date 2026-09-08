@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+
+PORT="${SYNAPSE_BEASTOS_PORT:-8790}"
+URL="http://127.0.0.1:${PORT}/"
+WEB_ROOT="/usr/share/synapse/BEASTOS_WEB_MACHINE"
+BEAST_EXECUTABLE="/opt/synapse/beast-runtime/bin/beastbox"
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+
+if curl -fsS --max-time 1 "http://127.0.0.1:${PORT}/v1/health" >/dev/null 2>&1; then
+  exec xdg-open "$URL"
+fi
+
+exec env PYTHONPATH=/usr/share/synapse \
+  python3 -m BEASTOS_WEB_MACHINE.bridge.server \
+    --listen 127.0.0.1 \
+    --port "$PORT" \
+    --web-root "$WEB_ROOT" \
+    --beast-executable "$BEAST_EXECUTABLE" \
+    --beast-data-dir "$DATA_HOME/beastbox/beastos-web" \
+    --open \
+    "$@"
