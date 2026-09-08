@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+
+WHEEL=/usr/share/synapse/beast-kit/cosmos_beast_box-0.6.0-py3-none-any.whl
+VENV=/opt/synapse/beast-runtime
+
+chmod 0755 /usr/local/bin/synapse-beastos-web
+[ -f "$WHEEL" ] || { echo "missing verified Beast wheel: $WHEEL" >&2; exit 1; }
+[ -f /usr/share/synapse/beast-kit/beast-v0.6.0.json ] || { echo "missing Beast provenance manifest" >&2; exit 1; }
+[ -f /usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json ] || { echo "missing Beast integration receipt" >&2; exit 1; }
+
+python3 -m venv "$VENV"
+"$VENV/bin/pip" install --no-index --no-deps "$WHEEL"
+"$VENV/bin/beastbox" --help >/dev/null
+
+mkdir -p /etc/skel/Desktop
+cp /usr/share/applications/beastos-web.desktop /etc/skel/Desktop/BeastOS-Web.desktop
+chmod 0755 /etc/skel/Desktop/BeastOS-Web.desktop
+
+# BeastOS Web is owner-launched. No privileged bridge or VM-control service is
+# enabled automatically by this hook.
