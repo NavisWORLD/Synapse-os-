@@ -71,8 +71,8 @@ rsync -a "$REPO_ROOT/build/config/" config/
 printf '%s\n' "$SYNAPSE_KERNEL_PACKAGE" >> config/package-lists/synapse.list.chroot
 
 # GENESIS v1 performs destructive installation only on the first certified
-# amd64 path. Other architectures keep their non-destructive compatibility
-# framework without silently claiming an installer implementation.
+# amd64 path. Beast Machine also starts with amd64 only: the browser cockpit
+# exists on every architecture, but no VM engine is claimed unless installed.
 if [[ "$ARCH" == "amd64" ]]; then
   cat >> config/package-lists/synapse.list.chroot <<'GENESIS_PACKAGES'
 parted
@@ -84,6 +84,8 @@ efibootmgr
 squashfs-tools
 util-linux
 ipheth-utils
+qemu-system-x86
+qemu-utils
 GENESIS_PACKAGES
 fi
 
@@ -103,6 +105,7 @@ mkdir -p config/includes.chroot config/hooks/live
 rsync -a "$REPO_ROOT/rootfs/" config/includes.chroot/
 chmod 0755 config/includes.chroot/usr/local/bin/synflow
 chmod 0755 config/includes.chroot/usr/local/bin/synapse-usb-flash-server
+chmod 0755 config/includes.chroot/usr/local/bin/synapse-beastos-web
 mkdir -p config/includes.chroot/usr/lib/synapse/python
 rsync -a "$REPO_ROOT/src/synapse" config/includes.chroot/usr/lib/synapse/python/
 mkdir -p config/includes.chroot/usr/src/synapse-sdk-c
@@ -123,6 +126,45 @@ fi
 mkdir -p config/includes.chroot/usr/share/synapse
 install -m 0644 "$REPO_ROOT/phone-bootstrap/FLASH_USB.html" \
   config/includes.chroot/usr/share/synapse/FLASH_USB.html
+
+# BeastOS Web is source-bound to the exact Beast Box v0.6.0 release asset.
+# Online builds fetch the pinned GitHub asset. Offline/reproducible builders may
+# provide SYNAPSE_BEAST_KIT_SOURCE, but that file must pass the same exact size
+# and SHA-256 verification before anything enters the image.
+BEAST_STAGE="$WORK/.beast-kit"
+BEAST_ARCHIVE="$BEAST_STAGE/beast-box-combined-0.6.0.zip"
+BEAST_EXTRACT="$BEAST_STAGE/extracted"
+BEAST_RECEIPT="$BEAST_STAGE/BEAST_KIT_RECEIPT.json"
+rm -rf "$BEAST_STAGE"
+mkdir -p "$BEAST_STAGE" "$BEAST_EXTRACT"
+BEAST_FETCH_ARGS=(
+  --destination "$BEAST_ARCHIVE"
+  --extract-to "$BEAST_EXTRACT"
+)
+if [[ -n "${SYNAPSE_BEAST_KIT_SOURCE:-}" ]]; then
+  BEAST_FETCH_ARGS+=(--source-file "$SYNAPSE_BEAST_KIT_SOURCE")
+fi
+python3 "$REPO_ROOT/BEASTOS_WEB_MACHINE/scripts/fetch-beast-kit.py" \
+  "${BEAST_FETCH_ARGS[@]}" > "$BEAST_RECEIPT"
+
+BEAST_IMAGE_DIR="config/includes.chroot/usr/share/synapse/beast-kit"
+mkdir -p "$BEAST_IMAGE_DIR" config/includes.chroot/usr/share/synapse
+install -m 0644 "$REPO_ROOT/BEASTOS_WEB_MACHINE/manifests/beast-v0.6.0.json" \
+  "$BEAST_IMAGE_DIR/beast-v0.6.0.json"
+install -m 0644 "$BEAST_RECEIPT" "$BEAST_IMAGE_DIR/BEAST_KIT_RECEIPT.json"
+for beast_file in \
+  cosmos_beast_box-0.6.0-py3-none-any.whl \
+  LICENSE \
+  RELEASE_PROVENANCE.json \
+  SHA256SUMS; do
+  test -f "$BEAST_EXTRACT/$beast_file" || { echo "error: verified Beast kit missing $beast_file" >&2; exit 2; }
+  install -m 0644 "$BEAST_EXTRACT/$beast_file" "$BEAST_IMAGE_DIR/$beast_file"
+done
+rsync -a \
+  --exclude '__pycache__/' \
+  --exclude 'tests/' \
+  "$REPO_ROOT/BEASTOS_WEB_MACHINE/" \
+  config/includes.chroot/usr/share/synapse/BEASTOS_WEB_MACHINE/
 
 # Ship the controlling first-party license and provenance notices inside every
 # generated Synapse OS image. Third-party package licenses remain available
