@@ -91,9 +91,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           mkdir -p BEASTOS_WEB_MACHINE/test-results/evidence
-          find BEASTOS_WEB_MACHINE/test-results -type f -name '*.webm' -print0 | while IFS= read -r -d '' video; do
-            ffmpeg -loglevel error -y -i "$video" -c:v libx264 -pix_fmt yuv420p "${video%.webm}.mp4"
-          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root = Path('BEASTOS_WEB_MACHINE/test-results')
+          for video in sorted(root.rglob('*.webm')):
+              target = video.with_suffix('.mp4')
+              subprocess.run([
+                  'ffmpeg', '-loglevel', 'error', '-y', '-i', str(video),
+                  '-c:v', 'libx264', '-pix_fmt', 'yuv420p', str(target),
+              ], check=True)
+          PY
           cp /tmp/beast-kit-receipt.json BEASTOS_WEB_MACHINE/test-results/evidence/BEAST_KIT_RECEIPT.json
           cp /tmp/beast-init.json BEASTOS_WEB_MACHINE/test-results/evidence/BEAST_INIT.json
           cp /tmp/beastos-web.log BEASTOS_WEB_MACHINE/test-results/evidence/BEASTOS_WEB.log
