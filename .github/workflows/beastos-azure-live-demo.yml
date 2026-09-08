@@ -1,0 +1,329 @@
+name: BeastOS Azure live brain demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'demo/beastos-azure-brain-001'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: beastos-azure-live-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  azure-live-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Resolve Azure AI configuration without exposing credentials
+        id: azure_config
+        env:
+          AI_KEY_INFERENCE: ${{ secrets.AZURE_INFERENCE_CREDENTIAL }}
+          AI_KEY_OPENAI_API: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AI_KEY_AI_API: ${{ secrets.AZURE_AI_API_KEY }}
+          AI_KEY_FOUNDRY_API: ${{ secrets.AZURE_FOUNDRY_API_KEY }}
+          AI_KEY_OPENAI: ${{ secrets.AZURE_OPENAI_KEY }}
+          AI_KEY_AI: ${{ secrets.AZURE_AI_KEY }}
+          STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+          STORAGE_ACCOUNT_KEY: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
+          STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          STORAGE_API_KEY: ${{ secrets.AZURE_STORAGE_API_KEY }}
+          AMBIGUOUS_API_KEY: ${{ secrets.AZURE_API_KEY }}
+          AMBIGUOUS_KEY: ${{ secrets.AZURE_KEY }}
+          ENDPOINT_OPENAI_SECRET: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          ENDPOINT_AI_SECRET: ${{ secrets.AZURE_AI_ENDPOINT }}
+          ENDPOINT_FOUNDRY_SECRET: ${{ secrets.AZURE_FOUNDRY_ENDPOINT }}
+          ENDPOINT_INFERENCE_SECRET: ${{ secrets.AZURE_INFERENCE_ENDPOINT }}
+          ENDPOINT_OPENAI_VAR: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          ENDPOINT_AI_VAR: ${{ vars.AZURE_AI_ENDPOINT }}
+          ENDPOINT_FOUNDRY_VAR: ${{ vars.AZURE_FOUNDRY_ENDPOINT }}
+          ENDPOINT_INFERENCE_VAR: ${{ vars.AZURE_INFERENCE_ENDPOINT }}
+          RESOURCE_OPENAI_SECRET: ${{ secrets.AZURE_OPENAI_RESOURCE }}
+          RESOURCE_OPENAI_VAR: ${{ vars.AZURE_OPENAI_RESOURCE }}
+          ACCOUNT_FOUNDRY_SECRET: ${{ secrets.AZURE_FOUNDRY_ACCOUNT }}
+          ACCOUNT_FOUNDRY_VAR: ${{ vars.AZURE_FOUNDRY_ACCOUNT }}
+          MODEL_DEPLOYMENT_SECRET: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          MODEL_DEPLOYMENT_VAR: ${{ vars.AZURE_OPENAI_DEPLOYMENT }}
+          MODEL_NAME_SECRET: ${{ secrets.AZURE_DEPLOYMENT_NAME }}
+          MODEL_NAME_VAR: ${{ vars.AZURE_DEPLOYMENT_NAME }}
+          MODEL_OPENAI_SECRET: ${{ secrets.AZURE_OPENAI_MODEL }}
+          MODEL_OPENAI_VAR: ${{ vars.AZURE_OPENAI_MODEL }}
+          MODEL_AI_SECRET: ${{ secrets.AZURE_AI_MODEL }}
+          MODEL_AI_VAR: ${{ vars.AZURE_AI_MODEL }}
+          MODEL_FOUNDRY_SECRET: ${{ secrets.AZURE_FOUNDRY_MODEL }}
+          MODEL_FOUNDRY_VAR: ${{ vars.AZURE_FOUNDRY_MODEL }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p BEASTOS_WEB_MACHINE/azure-demo-evidence
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          from pathlib import Path
+          from urllib.parse import urlsplit, urlunsplit
+
+          def first(names):
+              for name in names:
+                  value = os.environ.get(name, '').strip()
+                  if value:
+                      return name, value
+              return None, None
+
+          key_name, key = first([
+              'AI_KEY_INFERENCE', 'AI_KEY_OPENAI_API', 'AI_KEY_AI_API',
+              'AI_KEY_FOUNDRY_API', 'AI_KEY_OPENAI', 'AI_KEY_AI',
+          ])
+          endpoint_name, endpoint = first([
+              'ENDPOINT_OPENAI_SECRET', 'ENDPOINT_AI_SECRET', 'ENDPOINT_FOUNDRY_SECRET',
+              'ENDPOINT_INFERENCE_SECRET', 'ENDPOINT_OPENAI_VAR', 'ENDPOINT_AI_VAR',
+              'ENDPOINT_FOUNDRY_VAR', 'ENDPOINT_INFERENCE_VAR',
+          ])
+          resource_name, resource = first(['RESOURCE_OPENAI_SECRET', 'RESOURCE_OPENAI_VAR'])
+          foundry_name, foundry = first(['ACCOUNT_FOUNDRY_SECRET', 'ACCOUNT_FOUNDRY_VAR'])
+          model_name, model = first([
+              'MODEL_DEPLOYMENT_SECRET', 'MODEL_DEPLOYMENT_VAR', 'MODEL_NAME_SECRET',
+              'MODEL_NAME_VAR', 'MODEL_OPENAI_SECRET', 'MODEL_OPENAI_VAR',
+              'MODEL_AI_SECRET', 'MODEL_AI_VAR', 'MODEL_FOUNDRY_SECRET', 'MODEL_FOUNDRY_VAR',
+          ])
+          storage_present = any(os.environ.get(name, '').strip() for name in [
+              'STORAGE_KEY', 'STORAGE_ACCOUNT_KEY', 'STORAGE_CONNECTION_STRING', 'STORAGE_API_KEY',
+          ])
+          ambiguous_present = any(os.environ.get(name, '').strip() for name in [
+              'AMBIGUOUS_API_KEY', 'AMBIGUOUS_KEY',
+          ])
+
+          errors = []
+          if not endpoint:
+              if resource:
+                  if not re.fullmatch(r'[A-Za-z0-9-]{2,63}', resource):
+                      errors.append('invalid Azure OpenAI resource identifier')
+                  else:
+                      endpoint_name = resource_name
+                      endpoint = f'https://{resource}.openai.azure.com/openai/v1'
+              elif foundry:
+                  if not re.fullmatch(r'[A-Za-z0-9-]{2,63}', foundry):
+                      errors.append('invalid Microsoft Foundry account identifier')
+                  else:
+                      endpoint_name = foundry_name
+                      endpoint = f'https://{foundry}.services.ai.azure.com/openai/v1'
+
+          normalized_endpoint = None
+          endpoint_host_hash = None
+          if endpoint:
+              try:
+                  parsed = urlsplit(endpoint)
+                  host = (parsed.hostname or '').lower()
+                  if parsed.scheme != 'https' or parsed.username or parsed.password or parsed.query or parsed.fragment:
+                      raise ValueError('Azure AI endpoint must be clean HTTPS without embedded credentials/query/fragment')
+                  if parsed.port not in (None, 443):
+                      raise ValueError('Azure AI endpoint must use standard HTTPS port')
+                  if not (host.endswith('.openai.azure.com') or host.endswith('.services.ai.azure.com')):
+                      raise ValueError('endpoint is not an Azure OpenAI/Microsoft Foundry host')
+                  path = (parsed.path or '/').rstrip('/')
+                  if path in ('', '/'):
+                      path = '/openai/v1'
+                  if path != '/openai/v1':
+                      raise ValueError('endpoint must target the OpenAI-compatible /openai/v1 base')
+                  normalized_endpoint = urlunsplit(('https', parsed.netloc, path, '', ''))
+                  endpoint_host_hash = hashlib.sha256(host.encode()).hexdigest()
+              except ValueError as exc:
+                  errors.append(str(exc))
+
+          if key and ('\n' in key or '\r' in key):
+              errors.append('AI credential contains an invalid newline')
+          if model and ('\n' in model or '\r' in model or len(model) > 200):
+              errors.append('deployment/model identifier is invalid')
+
+          ready = bool(key and normalized_endpoint and model and not errors)
+          missing = []
+          if not key:
+              missing.append('azure_ai_inference_key')
+          if not normalized_endpoint:
+              missing.append('azure_ai_openai_v1_endpoint')
+          if not model:
+              missing.append('azure_ai_deployment_name')
+
+          receipt = {
+              'schema': 'beastos-azure-config-v1',
+              'status': 'READY' if ready else 'BLOCKED_EXTERNAL',
+              'ai_inference_key_present': bool(key),
+              'storage_credential_present': storage_present,
+              'ambiguous_azure_key_present_but_not_used': ambiguous_present,
+              'endpoint_present_and_valid': bool(normalized_endpoint),
+              'deployment_present': bool(model),
+              'selected_ai_key_candidate': key_name,
+              'selected_endpoint_candidate': endpoint_name,
+              'selected_deployment_candidate': model_name,
+              'endpoint_host_sha256': endpoint_host_hash,
+              'deployment_sha256': hashlib.sha256(model.encode()).hexdigest() if model else None,
+              'missing': missing,
+              'configuration_errors': errors,
+              'secret_values_recorded': False,
+          }
+          Path('BEASTOS_WEB_MACHINE/azure-demo-evidence/AZURE_CONFIG.json').write_text(
+              json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              out.write(f"ready={'true' if ready else 'false'}\n")
+              out.write(f"status={receipt['status']}\n")
+          if ready:
+              print(f'::add-mask::{key}')
+              with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as env:
+                  env.write(f'BEAST_AZURE_API_KEY={key}\n')
+                  env.write(f'BEAST_AZURE_ENDPOINT={normalized_endpoint}\n')
+                  env.write(f'BEAST_AZURE_MODEL={model}\n')
+          PY
+
+      - name: Report blocked external configuration
+        if: steps.azure_config.outputs.ready != 'true'
+        run: |
+          echo '### BeastOS Azure live demo: BLOCKED_EXTERNAL' >> "$GITHUB_STEP_SUMMARY"
+          echo 'A distinct Azure AI inference key + OpenAI v1 endpoint/resource + deployment name were not all established.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Storage or ambiguous Azure keys, if present, were deliberately not used as model credentials.' >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-node@v4
+        if: steps.azure_config.outputs.ready == 'true'
+        with:
+          node-version: '22'
+
+      - name: Install pinned real-browser runner
+        if: steps.azure_config.outputs.ready == 'true'
+        working-directory: BEASTOS_WEB_MACHINE
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Materialize exact Beast Box v0.6.0 runtime
+        if: steps.azure_config.outputs.ready == 'true'
+        run: |
+          set -Eeuo pipefail
+          python3 BEASTOS_WEB_MACHINE/scripts/fetch-beast-kit.py \
+            --destination /tmp/beast-box-combined-0.6.0.zip \
+            --extract-to /tmp/beast-kit > BEASTOS_WEB_MACHINE/azure-demo-evidence/BEAST_KIT_RECEIPT.json
+          python3 -m venv /tmp/beast-runtime
+          /tmp/beast-runtime/bin/pip install --no-index --no-deps \
+            /tmp/beast-kit/cosmos_beast_box-0.6.0-py3-none-any.whl
+
+      - name: Launch BeastOS with Azure as CLOUD brain provider
+        if: steps.azure_config.outputs.ready == 'true'
+        run: |
+          set -Eeuo pipefail
+          PYTHONPATH="$GITHUB_WORKSPACE" python3 -m BEASTOS_WEB_MACHINE.bridge.server \
+            --listen 127.0.0.1 \
+            --port 8790 \
+            --web-root "$GITHUB_WORKSPACE/BEASTOS_WEB_MACHINE" \
+            --beast-provider-location CLOUD \
+            --beast-executable /tmp/beast-runtime/bin/beastbox \
+            --beast-data-dir /tmp/beast-azure-data \
+            --beast-runtime-provider compatible \
+            --beast-model "$BEAST_AZURE_MODEL" \
+            --beast-provider-url "$BEAST_AZURE_ENDPOINT" \
+            --beast-allow-remote \
+            --beast-api-key-env BEAST_AZURE_API_KEY \
+            > /tmp/beastos-azure.log 2>&1 &
+          echo $! > /tmp/beastos-azure.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8790/v1/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8790/v1/health >/dev/null
+
+      - name: Record live Azure brain in Chromium
+        id: azure_e2e
+        if: steps.azure_config.outputs.ready == 'true'
+        working-directory: BEASTOS_WEB_MACHINE
+        run: |
+          set +e
+          npx playwright test tests/e2e/azure-live.spec.mjs -c playwright.config.mjs
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Build Azure demo receipts and MP4
+        if: always() && steps.azure_config.outputs.ready == 'true'
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root = Path('BEASTOS_WEB_MACHINE/test-results')
+          for video in sorted(root.rglob('*.webm')):
+              subprocess.run([
+                  'ffmpeg', '-loglevel', 'error', '-y', '-i', str(video),
+                  '-c:v', 'libx264', '-pix_fmt', 'yuv420p', str(video.with_suffix('.mp4')),
+              ], check=True)
+          PY
+          test -f /tmp/beastos-azure.log && cp /tmp/beastos-azure.log BEASTOS_WEB_MACHINE/azure-demo-evidence/BEASTOS_AZURE.log || true
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path('BEASTOS_WEB_MACHINE/azure-demo-evidence')
+          config = json.loads((root / 'AZURE_CONFIG.json').read_text(encoding='utf-8'))
+          exit_code = int('${{ steps.azure_e2e.outputs.exit_code || '999' }}')
+          receipt = {
+              'schema': 'beastos-azure-live-demo-v1',
+              'status': 'IMPLEMENTED_AND_TESTED' if exit_code == 0 else 'PROTOTYPE',
+              'synapse_demo_commit': os.environ['GITHUB_SHA'],
+              'beast_release': 'v0.6.0',
+              'beast_commit': '331f03c5d6a4aab0b2e32314293e36c7a94be393',
+              'provider_location': 'CLOUD',
+              'provider_protocol': 'OpenAI-compatible v1 chat/completions',
+              'azure_endpoint_host_sha256': config.get('endpoint_host_sha256'),
+              'azure_deployment_sha256': config.get('deployment_sha256'),
+              'browser': 'Playwright Chromium',
+              'browser_exit_code': exit_code,
+              'authority_transfers_on_brain_swap': False,
+              'secret_values_recorded': False,
+              'physical_user_hardware_validated': False,
+          }
+          (root / 'RECEIPT.json').write_text(json.dumps(receipt, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          (root / 'TRANSCRIPT.txt').write_text(
+              '1. Start BeastOS Web on loopback with provider location CLOUD.\n'
+              '2. Beast Box v0.6.0 uses compatible provider mode and resolves the Azure API key only from runner environment.\n'
+              '3. Chromium clocks in Azure Brain A and sends a real model turn.\n'
+              '4. Synapse grants filesystem.write to Brain A only.\n'
+              '5. Chromium clocks in Azure Brain B and verifies grants reset to NONE.\n'
+              '6. Azure Brain B sends a second real model turn through the same Beast data directory.\n'
+              '7. Synapse Trace verifies brain_clock_in and beast_chat receipts without storing prompt content or credentials.\n',
+              encoding='utf-8',
+          )
+          PY
+          (
+            cd BEASTOS_WEB_MACHINE
+            find azure-demo-evidence test-results -type f ! -name SHA256SUMS -print0 2>/dev/null | sort -z | xargs -0 sha256sum > azure-demo-evidence/SHA256SUMS
+          )
+
+      - name: Stop Azure BeastOS bridge
+        if: always() && steps.azure_config.outputs.ready == 'true'
+        run: |
+          if test -s /tmp/beastos-azure.pid; then kill "$(cat /tmp/beastos-azure.pid)" 2>/dev/null || true; fi
+
+      - name: Preserve Azure cloud-brain evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beastos-azure-live-${{ github.sha }}
+          path: |
+            BEASTOS_WEB_MACHINE/azure-demo-evidence/
+            BEASTOS_WEB_MACHINE/test-results/
+          if-no-files-found: warn
+
+      - name: Enforce live Azure demo result
+        if: steps.azure_config.outputs.ready == 'true' && steps.azure_e2e.outputs.exit_code != '0'
+        run: exit 1
