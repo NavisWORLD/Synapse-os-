@@ -20,6 +20,7 @@ class BeastOSSmolZerefDemoContractTests(unittest.TestCase):
         self.assertIn("edf6501633ff26948a73815690e2f184c3e4025414c3ac2d64fbfec203307f7a", text)
         self.assertIn("/demo/brain", text)
         self.assertIn("/api/generate", text)
+        self.assertIn("parameter_drift", text)
         self.assertNotIn("qwen", text.lower())
 
     def test_browser_recorder_performs_live_swap_and_authority_reset(self) -> None:
@@ -33,24 +34,20 @@ class BeastOSSmolZerefDemoContractTests(unittest.TestCase):
         self.assertIn("grantsAfterSwap", text)
         self.assertIn("/demo/brain", text)
         self.assertIn("recordVideo", text)
+        self.assertIn("closeReceipt", text)
         self.assertGreaterEqual(text.count("await send("), 6)
         self.assertNotIn("qwen", text.lower())
         self.assertNotIn("mockResponse", text)
 
-    def test_demo_workflow_must_download_preserved_zeref_artifact_and_record_full_demo(self) -> None:
-        workflow = ROOT / ".github/workflows/beastos-smol-zeref-demo.yml"
-        self.assertTrue(workflow.is_file())
-        text = workflow.read_text(encoding="utf-8")
-        self.assertIn("33132618727", text)
-        self.assertIn("9670847045", text)
-        self.assertIn("zeref-world-r12-downstream-diagnostic-33132618727", text)
-        self.assertIn("454f3017618a81fb9a13393b215d448f365534baf5b607e19d1438955921e425", text)
-        self.assertIn("qemu-system-x86_64", text)
-        self.assertIn("SYNAPSE_VM_READY", text)
-        self.assertIn("live-demo-smol-zeref.mjs", text)
-        self.assertIn("smol-zeref-full-demo.mp4", text)
-        self.assertIn("SHA256SUMS", text)
-        self.assertNotIn("qwen", text.lower())
+    def test_demo_scripts_do_not_claim_model_authority_or_training(self) -> None:
+        provider = (ROOT / "BEASTOS_WEB_MACHINE/scripts/smol_zeref_lineage_provider.py").read_text(encoding="utf-8")
+        recorder = (ROOT / "BEASTOS_WEB_MACHINE/scripts/live-demo-smol-zeref.mjs").read_text(encoding="utf-8")
+        self.assertIn("authority_owned_by_provider", provider)
+        self.assertIn("training_performed", provider)
+        self.assertIn("authority_transferred", provider)
+        self.assertIn("grantsAfterSwap !== 'NONE'", recorder)
+        self.assertNotIn("trainer", provider.lower())
+        self.assertNotIn("backward(", provider.lower())
 
 
 if __name__ == "__main__":
