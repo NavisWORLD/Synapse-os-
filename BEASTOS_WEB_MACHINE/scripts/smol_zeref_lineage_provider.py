@@ -162,10 +162,14 @@ class LineageState:
 
     def close_receipt(self) -> dict[str, Any]:
         with self._lock:
+            smol = self.smol.close()
+            zeref = self.zeref.close()
+            if smol.get("parameter_drift") is not False or zeref.get("parameter_drift") is not False:
+                raise RuntimeError("frozen model parameter_drift detected")
             return {
                 "schema": "beastos-smol-zeref-close-v1",
-                "smol": self.smol.close(),
-                "zeref": self.zeref.close(),
+                "smol": smol,
+                "zeref": zeref,
                 "generation_count": dict(self.generation_count),
             }
 
