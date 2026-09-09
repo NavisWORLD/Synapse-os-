@@ -26,6 +26,16 @@ class BeastOSLiveDemoContractTests(unittest.TestCase):
         self.assertIn("live-demo.mjs", workflow)
         self.assertNotIn("FakeExchange", workflow)
 
+    def test_quality_conversation_proof_uses_real_instruction_model_and_execution_receipt(self) -> None:
+        workflow = (ROOT / ".github/workflows/beastos-local-conversation-proof.yml").read_text(encoding="utf-8")
+        self.assertIn("qwen2.5:0.5b", workflow)
+        self.assertIn("/api/ps", workflow)
+        self.assertIn("ollama ps", workflow)
+        self.assertIn("live-demo.mjs", workflow)
+        self.assertIn("SWAP THE BRAIN. KEEP THE STORY.", workflow)
+        self.assertNotIn("FakeExchange", workflow)
+        self.assertNotIn("mockResponse", workflow)
+
     def test_browser_demo_script_records_raw_model_turns_and_capabilities(self) -> None:
         script = ROOT / "BEASTOS_WEB_MACHINE/scripts/live-demo.mjs"
         self.assertTrue(script.is_file())
