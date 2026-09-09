@@ -83,7 +83,7 @@ const gpuDetails = await page.locator('#gpu-details').innerText();
 await clockIn('Behom Smol / SmolLM2-135M');
 await send(
   'smol',
-  'Alright tiny beast, Cory fired Qwen. You are the exact frozen SmolLM2-135M brain behind Beast right now. Roast this ridiculous OS experiment a little, but only claim what you can actually infer from the prompt and runtime.',
+  'Alright tiny beast, Cory replaced the previous demo brain. You are the exact frozen SmolLM2-135M brain behind Beast right now. Roast this ridiculous OS experiment a little, but only claim what you can actually infer from the prompt and runtime.',
   9000,
 );
 await send(
