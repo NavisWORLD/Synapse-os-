@@ -1,0 +1,376 @@
+name: BeastOS five minute boot + conversation video
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'demo/beastos-five-minute-video-001'
+
+permissions:
+  contents: read
+
+jobs:
+  record-synapse-boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Synapse build, QEMU, and recording tools
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            cpio debootstrap rsync xorriso squashfs-tools curl \
+            qemu-system-x86 qemu-system-gui qemu-utils ovmf \
+            parted dosfstools e2fsprogs grub-efi-amd64-bin grub2-common \
+            util-linux udev xvfb ffmpeg
+          curl -fsSL -o /tmp/debian-archive-keyring.deb \
+            'https://deb.debian.org/debian/pool/main/d/debian-archive-keyring/debian-archive-keyring_2025.1_all.deb'
+          echo '9ea7778e443144ca490668737a8ab22dd3e748bb99e805e22ec055abeb3c7fac  /tmp/debian-archive-keyring.deb' | sha256sum -c -
+          curl -fsSL -o /tmp/live-build.deb \
+            'https://deb.debian.org/debian/pool/main/l/live-build/live-build_20250505+deb13u1_all.deb'
+          echo '58e09779881cbcc631c49ceb703413e0247a87db01823e597b2a1c40a2afd8f4  /tmp/live-build.deb' | sha256sum -c -
+          sudo dpkg -i /tmp/debian-archive-keyring.deb /tmp/live-build.deb
+
+      - name: Build current Synapse amd64 ISO
+        run: sudo env SYNAPSE_ARCH=amd64 ./build/build.sh
+
+      - name: Verify ISO checksum
+        run: sha256sum -c out/*.iso.sha256
+
+      - name: Record complete real QEMU boot through ready marker
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/beastos-five-minute-boot"
+          WORK="$RUNNER_TEMP/beastos-five-minute-boot-work"
+          mkdir -p "$EVIDENCE" "$WORK"
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -n "$ISO"
+          xorriso -osirrox on -indev "$ISO" \
+            -extract /live/vmlinuz "$WORK/vmlinuz" \
+            -extract /live/initrd.img "$WORK/initrd.img"
+
+          {
+            echo 'schema=beastos-five-minute-boot-v1'
+            echo "commit=$GITHUB_SHA"
+            echo "iso=$ISO"
+            sha256sum "$ISO"
+            uname -a
+            qemu-system-x86_64 --version | head -n 1
+          } > "$EVIDENCE/boot-environment.txt"
+
+          Xvfb :99 -screen 0 1440x1080x24 >"$EVIDENCE/xvfb.log" 2>&1 &
+          XVFB_PID=$!
+          export DISPLAY=:99
+          sleep 2
+          ffmpeg -y -f x11grab -draw_mouse 0 -framerate 25 -video_size 1440x1080 \
+            -i :99.0 -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p \
+            "$EVIDENCE/synapse-boot.mp4" >"$EVIDENCE/boot-ffmpeg.log" 2>&1 &
+          FFMPEG_PID=$!
+
+          : > "$EVIDENCE/serial.log"
+          qemu-system-x86_64 \
+            -machine q35 \
+            -cpu qemu64 \
+            -m 4096 \
+            -smp 2 \
+            -kernel "$WORK/vmlinuz" \
+            -initrd "$WORK/initrd.img" \
+            -append 'boot=live components live-media=/dev/vda synapse.vmtest=1 console=ttyS0,115200n8 console=tty0 systemd.show_status=1' \
+            -drive "file=$ISO,format=raw,if=virtio,readonly=on" \
+            -display gtk \
+            -serial "file:$EVIDENCE/serial.log" \
+            -no-reboot \
+            -nic user,model=virtio-net-pci \
+            >"$EVIDENCE/qemu.log" 2>&1 &
+          QEMU_PID=$!
+
+          result=timeout
+          for _ in $(seq 1 300); do
+            if grep -Fq 'SYNAPSE_VM_READY' "$EVIDENCE/serial.log"; then
+              result=ready
+              break
+            fi
+            if grep -Fq 'SYNAPSE_VM_FAIL:' "$EVIDENCE/serial.log"; then
+              result=guest-fail
+              break
+            fi
+            if ! kill -0 "$QEMU_PID" 2>/dev/null; then
+              result=stopped
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "$result" == ready ]]; then
+            sleep 8
+          fi
+          kill -TERM "$QEMU_PID" 2>/dev/null || true
+          sleep 2
+          kill -KILL "$QEMU_PID" 2>/dev/null || true
+          wait "$QEMU_PID" 2>/dev/null || true
+          kill -INT "$FFMPEG_PID" 2>/dev/null || true
+          wait "$FFMPEG_PID" 2>/dev/null || true
+          kill "$XVFB_PID" 2>/dev/null || true
+          wait "$XVFB_PID" 2>/dev/null || true
+
+          awk '/SYNAPSE_VM_HW_BEGIN/{capture=1} capture{print} /SYNAPSE_VM_HW_END/{capture=0}' \
+            "$EVIDENCE/serial.log" > "$EVIDENCE/guest-hardware.txt"
+          test -s "$EVIDENCE/guest-hardware.txt"
+          grep -F 'SYNAPSE_VM_READY' "$EVIDENCE/serial.log"
+          test -s "$EVIDENCE/synapse-boot.mp4"
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 \
+            "$EVIDENCE/synapse-boot.mp4" > "$EVIDENCE/boot-duration.txt"
+          echo "boot_result=$result" >> "$EVIDENCE/boot-environment.txt"
+          (cd "$EVIDENCE" && sha256sum synapse-boot.mp4 serial.log guest-hardware.txt boot-environment.txt boot-duration.txt > SHA256SUMS)
+
+      - name: Upload boot segment and receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: beastos-five-minute-boot-${{ github.sha }}
+          path: ${{ runner.temp }}/beastos-five-minute-boot
+          if-no-files-found: error
+
+  record-real-model-conversation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout exact Beast Box v0.6.0 source commit
+        uses: actions/checkout@v4
+        with:
+          repository: NavisWORLD/The-beast-box-
+          ref: 331f03c5d6a4aab0b2e32314293e36c7a94be393
+          path: beastbox-src
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install real Beast runtime, pinned Ollama, and browser recorder
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl zstd ffmpeg jq
+          python -m pip install ./beastbox-src
+          curl -fsSL -o /tmp/install-ollama.sh \
+            'https://github.com/ollama/ollama/releases/download/v0.33.3/install.sh'
+          echo '25f64b810b947145095956533e1bdf56eacea2673c55a7e586be4515fc882c9f  /tmp/install-ollama.sh' | sha256sum -c -
+          OLLAMA_VERSION=0.33.3 sh /tmp/install-ollama.sh
+          sudo systemctl stop ollama.service 2>/dev/null || true
+          cd BEASTOS_WEB_MACHINE
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Start Ollama and pull qwen2.5:0.5b
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/beastos-five-minute-conversation"
+          mkdir -p "$EVIDENCE"
+          OLLAMA_HOST=127.0.0.1:11434 OLLAMA_DEBUG=1 ollama serve >"$EVIDENCE/ollama.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/ollama.pid"
+          for _ in $(seq 1 90); do
+            curl -fsS http://127.0.0.1:11434/api/tags >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5:0.5b | tee "$EVIDENCE/model-pull.log"
+          curl -fsS http://127.0.0.1:11434/api/tags > "$EVIDENCE/model-receipt.json"
+
+      - name: Start BeastOS bridge on the real Beast exchange
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/beastos-five-minute-conversation"
+          {
+            echo 'schema=beastos-five-minute-conversation-environment-v1'
+            echo "synapse_commit=$GITHUB_SHA"
+            echo "beast_commit=$(git -C beastbox-src rev-parse HEAD)"
+            echo "beast_version=$(python -c 'import importlib.metadata; print(importlib.metadata.version("cosmos-beast-box"))')"
+            echo "ollama_version=$(ollama --version 2>&1 | tail -n 1)"
+            uname -a
+            lscpu
+            free -h
+            if command -v nvidia-smi >/dev/null 2>&1; then nvidia-smi; else echo 'nvidia_smi=UNAVAILABLE'; fi
+          } > "$EVIDENCE/conversation-environment.txt" 2>&1
+
+          python -m BEASTOS_WEB_MACHINE.bridge.server \
+            --listen 127.0.0.1 \
+            --port 8790 \
+            --beast-data-dir "$EVIDENCE/beast-data" \
+            --beast-executable "$(command -v beastbox)" \
+            --beast-runtime-provider ollama \
+            --beast-model qwen2.5:0.5b \
+            --beast-provider-url http://127.0.0.1:11434 \
+            >"$EVIDENCE/bridge.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/beastos-bridge.pid"
+          for _ in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8790/v1/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8790/v1/health > "$EVIDENCE/bridge-health.json"
+
+      - name: Record extended real browser conversation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd BEASTOS_WEB_MACHINE
+          BEASTOS_BASE_URL=http://127.0.0.1:8790 \
+          BEASTOS_EVIDENCE_DIR="$RUNNER_TEMP/beastos-five-minute-conversation" \
+            node scripts/live-demo-5min.mjs
+
+          EVIDENCE="$RUNNER_TEMP/beastos-five-minute-conversation"
+          ollama ps > "$EVIDENCE/ollama-ps.txt"
+          curl -fsS http://127.0.0.1:11434/api/ps > "$EVIDENCE/ollama-ps.json"
+          ffmpeg -y -i "$EVIDENCE/beastos-conversation-5min.webm" \
+            -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -an \
+            "$EVIDENCE/beastos-conversation.mp4"
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 \
+            "$EVIDENCE/beastos-conversation.mp4" > "$EVIDENCE/conversation-duration.txt"
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("${{ runner.temp }}/beastos-five-minute-conversation")
+          data = json.loads((root / "conversation-5min.json").read_text())
+          turns = data.get("turns", [])
+          if len(turns) < 8:
+              raise SystemExit("extended conversation did not record eight real turns")
+          if any(not str(turn.get("response", "")).strip() for turn in turns):
+              raise SystemExit("empty model response recorded")
+          if data.get("grantsBeforeSwap") != "filesystem.write":
+              raise SystemExit("Brain A authority receipt missing")
+          if data.get("grantsAfterSwap") != "NONE":
+              raise SystemExit("brain swap did not revoke authority")
+          ps = json.loads((root / "ollama-ps.json").read_text())
+          if not any(m.get("name") == "qwen2.5:0.5b" for m in ps.get("models", [])):
+              raise SystemExit("active qwen2.5:0.5b execution receipt missing")
+          PY
+
+      - name: Seal conversation receipts
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/beastos-five-minute-conversation"
+          kill "$(cat "$RUNNER_TEMP/beastos-bridge.pid" 2>/dev/null)" 2>/dev/null || true
+          kill "$(cat "$RUNNER_TEMP/ollama.pid" 2>/dev/null)" 2>/dev/null || true
+          if test -d "$EVIDENCE"; then
+            find "$EVIDENCE" -type f ! -path '*/beast-data/*' ! -name SHA256SUMS -print0 \
+              | sort -z | xargs -0 sha256sum > "$EVIDENCE/SHA256SUMS"
+          fi
+
+      - name: Upload conversation segment and receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beastos-five-minute-conversation-${{ github.sha }}
+          path: ${{ runner.temp }}/beastos-five-minute-conversation
+          if-no-files-found: error
+
+  assemble-five-minute-film:
+    needs:
+      - record-synapse-boot
+      - record-real-model-conversation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: beastos-five-minute-boot-${{ github.sha }}
+          path: ${{ runner.temp }}/final/boot
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: beastos-five-minute-conversation-${{ github.sha }}
+          path: ${{ runner.temp }}/final/conversation
+
+      - name: Assemble boot first, conversation second, exact five-minute evidence film
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ROOT="$RUNNER_TEMP/final"
+          OUT="$ROOT/beastos-five-minute-demo.mp4"
+
+          ffmpeg -y -i "$ROOT/boot/synapse-boot.mp4" \
+            -vf 'scale=1440:1080:force_original_aspect_ratio=decrease,pad=1440:1080:(ow-iw)/2:(oh-ih)/2,fps=25' \
+            -an -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p "$ROOT/boot-normalized.mp4"
+          ffmpeg -y -i "$ROOT/conversation/beastos-conversation.mp4" \
+            -vf 'scale=1440:1080:force_original_aspect_ratio=decrease,pad=1440:1080:(ow-iw)/2:(oh-ih)/2,fps=25' \
+            -an -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p "$ROOT/conversation-normalized.mp4"
+
+          printf "file '%s'\nfile '%s'\n" "$ROOT/boot-normalized.mp4" "$ROOT/conversation-normalized.mp4" > "$ROOT/concat.txt"
+          ffmpeg -y -f concat -safe 0 -i "$ROOT/concat.txt" -c copy "$ROOT/full-sequence.mp4"
+
+          TOTAL="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$ROOT/full-sequence.mp4")"
+          python - "$TOTAL" > "$ROOT/assembly-mode.txt" <<'PY'
+          import sys
+          total = float(sys.argv[1])
+          if total > 300.0:
+              print(f"speed:{300.0/total:.12f}")
+          else:
+              print(f"pad:{300.0-total:.6f}")
+          PY
+          MODE="$(cat "$ROOT/assembly-mode.txt")"
+          if [[ "$MODE" == speed:* ]]; then
+            FACTOR="${MODE#speed:}"
+            ffmpeg -y -i "$ROOT/full-sequence.mp4" \
+              -vf "setpts=${FACTOR}*PTS,fps=25" -an \
+              -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -t 300 "$OUT"
+          else
+            PAD="${MODE#pad:}"
+            ffmpeg -y -i "$ROOT/full-sequence.mp4" \
+              -vf "tpad=stop_mode=clone:stop_duration=${PAD},fps=25" -an \
+              -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -t 300 "$OUT"
+          fi
+
+          FINAL_DURATION="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$OUT")"
+          python - "$FINAL_DURATION" <<'PY'
+          import sys
+          duration = float(sys.argv[1])
+          if not 299.5 <= duration <= 300.5:
+              raise SystemExit(f"final duration is not five minutes: {duration}")
+          PY
+
+          {
+            echo 'schema=beastos-five-minute-film-v1'
+            echo "commit=$GITHUB_SHA"
+            echo 'sequence=real Synapse QEMU boot -> real BeastOS browser -> real Beast Box v0.6.0 -> real Ollama qwen2.5:0.5b conversation'
+            echo 'duration=300'
+            echo "source_total_seconds=$TOTAL"
+            echo "assembly_mode=$MODE"
+            echo "final_seconds=$FINAL_DURATION"
+          } > "$ROOT/FILM_RECEIPT.txt"
+          (cd "$ROOT" && sha256sum beastos-five-minute-demo.mp4 FILM_RECEIPT.txt boot/serial.log boot/guest-hardware.txt conversation/conversation-5min.json conversation/ollama-ps.json > SHA256SUMS)
+
+      - name: Upload complete five-minute film and receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: beastos-five-minute-film-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/final/beastos-five-minute-demo.mp4
+            ${{ runner.temp }}/final/FILM_RECEIPT.txt
+            ${{ runner.temp }}/final/SHA256SUMS
+            ${{ runner.temp }}/final/boot/serial.log
+            ${{ runner.temp }}/final/boot/guest-hardware.txt
+            ${{ runner.temp }}/final/conversation/conversation-5min.json
+            ${{ runner.temp }}/final/conversation/browser-capabilities-5min.json
+            ${{ runner.temp }}/final/conversation/ollama-ps.json
+            ${{ runner.temp }}/final/conversation/model-receipt.json
+          if-no-files-found: error
