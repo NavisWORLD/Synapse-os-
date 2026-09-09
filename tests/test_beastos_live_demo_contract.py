@@ -12,7 +12,8 @@ class BeastOSLiveDemoContractTests(unittest.TestCase):
         smoke = (ROOT / "rootfs/usr/local/lib/synapse/vm-smoke").read_text(encoding="utf-8")
         self.assertIn("SYNAPSE_VM_HW_BEGIN", smoke)
         self.assertIn("SYNAPSE_VM_HW_END", smoke)
-        self.assertIn("/sys/class/dmi/id/sys_vendor", smoke)
+        self.assertIn('for entry in sys_vendor product_name product_version board_name', smoke)
+        self.assertIn('/sys/class/dmi/id/$entry', smoke)
         self.assertIn("/proc/cpuinfo", smoke)
         self.assertIn("/proc/meminfo", smoke)
 
