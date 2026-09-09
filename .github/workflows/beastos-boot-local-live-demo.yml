@@ -10,20 +10,20 @@ permissions:
   contents: read
 
 jobs:
-  diagnose-synapse-boot:
+  record-synapse-boot:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - name: Install Synapse build and QEMU tools
+      - name: Install Synapse build, QEMU, and recording tools
         run: |
           set -Eeuo pipefail
           sudo apt-get update
           sudo apt-get install -y \
             cpio debootstrap rsync xorriso squashfs-tools curl \
-            qemu-system-x86 qemu-utils ovmf \
+            qemu-system-x86 qemu-system-gui qemu-utils ovmf \
             parted dosfstools e2fsprogs grub-efi-amd64-bin grub2-common \
-            util-linux udev
+            util-linux udev xvfb ffmpeg
           curl -fsSL -o /tmp/debian-archive-keyring.deb \
             'https://deb.debian.org/debian/pool/main/d/debian-archive-keyring/debian-archive-keyring_2025.1_all.deb'
           echo '9ea7778e443144ca490668737a8ab22dd3e748bb99e805e22ec055abeb3c7fac  /tmp/debian-archive-keyring.deb' | sha256sum -c -
@@ -35,55 +35,209 @@ jobs:
         run: sudo env SYNAPSE_ARCH=amd64 ./build/build.sh
       - name: Verify ISO checksum
         run: sha256sum -c out/*.iso.sha256
-      - name: Capture bounded serial boot diagnostic
-        id: boot
+      - name: Record real QEMU boot and guest hardware receipt
         shell: bash
         run: |
-          set +e
-          mkdir -p /tmp/synapse-live-demo
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/synapse-boot-evidence"
+          WORK="$RUNNER_TEMP/synapse-boot-work"
+          mkdir -p "$EVIDENCE" "$WORK"
           ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
-          test -n "$ISO" || exit 2
+          test -n "$ISO"
           xorriso -osirrox on -indev "$ISO" \
-            -extract /live/vmlinuz /tmp/synapse-live-demo/vmlinuz \
-            -extract /live/initrd.img /tmp/synapse-live-demo/initrd.img
-          timeout --signal=TERM --kill-after=10s 150s \
+            -extract /live/vmlinuz "$WORK/vmlinuz" \
+            -extract /live/initrd.img "$WORK/initrd.img"
+          {
+            echo "schema=beastos-synapse-boot-environment-v1"
+            echo "commit=$GITHUB_SHA"
+            echo "iso=$ISO"
+            sha256sum "$ISO"
+            uname -a
+            qemu-system-x86_64 --version | head -n 1
+            ffmpeg -version | head -n 1
+          } > "$EVIDENCE/environment.txt"
+
+          Xvfb :99 -screen 0 1440x900x24 >"$EVIDENCE/xvfb.log" 2>&1 &
+          XVFB_PID=$!
+          export DISPLAY=:99
+          sleep 2
+          ffmpeg -y -f x11grab -draw_mouse 0 -framerate 15 -video_size 1440x900 \
+            -i :99.0 -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p \
+            "$EVIDENCE/synapse-qemu-boot.mp4" >"$EVIDENCE/ffmpeg.log" 2>&1 &
+          FFMPEG_PID=$!
+
+          set +e
+          timeout --signal=TERM --kill-after=10s 300s \
             qemu-system-x86_64 \
               -machine q35 \
               -cpu qemu64 \
-              -m 1024 \
+              -m 4096 \
               -smp 2 \
-              -kernel /tmp/synapse-live-demo/vmlinuz \
-              -initrd /tmp/synapse-live-demo/initrd.img \
+              -kernel "$WORK/vmlinuz" \
+              -initrd "$WORK/initrd.img" \
               -append 'boot=live components live-media=/dev/vda synapse.vmtest=1 console=ttyS0,115200n8 console=tty0 systemd.show_status=1' \
               -drive "file=$ISO,format=raw,if=virtio,readonly=on" \
-              -nographic \
+              -display gtk \
+              -serial "file:$EVIDENCE/serial.log" \
               -no-reboot \
-              -nic none \
-            > /tmp/synapse-live-demo/serial.log 2>&1
-          rc=$?
-          if grep -Fq 'SYNAPSE_VM_READY' /tmp/synapse-live-demo/serial.log; then
-            echo 'ready=true' >> "$GITHUB_OUTPUT"
-            echo 'boot_status=IMPLEMENTED_AND_TESTED' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo 'ready=false' >> "$GITHUB_OUTPUT"
-          echo 'boot_status=PROTOTYPE' >> "$GITHUB_OUTPUT"
-          echo "qemu_exit=$rc" >> "$GITHUB_OUTPUT"
-          tail -n 400 /tmp/synapse-live-demo/serial.log || true
-          exit 1
-      - name: Preserve boot diagnostic
+              -nic user,model=virtio-net-pci
+          QEMU_RC=$?
+          set -e
+
+          kill -INT "$FFMPEG_PID" 2>/dev/null || true
+          wait "$FFMPEG_PID" 2>/dev/null || true
+          kill "$XVFB_PID" 2>/dev/null || true
+          wait "$XVFB_PID" 2>/dev/null || true
+
+          awk '/SYNAPSE_VM_HW_BEGIN/{capture=1} capture{print} /SYNAPSE_VM_HW_END/{capture=0}' \
+            "$EVIDENCE/serial.log" > "$EVIDENCE/guest-hardware.txt"
+          test -s "$EVIDENCE/guest-hardware.txt"
+          grep -F 'SYNAPSE_VM_READY' "$EVIDENCE/serial.log"
+          test -s "$EVIDENCE/synapse-qemu-boot.mp4"
+          echo "qemu_exit=$QEMU_RC" >> "$EVIDENCE/environment.txt"
+          echo 'boot_status=IMPLEMENTED_AND_TESTED' >> "$EVIDENCE/environment.txt"
+          (cd "$EVIDENCE" && sha256sum serial.log guest-hardware.txt environment.txt synapse-qemu-boot.mp4 > SHA256SUMS)
+      - name: Upload real boot evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: synapse-boot-diagnostic-${{ github.sha }}
-          path: /tmp/synapse-live-demo/serial.log
+          name: synapse-real-boot-evidence-${{ github.sha }}
+          path: ${{ runner.temp }}/synapse-boot-evidence
           if-no-files-found: error
-      - name: Preserve fresh ISO
+
+  record-local-beast-conversation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout exact Beast Box v0.6.0 source commit
+        uses: actions/checkout@v4
+        with:
+          repository: NavisWORLD/The-beast-box-
+          ref: 331f03c5d6a4aab0b2e32314293e36c7a94be393
+          path: beastbox-src
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install exact Beast runtime and pinned Ollama
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl zstd ffmpeg jq
+          python -m pip install ./beastbox-src
+          curl -fsSL -o /tmp/install-ollama.sh \
+            'https://github.com/ollama/ollama/releases/download/v0.33.3/install.sh'
+          echo '25f64b810b947145095956533e1bdf56eacea2673c55a7e586be4515fc882c9f  /tmp/install-ollama.sh' | sha256sum -c -
+          OLLAMA_VERSION=0.33.3 sh /tmp/install-ollama.sh
+          sudo systemctl stop ollama.service 2>/dev/null || true
+          cd BEASTOS_WEB_MACHINE
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Start Ollama and pull real local model
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/beastos-live-conversation"
+          mkdir -p "$EVIDENCE"
+          OLLAMA_HOST=127.0.0.1:11434 OLLAMA_DEBUG=1 ollama serve >"$EVIDENCE/ollama.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/ollama.pid"
+          for _ in $(seq 1 90); do
+            curl -fsS http://127.0.0.1:11434/api/tags >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull smollm2:135m | tee "$EVIDENCE/model-pull.log"
+          curl -fsS http://127.0.0.1:11434/api/tags > "$EVIDENCE/ollama-tags.json"
+          python - <<'PY'
+          import json, pathlib
+          src = pathlib.Path("${{ runner.temp }}/beastos-live-conversation/ollama-tags.json")
+          out = src.with_name("model-receipt.json")
+          data = json.loads(src.read_text())
+          matches = [m for m in data.get("models", []) if m.get("name") == "smollm2:135m"]
+          if len(matches) != 1:
+              raise SystemExit("smollm2:135m receipt missing")
+          out.write_text(json.dumps({"schema":"beastos-local-model-receipt-v1", "model": matches[0]}, indent=2) + "\n")
+          PY
+      - name: Start authenticated BeastOS bridge on real Beast runtime
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/beastos-live-conversation"
+          {
+            echo "schema=beastos-live-environment-v1"
+            echo "synapse_commit=$GITHUB_SHA"
+            echo "beast_commit=$(git -C beastbox-src rev-parse HEAD)"
+            echo "beast_version=$(python -c 'import importlib.metadata; print(importlib.metadata.version("cosmos-beast-box"))')"
+            echo "ollama_version=$(ollama --version 2>&1 | tail -n 1)"
+            echo "playwright_version=$(cd BEASTOS_WEB_MACHINE && npx playwright --version)"
+            uname -a
+            lscpu
+            free -h
+            if command -v nvidia-smi >/dev/null 2>&1; then nvidia-smi; else echo 'nvidia_smi=UNAVAILABLE'; fi
+            if test -e /dev/kvm; then ls -l /dev/kvm; else echo 'kvm=UNAVAILABLE'; fi
+          } > "$EVIDENCE/environment.txt" 2>&1
+          python -m BEASTOS_WEB_MACHINE.bridge.server \
+            --listen 127.0.0.1 \
+            --port 8790 \
+            --beast-data-dir "$EVIDENCE/beast-data" \
+            --beast-executable "$(command -v beastbox)" \
+            --beast-runtime-provider ollama \
+            --beast-model smollm2:135m \
+            --beast-provider-url http://127.0.0.1:11434 \
+            >"$EVIDENCE/bridge.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/beastos-bridge.pid"
+          for _ in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8790/v1/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8790/v1/health > "$EVIDENCE/bridge-health.json"
+      - name: Record real browser conversation through Beast
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd BEASTOS_WEB_MACHINE
+          BEASTOS_BASE_URL=http://127.0.0.1:8790 \
+          BEASTOS_EVIDENCE_DIR="$RUNNER_TEMP/beastos-live-conversation" \
+            node scripts/live-demo.mjs
+          ffmpeg -y -i "$RUNNER_TEMP/beastos-live-conversation/beastos-live-conversation.webm" \
+            -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -an \
+            "$RUNNER_TEMP/beastos-live-conversation/beastos-live-conversation.mp4"
+          test -s "$RUNNER_TEMP/beastos-live-conversation/conversation.json"
+          test -s "$RUNNER_TEMP/beastos-live-conversation/browser-capabilities.json"
+          test -s "$RUNNER_TEMP/beastos-live-conversation/beastos-live-conversation.mp4"
+          python - <<'PY'
+          import json, pathlib
+          p = pathlib.Path("${{ runner.temp }}/beastos-live-conversation/conversation.json")
+          data = json.loads(p.read_text())
+          if len(data.get("turns", [])) != 3:
+              raise SystemExit("expected exactly three real model turns")
+          if any(not str(turn.get("response", "")).strip() for turn in data["turns"]):
+              raise SystemExit("empty model response in live transcript")
+          if data.get("grantsBeforeSwap") == data.get("grantsAfterSwap"):
+              raise SystemExit("authority did not change across brain swap")
+          PY
+      - name: Seal conversation receipts
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/beastos-live-conversation"
+          if test -d "$EVIDENCE"; then
+            kill "$(cat "$RUNNER_TEMP/beastos-bridge.pid" 2>/dev/null)" 2>/dev/null || true
+            kill "$(cat "$RUNNER_TEMP/ollama.pid" 2>/dev/null)" 2>/dev/null || true
+            find "$EVIDENCE" -type f ! -path '*/beast-data/*' ! -name 'SHA256SUMS' ! -name 'SHA256SUMS.absolute' -print0 | sort -z | xargs -0 sha256sum > "$EVIDENCE/SHA256SUMS.absolute"
+            sed "s#${EVIDENCE}/##g" "$EVIDENCE/SHA256SUMS.absolute" > "$EVIDENCE/SHA256SUMS"
+            rm -f "$EVIDENCE/SHA256SUMS.absolute"
+          fi
+      - name: Upload real Beast conversation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: synapse-live-demo-iso-${{ github.sha }}
-          path: |
-            out/*.iso
-            out/*.iso.sha256
+          name: beastos-real-local-conversation-${{ github.sha }}
+          path: ${{ runner.temp }}/beastos-live-conversation
           if-no-files-found: error
