@@ -1,0 +1,204 @@
+name: BeastOS real local model recording
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'demo/beastos-local-model-live-001'
+
+permissions:
+  contents: read
+
+jobs:
+  local-model-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pinned browser runner
+        working-directory: BEASTOS_WEB_MACHINE
+        run: |
+          set -Eeuo pipefail
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Install Ollama and pull a real 135M language model
+        run: |
+          set -Eeuo pipefail
+          mkdir -p BEASTOS_WEB_MACHINE/local-model-evidence
+          curl -fsSL https://ollama.com/install.sh -o /tmp/ollama-install.sh
+          sha256sum /tmp/ollama-install.sh > BEASTOS_WEB_MACHINE/local-model-evidence/OLLAMA_INSTALL_SCRIPT_SHA256.txt
+          sh /tmp/ollama-install.sh
+          ollama --version | tee BEASTOS_WEB_MACHINE/local-model-evidence/OLLAMA_VERSION.txt
+          ollama serve > /tmp/ollama.log 2>&1 &
+          echo $! > /tmp/ollama.pid
+          for i in $(seq 1 45); do
+            curl -fsS http://127.0.0.1:11434/api/tags >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull smollm2:135m-instruct-q5_0
+          curl -fsS http://127.0.0.1:11434/api/tags \
+            > BEASTOS_WEB_MACHINE/local-model-evidence/OLLAMA_MODELS.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          body = json.loads(Path('BEASTOS_WEB_MACHINE/local-model-evidence/OLLAMA_MODELS.json').read_text())
+          matches = [m for m in body.get('models', []) if m.get('name') == 'smollm2:135m-instruct-q5_0']
+          assert len(matches) == 1, body
+          model = matches[0]
+          assert model.get('digest'), model
+          assert int(model.get('size', 0)) > 0, model
+          Path('BEASTOS_WEB_MACHINE/local-model-evidence/MODEL_RECEIPT.json').write_text(
+              json.dumps({
+                  'schema': 'beastos-local-model-receipt-v1',
+                  'name': model.get('name'),
+                  'model': model.get('model'),
+                  'digest': model.get('digest'),
+                  'size_bytes': model.get('size'),
+                  'details': model.get('details'),
+                  'source': 'ollama.com/library/smollm2',
+              }, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+
+      - name: Materialize exact Beast Box v0.6.0 runtime
+        run: |
+          set -Eeuo pipefail
+          python3 BEASTOS_WEB_MACHINE/scripts/fetch-beast-kit.py \
+            --destination /tmp/beast-box-combined-0.6.0.zip \
+            --extract-to /tmp/beast-kit \
+            > BEASTOS_WEB_MACHINE/local-model-evidence/BEAST_KIT_RECEIPT.json
+          python3 -m venv /tmp/beast-runtime
+          /tmp/beast-runtime/bin/pip install --no-index --no-deps \
+            /tmp/beast-kit/cosmos_beast_box-0.6.0-py3-none-any.whl
+          printf '%s' '{"schema":"beastbox-request-v1","operation":"init"}' | \
+            /tmp/beast-runtime/bin/beastbox runtime exchange \
+              --data-dir /tmp/beast-local-data \
+              --provider ollama \
+              --model 'smollm2:135m-instruct-q5_0' \
+              --url 'http://127.0.0.1:11434' \
+            > BEASTOS_WEB_MACHINE/local-model-evidence/BEAST_INIT.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          body = json.loads(Path('BEASTOS_WEB_MACHINE/local-model-evidence/BEAST_INIT.json').read_text())
+          assert body['schema'] == 'beastbox-response-v1'
+          assert body['ok'] is True
+          PY
+
+      - name: Launch authenticated BeastOS bridge with local Ollama brain
+        run: |
+          set -Eeuo pipefail
+          PYTHONPATH="$GITHUB_WORKSPACE" python3 -m BEASTOS_WEB_MACHINE.bridge.server \
+            --listen 127.0.0.1 \
+            --port 8790 \
+            --web-root "$GITHUB_WORKSPACE/BEASTOS_WEB_MACHINE" \
+            --beast-provider-location LOCAL_HOST \
+            --beast-executable /tmp/beast-runtime/bin/beastbox \
+            --beast-data-dir /tmp/beast-local-data \
+            --beast-runtime-provider ollama \
+            --beast-model 'smollm2:135m-instruct-q5_0' \
+            --beast-provider-url 'http://127.0.0.1:11434' \
+            > /tmp/beastos-local.log 2>&1 &
+          echo $! > /tmp/beastos-local.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8790/v1/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8790/v1/health >/dev/null
+
+      - name: Record real local-model conversation in Chromium
+        working-directory: BEASTOS_WEB_MACHINE
+        run: npx playwright test tests/e2e/local-model-live.spec.mjs -c playwright.config.mjs
+
+      - name: Build sealed local-model evidence
+        if: always()
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          EVIDENCE="$GITHUB_WORKSPACE/BEASTOS_WEB_MACHINE/local-model-evidence"
+          mkdir -p "$EVIDENCE"
+          test -f /tmp/ollama.log && cp /tmp/ollama.log "$EVIDENCE/OLLAMA.log" || true
+          test -f /tmp/beastos-local.log && cp /tmp/beastos-local.log "$EVIDENCE/BEASTOS_BRIDGE.log" || true
+          if test -f BEASTOS_WEB_MACHINE/test-results/live-demo/LIVE_CONVERSATION.json; then
+            cp BEASTOS_WEB_MACHINE/test-results/live-demo/LIVE_CONVERSATION.json "$EVIDENCE/LIVE_CONVERSATION.json"
+          fi
+          if test -f BEASTOS_WEB_MACHINE/test-results/live-demo/beastos-local-model-final.png; then
+            cp BEASTOS_WEB_MACHINE/test-results/live-demo/beastos-local-model-final.png "$EVIDENCE/BEASTOS_LOCAL_MODEL_FINAL.png"
+          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root = Path('BEASTOS_WEB_MACHINE/test-results')
+          out = Path('BEASTOS_WEB_MACHINE/local-model-evidence')
+          videos = sorted(root.rglob('*.webm'))
+          for index, video in enumerate(videos, 1):
+              target = out / f'BEASTOS_LOCAL_MODEL_LIVE_{index}.mp4'
+              subprocess.run([
+                  'ffmpeg', '-loglevel', 'error', '-y', '-i', str(video),
+                  '-c:v', 'libx264', '-pix_fmt', 'yuv420p', str(target),
+              ], check=True)
+          PY
+          python3 - <<'PY'
+          import json, os, platform
+          from pathlib import Path
+          root = Path('BEASTOS_WEB_MACHINE/local-model-evidence')
+          model_path = root / 'MODEL_RECEIPT.json'
+          model = json.loads(model_path.read_text()) if model_path.is_file() else {}
+          conversation_path = root / 'LIVE_CONVERSATION.json'
+          conversation = json.loads(conversation_path.read_text()) if conversation_path.is_file() else {}
+          status = 'IMPLEMENTED_AND_TESTED' if conversation.get('turns') and conversation.get('authority_after_swap') == 'NONE' else 'PROTOTYPE'
+          receipt = {
+              'schema': 'beastos-real-local-model-demo-v1',
+              'status': status,
+              'synapse_commit': os.environ['GITHUB_SHA'],
+              'beast_release': 'v0.6.0',
+              'beast_commit': '331f03c5d6a4aab0b2e32314293e36c7a94be393',
+              'model_provider': 'Ollama loopback',
+              'provider_location': 'LOCAL_HOST',
+              'model_name': model.get('name'),
+              'model_digest': model.get('digest'),
+              'model_size_bytes': model.get('size_bytes'),
+              'model_hardware_claims_are_evidence': False,
+              'browser': 'Playwright Chromium',
+              'runner_platform': platform.platform(),
+              'authority_after_brain_swap': conversation.get('authority_after_swap'),
+              'physical_user_hardware_validated': False,
+              'secret_values_recorded': False,
+          }
+          (root / 'RECEIPT.json').write_text(json.dumps(receipt, indent=2, sort_keys=True) + '\n')
+          if conversation.get('turns'):
+              lines = []
+              for i, turn in enumerate(conversation['turns'], 1):
+                  lines += [f"TURN {i} / {turn['brain']}", f"YOU: {turn['prompt']}", f"BEAST: {turn['response']}", '']
+              (root / 'LIVE_CONVERSATION.txt').write_text('\n'.join(lines), encoding='utf-8')
+          PY
+          (
+            cd BEASTOS_WEB_MACHINE/local-model-evidence
+            find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+
+      - name: Stop local runtimes
+        if: always()
+        run: |
+          if test -s /tmp/beastos-local.pid; then kill "$(cat /tmp/beastos-local.pid)" 2>/dev/null || true; fi
+          if test -s /tmp/ollama.pid; then kill "$(cat /tmp/ollama.pid)" 2>/dev/null || true; fi
+
+      - name: Preserve real local-model recording
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beastos-real-local-model-${{ github.sha }}
+          path: BEASTOS_WEB_MACHINE/local-model-evidence/
+          if-no-files-found: error
