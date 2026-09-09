@@ -11,9 +11,14 @@ ARCH="$1"
 ISO="$2"
 eval "$(python3 "$REPO_ROOT/scripts/arch_matrix.py" shell "$ARCH")"
 
+# Production CI remains headless by default. Recording jobs may request an
+# X11/SDL/GTK display without changing the guest boot contract.
+SYNAPSE_QEMU_DISPLAY="${SYNAPSE_QEMU_DISPLAY:-none}"
+SYNAPSE_QEMU_LINGER="${SYNAPSE_QEMU_LINGER:-0}"
+
 if [[ "${SYNAPSE_QEMU_DRY_RUN:-0}" == "1" ]]; then
-  printf 'arch=%s\nqemu=%s\nmachine=%s\ncpu=%s\nconsole=%s\n' \
-    "$SYNAPSE_ARCH_NORMALIZED" "$SYNAPSE_QEMU_SYSTEM" "$SYNAPSE_QEMU_MACHINE" "$SYNAPSE_QEMU_CPU" "$SYNAPSE_SERIAL_CONSOLE"
+  printf 'arch=%s\nqemu=%s\nmachine=%s\ncpu=%s\nconsole=%s\ndisplay=%s\nlinger=%s\n' \
+    "$SYNAPSE_ARCH_NORMALIZED" "$SYNAPSE_QEMU_SYSTEM" "$SYNAPSE_QEMU_MACHINE" "$SYNAPSE_QEMU_CPU" "$SYNAPSE_SERIAL_CONSOLE" "$SYNAPSE_QEMU_DISPLAY" "$SYNAPSE_QEMU_LINGER"
   exit 0
 fi
 
@@ -44,7 +49,7 @@ common=(
   -kernel "$TMP/vmlinuz"
   -initrd "$TMP/initrd.img"
   -append "boot=live components live-media=/dev/vda console=$SYNAPSE_SERIAL_CONSOLE systemd.unit=multi-user.target systemd.show_status=1 systemd.log_target=console synapse.vmtest=1"
-  -display none
+  -display "$SYNAPSE_QEMU_DISPLAY"
   -serial "file:$TMP/serial.log"
   -no-reboot
 )
@@ -75,6 +80,10 @@ for _ in $(seq 1 "${SYNAPSE_QEMU_TIMEOUT:-240}"); do
   fi
   sleep 1
 done
+
+if [[ "$result" == "pass" && "$SYNAPSE_QEMU_LINGER" -gt 0 ]]; then
+  sleep "$SYNAPSE_QEMU_LINGER"
+fi
 
 cat "$TMP/serial.log" || true
 if [[ -n "${SYNAPSE_QEMU_LOG:-}" ]]; then
