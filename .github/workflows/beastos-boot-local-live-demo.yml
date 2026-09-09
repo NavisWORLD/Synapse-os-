@@ -1,0 +1,89 @@
+name: BeastOS boot + local live demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'demo/beastos-boot-local-model-001'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-synapse-boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Synapse build and QEMU tools
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            cpio debootstrap rsync xorriso squashfs-tools curl \
+            qemu-system-x86 qemu-utils ovmf \
+            parted dosfstools e2fsprogs grub-efi-amd64-bin grub2-common \
+            util-linux udev
+          curl -fsSL -o /tmp/debian-archive-keyring.deb \
+            'https://deb.debian.org/debian/pool/main/d/debian-archive-keyring/debian-archive-keyring_2025.1_all.deb'
+          echo '9ea7778e443144ca490668737a8ab22dd3e748bb99e805e22ec055abeb3c7fac  /tmp/debian-archive-keyring.deb' | sha256sum -c -
+          curl -fsSL -o /tmp/live-build.deb \
+            'https://deb.debian.org/debian/pool/main/l/live-build/live-build_20250505+deb13u1_all.deb'
+          echo '58e09779881cbcc631c49ceb703413e0247a87db01823e597b2a1c40a2afd8f4  /tmp/live-build.deb' | sha256sum -c -
+          sudo dpkg -i /tmp/debian-archive-keyring.deb /tmp/live-build.deb
+      - name: Build current Synapse amd64 ISO
+        run: sudo env SYNAPSE_ARCH=amd64 ./build/build.sh
+      - name: Verify ISO checksum
+        run: sha256sum -c out/*.iso.sha256
+      - name: Capture bounded serial boot diagnostic
+        id: boot
+        shell: bash
+        run: |
+          set +e
+          mkdir -p /tmp/synapse-live-demo
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -n "$ISO" || exit 2
+          xorriso -osirrox on -indev "$ISO" \
+            -extract /live/vmlinuz /tmp/synapse-live-demo/vmlinuz \
+            -extract /live/initrd.img /tmp/synapse-live-demo/initrd.img
+          timeout --signal=TERM --kill-after=10s 150s \
+            qemu-system-x86_64 \
+              -machine q35 \
+              -cpu qemu64 \
+              -m 1024 \
+              -smp 2 \
+              -kernel /tmp/synapse-live-demo/vmlinuz \
+              -initrd /tmp/synapse-live-demo/initrd.img \
+              -append 'boot=live components live-media=/dev/vda synapse.vmtest=1 console=ttyS0,115200n8 console=tty0 systemd.show_status=1' \
+              -drive "file=$ISO,format=raw,if=virtio,readonly=on" \
+              -nographic \
+              -no-reboot \
+              -nic none \
+            > /tmp/synapse-live-demo/serial.log 2>&1
+          rc=$?
+          if grep -Fq 'SYNAPSE_VM_READY' /tmp/synapse-live-demo/serial.log; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+            echo 'boot_status=IMPLEMENTED_AND_TESTED' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo 'ready=false' >> "$GITHUB_OUTPUT"
+          echo 'boot_status=PROTOTYPE' >> "$GITHUB_OUTPUT"
+          echo "qemu_exit=$rc" >> "$GITHUB_OUTPUT"
+          tail -n 400 /tmp/synapse-live-demo/serial.log || true
+          exit 1
+      - name: Preserve boot diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-boot-diagnostic-${{ github.sha }}
+          path: /tmp/synapse-live-demo/serial.log
+          if-no-files-found: error
+      - name: Preserve fresh ISO
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-live-demo-iso-${{ github.sha }}
+          path: |
+            out/*.iso
+            out/*.iso.sha256
+          if-no-files-found: error
