@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=COSMOS
-Comment=Open the local COSMOS interface
+Name=COSMOS (Legacy UI)
+Comment=Open the legacy local COSMOS web surface; BeastOS Web is the primary Synapse AI cockpit
 Exec=xdg-open http://127.0.0.1:8081
 Icon=synapse-os
 Terminal=false
 Categories=Utility;Development;
-Keywords=COSMOS;CST;AI;Synapse;
+Keywords=COSMOS;CST;AI;Synapse;legacy;

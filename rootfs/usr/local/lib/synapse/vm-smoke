@@ -43,6 +43,58 @@ run_check() {
   fi
 }
 
+report_hardware() {
+  echo "SYNAPSE_VM_HW_BEGIN"
+  echo "SYNAPSE_VM_HW:arch=$(uname -m 2>/dev/null || echo unknown)"
+  echo "SYNAPSE_VM_HW:kernel=$(uname -r 2>/dev/null || echo unknown)"
+  echo "SYNAPSE_VM_HW:cpu_count=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo unknown)"
+  if test -r /proc/cpuinfo; then
+    model="$(awk -F: '/^(model name|Hardware|Processor)/ {sub(/^[ \t]+/, "", $2); print $2; exit}' /proc/cpuinfo)"
+    echo "SYNAPSE_VM_HW:cpu_model=${model:-unknown}"
+  else
+    echo "SYNAPSE_VM_HW:cpu_model=UNAVAILABLE"
+  fi
+  if test -r /proc/meminfo; then
+    mem="$(awk '/^MemTotal:/ {print $2 " " $3; exit}' /proc/meminfo)"
+    echo "SYNAPSE_VM_HW:mem_total=${mem:-unknown}"
+  else
+    echo "SYNAPSE_VM_HW:mem_total=UNAVAILABLE"
+  fi
+  for entry in sys_vendor product_name product_version board_name; do
+    path="/sys/class/dmi/id/$entry"
+    if test -r "$path"; then
+      value="$(tr '\n' ' ' < "$path" | sed 's/[[:space:]]*$//')"
+      echo "SYNAPSE_VM_HW:dmi_${entry}=${value:-unknown}"
+    else
+      echo "SYNAPSE_VM_HW:dmi_${entry}=UNAVAILABLE"
+    fi
+  done
+  if command -v lsblk >/dev/null 2>&1; then
+    lsblk -ndo NAME,TYPE,SIZE,RO,TRAN,MODEL 2>/dev/null | sed 's/^/SYNAPSE_VM_HW:block=/' || true
+  else
+    echo "SYNAPSE_VM_HW:block=UNAVAILABLE"
+  fi
+  if command -v ip >/dev/null 2>&1; then
+    ip -brief link 2>/dev/null | sed 's/^/SYNAPSE_VM_HW:net=/' || true
+  else
+    echo "SYNAPSE_VM_HW:net=UNAVAILABLE"
+  fi
+  if test -d /sys/bus/pci/devices; then
+    for device in /sys/bus/pci/devices/*; do
+      test -e "$device" || continue
+      vendor="$(cat "$device/vendor" 2>/dev/null || echo unknown)"
+      product="$(cat "$device/device" 2>/dev/null || echo unknown)"
+      class="$(cat "$device/class" 2>/dev/null || echo unknown)"
+      echo "SYNAPSE_VM_HW:pci=$(basename "$device"),vendor=$vendor,device=$product,class=$class"
+    done
+  else
+    echo "SYNAPSE_VM_HW:pci=UNAVAILABLE"
+  fi
+  echo "SYNAPSE_VM_HW_END"
+}
+
+report_hardware
+
 echo "SYNAPSE_VM_CHECK:os-release"
 if grep -q '^ID=synapseos$' /etc/os-release; then
   pass "os-release"

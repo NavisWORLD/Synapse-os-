@@ -24,12 +24,13 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-COSMOS_PORTS = {
+RUNTIME_PORTS = {
+    "BeastOS Web": 8790,
     "Ollama": 11434,
     "Helper": 11435,
     "CST bridge": 11501,
     "Sensory API": 8765,
-    "COSMOS Web": 8081,
+    "COSMOS Web (legacy)": 8081,
     "Web fallback": 8090,
 }
 
@@ -83,7 +84,7 @@ class Window(QMainWindow):
         brand = QVBoxLayout()
         hero = QLabel("SYNAPSE CONTROL")
         hero.setObjectName("hero")
-        subtitle = QLabel("Nebula // human-latency engineering // COSMOS ready")
+        subtitle = QLabel("Nebula // BeastOS Web // COSMOS runtime status")
         subtitle.setObjectName("muted")
         brand.addWidget(hero)
         brand.addWidget(subtitle)
@@ -98,9 +99,9 @@ class Window(QMainWindow):
         outer.addWidget(self.tabs, 1)
         self.tabs.addTab(self.overview_tab(), "Overview")
         self.tabs.addTab(self.performance_tab(), "Performance")
-        self.tabs.addTab(self.cosmos_tab(), "COSMOS")
+        self.tabs.addTab(self.cosmos_tab(), "Beast / COSMOS")
         self.tabs.addTab(self.recovery_tab(), "Recovery")
-        tab_map = {"overview": 0, "performance": 1, "cosmos": 2, "recovery": 3}
+        tab_map = {"overview": 0, "performance": 1, "cosmos": 2, "beast": 2, "recovery": 3}
         self.tabs.setCurrentIndex(tab_map.get(initial_tab, 0))
 
         self.setCentralWidget(root)
@@ -162,8 +163,17 @@ class Window(QMainWindow):
     def cosmos_tab(self) -> QWidget:
         widget = QWidget()
         layout = QVBoxLayout(widget)
+        open_beast = QPushButton("Open BeastOS Web")
+        open_beast.clicked.connect(lambda: self.launch("synapse-beastos-web"))
+        layout.addWidget(open_beast)
+        info = QLabel(
+            "BeastOS Web is the primary browser cockpit. Legacy COSMOS ports remain visible as compatibility probes."
+        )
+        info.setWordWrap(True)
+        info.setObjectName("muted")
+        layout.addWidget(info)
         self.cosmos_labels: dict[str, tuple[int, QLabel]] = {}
-        for name, port in COSMOS_PORTS.items():
+        for name, port in RUNTIME_PORTS.items():
             row = QFrame()
             row.setObjectName("card")
             row_layout = QHBoxLayout(row)
@@ -175,7 +185,7 @@ class Window(QMainWindow):
             row_layout.addWidget(right)
             layout.addWidget(row)
             self.cosmos_labels[name] = (port, right)
-        refresh = QPushButton("Probe COSMOS services")
+        refresh = QPushButton("Probe local runtimes")
         refresh.clicked.connect(self.refresh_cosmos)
         layout.addWidget(refresh)
         layout.addStretch()
@@ -241,7 +251,7 @@ class Window(QMainWindow):
             online += int(ok)
             label.setText("● Online" if ok else "○ Offline")
             label.setStyleSheet("color:#66f09a" if ok else "color:#7f91ad")
-        self.ready.setText(f"● SYSTEM READY  ·  COSMOS {online}/{len(COSMOS_PORTS)}")
+        self.ready.setText(f"● SYSTEM READY  ·  LOCAL RUNTIMES {online}/{len(RUNTIME_PORTS)}")
 
     def apply_profile(self) -> None:
         rc, output = run("synapse", "profile", "set", self.profile.currentText())

@@ -1,0 +1,22 @@
+{
+  "schema": "synapse-beast-kit-v1",
+  "source_repository": "https://github.com/NavisWORLD/The-beast-box-",
+  "tag": "v0.6.0",
+  "commit": "331f03c5d6a4aab0b2e32314293e36c7a94be393",
+  "asset": "beast-box-combined-0.6.0.zip",
+  "download_url": "https://github.com/NavisWORLD/The-beast-box-/releases/download/v0.6.0/beast-box-combined-0.6.0.zip",
+  "size": 676405,
+  "sha256": "c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2",
+  "prerelease": true,
+  "published_at": "2026-09-08T03:17:25Z",
+  "classification": "portable runtime preview / prerelease",
+  "integration_api": {
+    "command": ["beastbox", "runtime", "exchange"],
+    "request_schema": "beastbox-request-v1",
+    "response_schema": "beastbox-response-v1",
+    "operations": ["chat", "inspect", "init"]
+  },
+  "expected_wheel": "cosmos_beast_box-0.6.0-py3-none-any.whl",
+  "copied_source_files": [],
+  "notes": "Beast remains the authoritative runtime. Synapse installs the release wheel from this verified combined kit; it does not fork Beast memory, R12, state, authority, provenance, providers or handoff logic."
+}

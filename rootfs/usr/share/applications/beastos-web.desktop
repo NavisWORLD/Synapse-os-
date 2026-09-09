@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=BeastOS Web
+Comment=Open the Synapse OS cockpit for Beast Box continuity and scoped device authority
+Exec=/usr/local/bin/synapse-beastos-web
+Icon=beastos-web
+Terminal=false
+Categories=System;Utility;Development;
+Keywords=BeastOS;Beast Box;AI;Synapse;COSMOS;PWA;VM;
+StartupNotify=true
