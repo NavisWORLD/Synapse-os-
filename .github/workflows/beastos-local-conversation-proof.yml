@@ -1,0 +1,186 @@
+name: BeastOS real local conversation proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'demo/beastos-local-conversation-qwen-001'
+
+permissions:
+  contents: read
+
+jobs:
+  record-quality-local-conversation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout exact Beast Box v0.6.0 source commit
+        uses: actions/checkout@v4
+        with:
+          repository: NavisWORLD/The-beast-box-
+          ref: 331f03c5d6a4aab0b2e32314293e36c7a94be393
+          path: beastbox-src
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install exact Beast runtime, pinned Ollama, and browser recorder
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl zstd ffmpeg jq
+          python -m pip install ./beastbox-src
+          curl -fsSL -o /tmp/install-ollama.sh \
+            'https://github.com/ollama/ollama/releases/download/v0.33.3/install.sh'
+          echo '25f64b810b947145095956533e1bdf56eacea2673c55a7e586be4515fc882c9f  /tmp/install-ollama.sh' | sha256sum -c -
+          OLLAMA_VERSION=0.33.3 sh /tmp/install-ollama.sh
+          sudo systemctl stop ollama.service 2>/dev/null || true
+          cd BEASTOS_WEB_MACHINE
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Start Ollama and pull real instruction model
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/beastos-qwen-conversation"
+          mkdir -p "$EVIDENCE"
+          OLLAMA_HOST=127.0.0.1:11434 OLLAMA_DEBUG=1 ollama serve >"$EVIDENCE/ollama.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/ollama.pid"
+          for _ in $(seq 1 90); do
+            curl -fsS http://127.0.0.1:11434/api/tags >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5:0.5b | tee "$EVIDENCE/model-pull.log"
+          curl -fsS http://127.0.0.1:11434/api/tags > "$EVIDENCE/ollama-tags.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          src = Path("${{ runner.temp }}/beastos-qwen-conversation/ollama-tags.json")
+          data = json.loads(src.read_text())
+          matches = [m for m in data.get("models", []) if m.get("name") == "qwen2.5:0.5b"]
+          if len(matches) != 1:
+              raise SystemExit("qwen2.5:0.5b receipt missing")
+          src.with_name("model-receipt.json").write_text(
+              json.dumps({"schema": "beastos-local-model-receipt-v1", "model": matches[0]}, indent=2) + "\n"
+          )
+          PY
+
+      - name: Start authenticated BeastOS bridge on real Beast runtime
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/beastos-qwen-conversation"
+          {
+            echo "schema=beastos-live-environment-v1"
+            echo "synapse_commit=$GITHUB_SHA"
+            echo "beast_commit=$(git -C beastbox-src rev-parse HEAD)"
+            echo "beast_version=$(python -c 'import importlib.metadata; print(importlib.metadata.version("cosmos-beast-box"))')"
+            echo "ollama_version=$(ollama --version 2>&1 | tail -n 1)"
+            echo "playwright_version=$(cd BEASTOS_WEB_MACHINE && npx playwright --version)"
+            uname -a
+            lscpu
+            free -h
+            if command -v nvidia-smi >/dev/null 2>&1; then nvidia-smi; else echo 'nvidia_smi=UNAVAILABLE'; fi
+            if test -e /dev/kvm; then ls -l /dev/kvm; else echo 'kvm=UNAVAILABLE'; fi
+          } > "$EVIDENCE/environment.txt" 2>&1
+
+          python -m BEASTOS_WEB_MACHINE.bridge.server \
+            --listen 127.0.0.1 \
+            --port 8790 \
+            --beast-data-dir "$EVIDENCE/beast-data" \
+            --beast-executable "$(command -v beastbox)" \
+            --beast-runtime-provider ollama \
+            --beast-model qwen2.5:0.5b \
+            --beast-provider-url http://127.0.0.1:11434 \
+            >"$EVIDENCE/bridge.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/beastos-bridge.pid"
+          for _ in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8790/v1/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8790/v1/health > "$EVIDENCE/bridge-health.json"
+
+      - name: Record real browser conversation and execution hardware
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd BEASTOS_WEB_MACHINE
+          BEASTOS_BASE_URL=http://127.0.0.1:8790 \
+          BEASTOS_EVIDENCE_DIR="$RUNNER_TEMP/beastos-qwen-conversation" \
+            node scripts/live-demo.mjs
+
+          EVIDENCE="$RUNNER_TEMP/beastos-qwen-conversation"
+          ollama ps > "$EVIDENCE/ollama-ps.txt"
+          curl -fsS http://127.0.0.1:11434/api/ps > "$EVIDENCE/ollama-ps.json"
+          ffmpeg -y -i "$EVIDENCE/beastos-live-conversation.webm" \
+            -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -an \
+            "$EVIDENCE/beastos-live-conversation.mp4"
+
+          python - <<'PY'
+          import json
+          from difflib import SequenceMatcher
+          from pathlib import Path
+
+          root = Path("${{ runner.temp }}/beastos-qwen-conversation")
+          data = json.loads((root / "conversation.json").read_text())
+          turns = data.get("turns", [])
+          if len(turns) != 3:
+              raise SystemExit("expected exactly three real model turns")
+          responses = []
+          for index, turn in enumerate(turns, start=1):
+              prompt = str(turn.get("prompt", "")).strip()
+              response = str(turn.get("response", "")).strip()
+              if len(response) < 40:
+                  raise SystemExit(f"turn {index}: response too short")
+              ratio = SequenceMatcher(None, prompt, response).ratio()
+              if ratio >= 0.72:
+                  raise SystemExit(f"turn {index}: prompt-echo ratio too high: {ratio:.3f}")
+              responses.append(response)
+          if len(set(responses)) != len(responses):
+              raise SystemExit("model returned duplicate responses")
+          if not responses[-1].endswith("SWAP THE BRAIN. KEEP THE STORY."):
+              raise SystemExit("final instruction was not followed")
+          if data.get("grantsBeforeSwap") != "filesystem.write":
+              raise SystemExit("expected Brain A filesystem grant receipt")
+          if data.get("grantsAfterSwap") != "NONE":
+              raise SystemExit("brain swap did not revoke authority")
+
+          ps = json.loads((root / "ollama-ps.json").read_text())
+          models = ps.get("models", [])
+          if not any(m.get("name") == "qwen2.5:0.5b" for m in models):
+              raise SystemExit("active model execution receipt missing")
+          PY
+
+      - name: Seal real conversation evidence
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/beastos-qwen-conversation"
+          if test -d "$EVIDENCE"; then
+            kill "$(cat "$RUNNER_TEMP/beastos-bridge.pid" 2>/dev/null)" 2>/dev/null || true
+            kill "$(cat "$RUNNER_TEMP/ollama.pid" 2>/dev/null)" 2>/dev/null || true
+            find "$EVIDENCE" -type f ! -path '*/beast-data/*' ! -name 'SHA256SUMS' ! -name 'SHA256SUMS.absolute' -print0 \
+              | sort -z | xargs -0 sha256sum > "$EVIDENCE/SHA256SUMS.absolute"
+            sed "s#${EVIDENCE}/##g" "$EVIDENCE/SHA256SUMS.absolute" > "$EVIDENCE/SHA256SUMS"
+            rm -f "$EVIDENCE/SHA256SUMS.absolute"
+          fi
+
+      - name: Upload real Qwen conversation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beastos-real-qwen-conversation-${{ github.sha }}
+          path: ${{ runner.temp }}/beastos-qwen-conversation
+          if-no-files-found: error
