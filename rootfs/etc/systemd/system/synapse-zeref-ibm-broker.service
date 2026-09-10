@@ -1,0 +1,31 @@
+[Unit]
+Description=Synapse OS Full Zeref IBM provenance broker
+ConditionPathExists=/etc/synapse/credentials/ibm_quantum_token
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=PYTHONPATH=/var/lib/synapse/zeref/beastbox
+LoadCredential=ibm_quantum_token:/etc/synapse/credentials/ibm_quantum_token
+ExecStartPre=/usr/bin/install -d -m 0755 /run/synapse/zeref
+ExecStart=/usr/local/lib/synapse/zeref-ibm-broker
+UMask=0022
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+ReadWritePaths=/run/synapse/zeref
+ReadOnlyPaths=/etc/synapse/zeref-ibm.json
+
+[Install]
+WantedBy=multi-user.target

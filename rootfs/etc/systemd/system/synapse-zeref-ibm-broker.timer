@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh approved Full Zeref IBM provenance
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=6h
+RandomizedDelaySec=5min
+Persistent=false
+Unit=synapse-zeref-ibm-broker.service
+
+[Install]
+WantedBy=timers.target
