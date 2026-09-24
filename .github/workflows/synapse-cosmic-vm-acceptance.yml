@@ -71,7 +71,13 @@ jobs:
               -video_size 1280x720 -i :99.0 -frames:v 1 "$EVIDENCE/$name.png" \
               >> "$EVIDENCE/screenshots.log" 2>&1 || true
           }
-          sleep 195
+          # Software-rendered Plasma on TCG can take several minutes. The KDE
+          # first-run Welcome page is not the desktop: dismiss it explicitly
+          # before attempting to exercise launchers and native applications.
+          sleep 275
+          capture 00-first-run-before-skip
+          DISPLAY=:99 xdotool mousemove 44 485 click 1 || true
+          sleep 15
           capture 01-login-or-desktop
           DISPLAY=:99 xdotool key Super_L || true
           sleep 10
