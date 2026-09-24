@@ -74,13 +74,15 @@ jobs:
           # Software-rendered Plasma on TCG can take several minutes. The KDE
           # first-run Welcome page is not the desktop: dismiss it explicitly
           # before attempting to exercise launchers and native applications.
-          sleep 275
+          sleep 345
           capture 00-first-run-before-skip
           # Real guest is a 640x480 QEMU framebuffer at top left of 1280x720
           # host capture. KDE Welcome Skip is at (44,439), not the host
           # desktop's (44,485). Do not mistake the Welcome page for a working
           # application demo.
           DISPLAY=:99 xdotool mousemove 45 438 click 1 || true
+          sleep 4
+          DISPLAY=:99 xdotool mousemove 625 14 click 1 || true
           sleep 18
           capture 01-desktop-after-welcome
 
