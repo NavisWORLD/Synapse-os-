@@ -55,7 +55,7 @@ jobs:
           DISPLAY=:99 qemu-system-x86_64 \
             -machine q35,accel=tcg -cpu max -smp 2 -m 4096 \
             -kernel /tmp/synapse-video/vmlinuz -initrd /tmp/synapse-video/initrd.img \
-            -append 'boot=live components live-media=/dev/vda username=cory console=tty0 console=ttyS0,115200n8 systemd.unit=graphical.target systemd.show_status=1 synapse.vmtest=1' \
+            -append 'boot=live components live-media=/dev/vda username=cory console=tty0 console=ttyS0,115200n8 systemd.unit=graphical.target systemd.show_status=1' \
             -drive "file=$ISO,format=raw,if=virtio,readonly=on" \
             -nic user,model=virtio-net-pci \
             -vga std -display gtk,gl=off -full-screen \
@@ -63,7 +63,7 @@ jobs:
             -monitor none -no-reboot \
             > "$EVIDENCE/qemu.log" 2>&1 &
           VM_PID=$!
-          sleep 95
+          sleep 210
           DISPLAY=:99 ffmpeg -nostdin -loglevel error -y -f x11grab \
             -video_size 1280x720 -i :99.0 -frames:v 1 "$EVIDENCE/boot-or-login.png" \
             > "$EVIDENCE/screenshots.log" 2>&1 || true
@@ -77,7 +77,7 @@ jobs:
           sleep 2
           DISPLAY=:99 xdotool type --clearmodifiers --delay 45 synapse-control || true
           DISPLAY=:99 xdotool key Return || true
-          sleep 28
+          sleep 45
           DISPLAY=:99 ffmpeg -nostdin -loglevel error -y -f x11grab \
             -video_size 1280x720 -i :99.0 -frames:v 1 "$EVIDENCE/control-attempt.png" \
             >> "$EVIDENCE/screenshots.log" 2>&1 || true
