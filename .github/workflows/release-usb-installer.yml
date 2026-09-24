@@ -218,7 +218,7 @@ jobs:
           - full amd64 ISO build;
           - SHA-256 verification;
           - final ISO extraction and GENESIS payload verification;
-          - live UEFI/QEMU boot;
+          - headless live kernel/initramfs boot in QEMU (not a graphical or UEFI-live certification);
           - real GENESIS install onto a disposable virtual disk;
           - cold boot of the installed Synapse OS image.
 
