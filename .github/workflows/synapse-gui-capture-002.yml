@@ -58,7 +58,7 @@ jobs:
             -append 'boot=live components live-media=/dev/vda username=cory console=tty0 console=ttyS0,115200n8 systemd.unit=graphical.target systemd.show_status=1 plymouth.enable=0 systemd.journald.forward_to_console=1' \
             -drive "file=$ISO,format=raw,if=virtio,readonly=on" \
             -nic user,model=virtio-net-pci \
-            -vga std -display gtk,gl=off -full-screen \
+            -vga virtio -display gtk,gl=off -full-screen \
             -serial "file:$EVIDENCE/guest-serial.log" \
             -monitor none -no-reboot \
             > "$EVIDENCE/qemu.log" 2>&1 &
