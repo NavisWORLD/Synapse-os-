@@ -26,6 +26,13 @@ def patch_autologin(contents: str) -> str:
     return contents + ("" if not contents or contents.endswith("\n") else "\n") + "\n[Autologin]\n" + session + "\n"
 
 
+def patch_environment(contents: str) -> str:
+    """Disable KWin compositing only for an emulated live QEMU session."""
+    if any(line.startswith("KWIN_COMPOSE=") for line in contents.splitlines()):
+        return contents
+    return contents + ("" if not contents or contents.endswith("\n") else "\n") + "KWIN_COMPOSE=N\n"
+
+
 def main() -> int:
     cmdline = Path("/proc/cmdline").read_text(encoding="utf-8")
     if "boot=live" not in cmdline.split():
@@ -61,6 +68,18 @@ def main() -> int:
     updated = patch_autologin(original)
     if updated != original:
         target.write_text(updated, encoding="utf-8")
+    # Some unaccelerated QEMU virtio VGA/llvmpipe combinations freeze KWin
+    # during GL initialization. Keep the workaround confined to a genuine
+    # read-only live VM, never a full installation or physical workstation.
+    vendor_path = Path("/sys/class/dmi/id/sys_vendor")
+    vendor = vendor_path.read_text(encoding="utf-8").strip().lower() if vendor_path.is_file() else ""
+    if "qemu" in vendor or "bochs" in vendor:
+        env_path = Path("/etc/environment")
+        original_env = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
+        updated_env = patch_environment(original_env)
+        if updated_env != original_env:
+            env_path.write_text(updated_env, encoding="utf-8")
+        print("SYNAPSE_LIVE_GUI:QEMU compositor disabled; no hardware configuration changed", flush=True)
     print("SYNAPSE_LIVE_GUI:selected Plasma X11 for existing live user", flush=True)
     return 0
 
