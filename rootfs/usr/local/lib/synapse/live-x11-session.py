@@ -30,7 +30,7 @@ def patch_environment(contents: str) -> str:
     """Disable KWin compositing only for an emulated live QEMU session."""
     if any(line.startswith("KWIN_COMPOSE=") for line in contents.splitlines()):
         return contents
-    return contents + ("" if not contents or contents.endswith("\\n") else "\\n") + "KWIN_COMPOSE=N\\n"
+    return contents + ("" if not contents or contents.endswith("\n") else "\n") + "KWIN_COMPOSE=N\n"
 
 
 def main() -> int:
