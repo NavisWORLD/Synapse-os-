@@ -27,10 +27,10 @@ class LiveX11ConfigTests(unittest.TestCase):
         self.assertIn("[Theme]\nCurrent=synapse-nebula", revised)
 
     def test_live_vm_compositor_override_is_idempotent(self):
-        revised = patch_environment("PATH=/usr/bin\\n")
+        revised = patch_environment("PATH=/usr/bin\n")
         self.assertEqual(revised, "PATH=/usr/bin\\nKWIN_COMPOSE=N\\n")
         self.assertEqual(patch_environment(revised), revised)
-        self.assertEqual(patch_environment("KWIN_COMPOSE=O\\n"), "KWIN_COMPOSE=O\\n")
+        self.assertEqual(patch_environment("KWIN_COMPOSE=O\n"), "KWIN_COMPOSE=O\n")
 
     def test_does_not_create_a_user_or_password(self):
         revised = patch("[Theme]\nCurrent=synapse-nebula\n")
