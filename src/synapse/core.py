@@ -130,6 +130,18 @@ def cosmos_probe() -> dict[str, dict[str, Any]]:
     return {name: {"port": port, "reachable": probe_port(port)} for name, port in COSMOS_PORTS.items()}
 
 
+def zeref_probe() -> dict[str, Any]:
+    sock = Path("/run/synapse/zeref/zeref.sock")
+    reachable = sock.is_socket()
+    return {
+        "state": "DEGRADED" if reachable else "OFFLINE",
+        "socket_reachable": reachable,
+        "service_unit_present": Path("/etc/systemd/system/synapse-zeref.service").is_file(),
+        "config_present": Path("/etc/synapse/zeref.json").is_file(),
+        "credential_exposed_to_subject": False,
+    }
+
+
 def temperature_c() -> float | None:
     candidates = sorted(Path("/sys/class/thermal").glob("thermal_zone*/temp"))
     values = []
@@ -176,6 +188,7 @@ def doctor() -> dict[str, Any]:
         "commands": {name: bool(shutil.which(name)) for name in commands},
         "os_release": _read("/etc/os-release"),
         "cosmos": cosmos_probe(),
+        "zeref": zeref_probe(),
         "status": system_status(),
     }
 

@@ -1,0 +1,66 @@
+#!/usr/bin/python3
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+BEASTBOX_ROOT = Path("/var/lib/synapse/zeref/beastbox")
+if str(BEASTBOX_ROOT) not in sys.path:
+    sys.path.insert(0, str(BEASTBOX_ROOT))
+
+from beastbox.quantum_divergence.resident_broker import refresh_existing_job
+
+CONFIG = Path("/etc/synapse/zeref-ibm.json")
+OUTPUT = Path("/run/synapse/zeref/ibm-receipt.json")
+ALLOWED = {"job_id", "backend", "shots", "circuit_sha256", "ttl_seconds", "instance"}
+
+
+def main() -> int:
+    credentials_dir = Path(os.environ.get("CREDENTIALS_DIRECTORY", ""))
+    credential = credentials_dir / "ibm_quantum_token"
+    if not credentials_dir.is_dir() or not credential.is_file():
+        raise RuntimeError("systemd IBM credential is not available")
+
+    config = json.loads(CONFIG.read_text(encoding="utf-8"))
+    if not isinstance(config, dict):
+        raise ValueError("IBM broker config must be a JSON object")
+    unknown = sorted(set(config) - ALLOWED)
+    if unknown:
+        raise ValueError("unknown IBM broker config fields: " + ", ".join(unknown))
+    for key in ("job_id", "backend", "shots", "circuit_sha256"):
+        if key not in config or config[key] in (None, ""):
+            raise ValueError(f"IBM broker config missing {key}")
+
+    token = credential.read_text(encoding="utf-8").strip()
+    if not token:
+        raise RuntimeError("systemd IBM credential is empty")
+
+    receipt = refresh_existing_job(
+        token=token,
+        job_id=str(config["job_id"]),
+        backend=str(config["backend"]),
+        shots=int(config["shots"]),
+        circuit_sha256=str(config["circuit_sha256"]),
+        instance=str(config.get("instance") or "") or None,
+        ttl_seconds=int(config.get("ttl_seconds", 21600)),
+    )
+
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    tmp = OUTPUT.with_suffix(".tmp")
+    tmp.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.chmod(tmp, 0o644)
+    tmp.replace(OUTPUT)
+    print(json.dumps({
+        "authenticated": receipt["authenticated"],
+        "backend": receipt["backend"],
+        "job_id": receipt["job_id"],
+        "job_status": receipt["job_status"],
+        "secret_exposed_to_subject": False,
+    }, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

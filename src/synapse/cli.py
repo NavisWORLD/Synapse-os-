@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 
 from . import __version__
 from .core import benchmark, cosmos_probe, doctor, dump_json, current_power_profile, set_profile, system_status
 from .dsl import apply as apply_plan, parse_file
+from .zeref import request_resident
 
 
 def _human_status(data: dict) -> str:
@@ -41,9 +43,42 @@ def build_parser() -> argparse.ArgumentParser:
     cosmos = sub.add_parser("cosmos")
     csub = cosmos.add_subparsers(dest="cosmos_command", required=True)
     csub.add_parser("probe")
+    zeref = sub.add_parser("zeref", help="resident Full Zeref control surface")
+    zsub = zeref.add_subparsers(dest="zeref_command", required=True)
+    zsub.add_parser("status")
+    zsub.add_parser("doctor")
+    zsub.add_parser("refresh-ibm")
+    zchat = zsub.add_parser("chat")
+    zchat.add_argument("message", nargs="?")
     plan = sub.add_parser("apply")
     plan.add_argument("path")
     return p
+
+
+def _zeref_chat(message: str | None) -> int:
+    if message is not None:
+        result = request_resident({"action": "chat", "message": message})
+        if result.get("ok") is False:
+            print(dump_json(result), file=sys.stderr)
+            return 2
+        print(str(result.get("response", "")))
+        return 0
+    print("SYNAPSE // FULL ZEREF // /exit to quit")
+    while True:
+        try:
+            text = input("you> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return 0
+        if text in {"/exit", "/quit"}:
+            return 0
+        if not text:
+            continue
+        result = request_resident({"action": "chat", "message": text})
+        if result.get("ok") is False:
+            print("zeref error> " + str(result.get("error", "unknown")))
+            continue
+        print("zeref> " + str(result.get("response", "")))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -66,10 +101,27 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
         elif args.command == "cosmos":
             print(dump_json(cosmos_probe()))
+        elif args.command == "zeref":
+            if args.zeref_command in {"status", "doctor"}:
+                result = request_resident({"action": args.zeref_command})
+                print(dump_json(result))
+                return 0 if result.get("ok", True) else 2
+            if args.zeref_command == "refresh-ibm":
+                proc = subprocess.run(
+                    ["systemctl", "start", "synapse-zeref-ibm-broker.service"],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                    timeout=60,
+                )
+                data = {"ok": proc.returncode == 0, "returncode": proc.returncode, "detail": (proc.stdout or proc.stderr).strip()}
+                print(dump_json(data))
+                return 0 if proc.returncode == 0 else 2
+            return _zeref_chat(args.message)
         elif args.command == "apply":
             print(dump_json(apply_plan(parse_file(args.path))))
         return 0
-    except (ValueError, OSError) as exc:
+    except (ValueError, OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
         print(f"synapse: {exc}", file=sys.stderr)
         return 2
 
