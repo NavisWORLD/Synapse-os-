@@ -28,9 +28,12 @@ jobs:
         run: |
           set -Eeuo pipefail
           cd /tmp/synapse-iso
-          sha256sum -c *.iso.sha256
           ISO="$(find . -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
           test -n "$ISO"
+          EXPECTED="$(awk '{print $1}' ./*.iso.sha256)"
+          ACTUAL="$(sha256sum "$ISO" | awk '{print $1}')"
+          test "$EXPECTED" = "$ACTUAL"
+          echo "Released ISO SHA-256 verified: $ACTUAL"
           mkdir -p /tmp/synapse-video
           xorriso -osirrox on -indev "$ISO" -extract /live/vmlinuz /tmp/synapse-video/vmlinuz
           xorriso -osirrox on -indev "$ISO" -extract /live/initrd.img /tmp/synapse-video/initrd.img
