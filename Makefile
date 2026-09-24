@@ -7,6 +7,7 @@ check: test lint license-audit c cpp rust python-sdk arch-config
 
 test:
 	PYTHONPATH=src:. $(PYTHON) -m unittest discover -s tests -v
+	PYTHONPATH=src:. $(PYTHON) -m unittest discover -s tests/unit -v
 	$(PYTHON) -m unittest discover -s APPLE_INTEL/tests -v
 	node --test BEASTOS_WEB_MACHINE/tests/*.test.mjs
 

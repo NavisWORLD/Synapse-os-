@@ -188,6 +188,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          trap 'printf "Payload verification failed at line %s: %s\n" "$LINENO" "$BASH_COMMAND" >&2' ERR
           ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
           test -n "$ISO"
           grep -a -q 'synapse.genesis=1' "$ISO"
@@ -290,7 +291,8 @@ jobs:
           grep -q '331f03c5d6a4aab0b2e32314293e36c7a94be393' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.6.0.json
           grep -q 'c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.6.0.json
           grep -q 'c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2' /tmp/synapse-root/usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json
-          grep -q 'runtime exchange' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
+          grep -q '/src/beast/conversation.js' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
+          grep -q '/v1/beast/chat' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js
           grep -q '127.0.0.1' /tmp/synapse-root/usr/local/bin/synapse-beastos-web
           ! grep -q '/shell' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
           ! grep -q '/exec' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
