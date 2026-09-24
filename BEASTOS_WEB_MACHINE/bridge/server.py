@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from functools import wraps
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -11,6 +12,7 @@ from pathlib import Path
 import secrets
 import shutil
 import socket
+from threading import RLock
 from typing import Any
 from urllib.parse import unquote, urlparse
 import webbrowser
@@ -80,6 +82,20 @@ class UnavailableVMBackend:
         return {"state": "UNAVAILABLE", "engine": "qemu", "reason": "guest image not configured"}
 
 
+def serialized_state(method):
+    """Keep authority, model identity and the shared Beast store linearizable.
+
+    ThreadingHTTPServer handles requests concurrently. A single in-process lock
+    covers the complete exchange, so an old-brain turn cannot be attributed to a
+    new brain or overlap another writer. RLock permits nested status calls.
+    """
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        with self._operation_lock:
+            return method(self, *args, **kwargs)
+    return guarded
+
+
 class BridgeState:
     """Synapse authority state wrapped around an external Beast continuity runtime."""
 
@@ -91,6 +107,7 @@ class BridgeState:
         beast_provider: str = "LOCAL_HOST",
         beast_exchange: BeastExchangeAdapter | Any | None = None,
     ) -> None:
+        self._operation_lock = RLock()
         backend = vm_backend or UnavailableVMBackend()
         self.authority = AuthorityLedger()
         self.provenance = ProvenanceLog()
@@ -111,6 +128,7 @@ class BridgeState:
         self.beast = BeastAdapter(endpoint=beast_endpoint, provider=beast_provider)
         self.beast_exchange = beast_exchange
 
+    @serialized_state
     def clock_in(self, brain: str) -> dict[str, Any]:
         if self.machine.get("state") == "RUNNING":
             self.authority.master_privacy_stop()
@@ -120,6 +138,7 @@ class BridgeState:
         self.provenance.append("brain_clock_in", {"brain": brain, "revoked": sorted(revoked)})
         return self.status()
 
+    @serialized_state
     def grant(self, capability: str) -> dict[str, Any]:
         if capability not in GRANTABLE:
             raise ValueError(f"capability is not grantable: {capability}")
@@ -130,6 +149,7 @@ class BridgeState:
         )
         return self.status()
 
+    @serialized_state
     def revoke(self, capability: str) -> dict[str, Any]:
         self.authority.revoke(capability)
         self.provenance.append(
@@ -138,6 +158,7 @@ class BridgeState:
         )
         return self.status()
 
+    @serialized_state
     def chat(self, text: str) -> dict[str, Any]:
         if self.authority.active_brain is None:
             raise PermissionError("clock in a brain before sending Beast conversation turns")
@@ -160,6 +181,7 @@ class BridgeState:
         )
         return response
 
+    @serialized_state
     def inspect_beast(self) -> dict[str, Any]:
         if self.beast_exchange is None:
             raise RuntimeError("Beast runtime exchange is not configured")
@@ -175,6 +197,7 @@ class BridgeState:
         )
         return response
 
+    @serialized_state
     def machine_create(self, spec: MachineSpec) -> dict[str, Any]:
         if spec.network_mode != "none" and not self.authority.allowed("vm.network"):
             raise PermissionError("vm.network authority required for networked guest")
@@ -182,11 +205,13 @@ class BridgeState:
         self.provenance.append("machine_create", self.machine)
         return dict(self.machine)
 
+    @serialized_state
     def machine_destroy(self) -> dict[str, Any]:
         self.machine = self.vm.destroy()
         self.provenance.append("machine_destroy", self.machine)
         return dict(self.machine)
 
+    @serialized_state
     def master_privacy_stop(self) -> dict[str, Any]:
         revoked = self.authority.master_privacy_stop()
         if self.machine.get("state") == "RUNNING":
@@ -197,6 +222,11 @@ class BridgeState:
         )
         return self.status()
 
+    def provenance_records(self) -> list[dict[str, Any]]:
+        with self._operation_lock:
+            return self.provenance.records()
+
+    @serialized_state
     def status(self) -> dict[str, Any]:
         release = BeastRelease.v060()
         exchange = self.beast_exchange
@@ -419,7 +449,7 @@ class BeastOSHandler(BaseHTTPRequestHandler):
                 if path == "/v1/provenance":
                     self._send_json(
                         HTTPStatus.OK,
-                        {"ok": True, "records": self.server.state.provenance.records()},
+                        {"ok": True, "records": self.server.state.provenance_records()},
                     )
                     return
                 self._send_json(HTTPStatus.NOT_FOUND, {"ok": False, "error": {"code": "ROUTE_NOT_FOUND"}})
