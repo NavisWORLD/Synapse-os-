@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Synapse Welcome
+Comment=Open the cosmic Synapse OS launchpad and installed Beast Box
+Exec=/usr/local/bin/synapse-welcome
+TryExec=/usr/local/bin/synapse-welcome
+Icon=synapse-os
+Categories=System;Utility;
+Keywords=Synapse;Beast Box;COSMOS;AI;Welcome;
+Terminal=false
+StartupNotify=true
