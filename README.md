@@ -132,6 +132,10 @@ Foreign ARM64/RISC-V image generation requires the matching `qemu-*-static` emul
 
 See [`docs/BUILD.md`](docs/BUILD.md), [`docs/INSTALL.md`](docs/INSTALL.md), and [`docs/ARCHITECTURES.md`](docs/ARCHITECTURES.md).
 
+## VM installation and certification
+
+To try Synapse in QEMU/KVM, VirtualBox or VMware with a **disposable virtual disk**, follow the [AMD64 VM install guide](docs/VM_INSTALL.md). It distinguishes automated headless live/installed boot gates from graphical desktop and platform-specific checks that require real guest evidence.
+
 ## VM certification path
 
 The hosted workflow deliberately separates “the image exists” from “the OS booted.”
