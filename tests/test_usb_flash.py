@@ -138,9 +138,14 @@ class UsbFlashManagerTests(unittest.TestCase):
         return td, image, target_file, expected, manager
 
     def _wait_terminal(self, manager: UsbFlashManager) -> None:
-        deadline = time.time() + 3
-        while manager.status()["phase"] not in {"complete", "failed"} and time.time() < deadline:
-            time.sleep(0.01)
+        # The simulation worker calls os.sync(), which can exceed a short
+        # wall-clock poll on a shared CI runner. Join the actual worker with a
+        # bounded deadline instead of treating runner I/O load as a flash bug.
+        worker = manager._thread
+        self.assertIsNotNone(worker, "flash worker was not started")
+        assert worker is not None
+        worker.join(timeout=20)
+        self.assertFalse(worker.is_alive(), "flash worker did not terminate")
         self.assertIn(manager.status()["phase"], {"complete", "failed"})
 
     def test_image_hash_mismatch_fails_preflight(self) -> None:
