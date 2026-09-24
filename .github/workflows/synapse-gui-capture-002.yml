@@ -1,0 +1,100 @@
+name: Synapse real graphical VM capture
+on:
+  workflow_dispatch:
+  push:
+    branches: [demo/synapse-gui-capture-002]
+permissions:
+  actions: read
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve release-identical ISO
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-os-nebula-amd64
+          path: /tmp/synapse-iso
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: NavisWORLD/Synapse-os-
+          run-id: 36044629991
+      - name: Install graphical QEMU and recording tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 qemu-system-gui xorriso xvfb ffmpeg xdotool
+      - name: Verify released ISO and extract boot files
+        run: |
+          set -Eeuo pipefail
+          cd /tmp/synapse-iso
+          sha256sum -c *.iso.sha256
+          ISO="$(find . -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -n "$ISO"
+          mkdir -p /tmp/synapse-video
+          xorriso -osirrox on -indev "$ISO" -extract /live/vmlinuz /tmp/synapse-video/vmlinuz
+          xorriso -osirrox on -indev "$ISO" -extract /live/initrd.img /tmp/synapse-video/initrd.img
+      - name: Record genuine graphical QEMU boot and optional desktop interaction
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$GITHUB_WORKSPACE/synapse-gui-evidence"
+          mkdir -p "$EVIDENCE"
+          Xvfb :99 -screen 0 1280x720x24 -nolisten tcp > "$EVIDENCE/xvfb.log" 2>&1 &
+          XVFB_PID=$!
+          sleep 3
+          DISPLAY=:99 ffmpeg -nostdin -loglevel error -y \
+            -f x11grab -draw_mouse 0 -framerate 12 -video_size 1280x720 -i :99.0 \
+            -c:v libx264 -preset ultrafast -crf 27 -pix_fmt yuv420p \
+            "$EVIDENCE/SYNAPSE_ALPHA4_REAL_VM_BOOT.mp4" > "$EVIDENCE/recorder.log" 2>&1 &
+          FFMPEG_PID=$!
+          ISO="$(find /tmp/synapse-iso -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          DISPLAY=:99 qemu-system-x86_64 \
+            -machine q35,accel=tcg -cpu max -smp 2 -m 4096 \
+            -kernel /tmp/synapse-video/vmlinuz -initrd /tmp/synapse-video/initrd.img \
+            -append 'boot=live components live-media=/dev/vda username=cory console=tty0 console=ttyS0,115200n8 systemd.unit=graphical.target systemd.show_status=1 synapse.vmtest=1' \
+            -drive "file=$ISO,format=raw,if=virtio,readonly=on" \
+            -nic user,model=virtio-net-pci \
+            -vga std -display gtk,gl=off -full-screen \
+            -serial "file:$EVIDENCE/guest-serial.log" \
+            -monitor none -no-reboot \
+            > "$EVIDENCE/qemu.log" 2>&1 &
+          VM_PID=$!
+          sleep 95
+          DISPLAY=:99 ffmpeg -nostdin -loglevel error -y -f x11grab \
+            -video_size 1280x720 -i :99.0 -frames:v 1 "$EVIDENCE/boot-or-login.png" \
+            > "$EVIDENCE/screenshots.log" 2>&1 || true
+          DISPLAY=:99 xdotool key Super_L || true
+          sleep 9
+          DISPLAY=:99 ffmpeg -nostdin -loglevel error -y -f x11grab \
+            -video_size 1280x720 -i :99.0 -frames:v 1 "$EVIDENCE/launcher-attempt.png" \
+            >> "$EVIDENCE/screenshots.log" 2>&1 || true
+          DISPLAY=:99 xdotool key Escape || true
+          DISPLAY=:99 xdotool key alt+F2 || true
+          sleep 2
+          DISPLAY=:99 xdotool type --clearmodifiers --delay 45 synapse-control || true
+          DISPLAY=:99 xdotool key Return || true
+          sleep 28
+          DISPLAY=:99 ffmpeg -nostdin -loglevel error -y -f x11grab \
+            -video_size 1280x720 -i :99.0 -frames:v 1 "$EVIDENCE/control-attempt.png" \
+            >> "$EVIDENCE/screenshots.log" 2>&1 || true
+          kill "$VM_PID" 2>/dev/null || true
+          wait "$VM_PID" 2>/dev/null || true
+          kill -INT "$FFMPEG_PID" 2>/dev/null || true
+          wait "$FFMPEG_PID" 2>/dev/null || true
+          kill "$XVFB_PID" 2>/dev/null || true
+          test -s "$EVIDENCE/SYNAPSE_ALPHA4_REAL_VM_BOOT.mp4"
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 \
+            "$EVIDENCE/SYNAPSE_ALPHA4_REAL_VM_BOOT.mp4" | tee "$EVIDENCE/VIDEO_METRICS.txt"
+          cp /tmp/synapse-iso/*.iso.sha256 "$EVIDENCE/ISO_SHA256.txt"
+          printf 'release: v0.1.0-alpha.4\nrelease_run: 36044629991\ncapture_commit: %s\nmode: actual QEMU graphical live boot; not an edited mockup\n' "$GITHUB_SHA" > "$EVIDENCE/PROVENANCE.txt"
+          if grep -q 'SYNAPSE_VM_READY' "$EVIDENCE/guest-serial.log"; then echo 'guest-smoke: PASS' >> "$EVIDENCE/PROVENANCE.txt"; else echo 'guest-smoke: NOT CONFIRMED' >> "$EVIDENCE/PROVENANCE.txt"; fi
+          sha256sum "$EVIDENCE/SYNAPSE_ALPHA4_REAL_VM_BOOT.mp4" > "$EVIDENCE/VIDEO_SHA256.txt"
+      - name: Upload real video and raw evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-alpha4-real-gui-vm
+          path: synapse-gui-evidence/
+          if-no-files-found: warn
+          retention-days: 30
