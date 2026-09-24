@@ -48,8 +48,11 @@ class Welcome(QWidget):
         super().__init__()
         self.setWindowTitle("Synapse OS // Welcome Home")
         self.setObjectName("root")
-        self.setMinimumSize(740, 510)
-        self.resize(850, 560)
+        self.setMinimumSize(440, 310)
+        screen = QApplication.primaryScreen()
+        area = screen.availableGeometry() if screen is not None else None
+        self.resize(min(850, max(440, area.width() - 30)) if area else 740,
+                    min(560, max(310, area.height() - 36)) if area else 500)
         self.setStyleSheet("""
             QWidget#root { background: #050a19; color: #e9f6ff; }
             QFrame#panel { background: #101b34; border: 1px solid #35527b;
@@ -60,15 +63,15 @@ class Welcome(QWidget):
             QLabel#state { color: #afc2de; font-size: 12px; }
             QPushButton { background: #152f53; color: #eaf7ff;
                           border: 1px solid #3a789c; border-radius: 9px;
-                          text-align: left; padding: 11px 14px; font-size: 14px; }
+                          text-align: left; padding: 7px 11px; font-size: 13px; }
             QPushButton:hover { background: #24507d; border-color: #75e5ff; }
             QPushButton:focus { border: 2px solid #ad8bff; }
             QPushButton#primary { background: #14506b; border-color: #58e7ff; }
         """)
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(32, 28, 32, 25)
-        outer.setSpacing(15)
+        outer.setContentsMargins(18, 12, 18, 12)
+        outer.setSpacing(7)
         eyebrow = QLabel("NEBULA  /  COSMOS  /  BEAST BOX")
         eyebrow.setObjectName("subtitle")
         outer.addWidget(eyebrow)
@@ -82,8 +85,8 @@ class Welcome(QWidget):
         panel = QFrame()
         panel.setObjectName("panel")
         panel_layout = QVBoxLayout(panel)
-        panel_layout.setContentsMargins(21, 17, 21, 18)
-        panel_layout.setSpacing(10)
+        panel_layout.setContentsMargins(13, 9, 13, 9)
+        panel_layout.setSpacing(5)
         model_text = ("Beast Box runtime: installed" if BEAST_RUNTIME.is_file()
                       else "Beast Box runtime: unavailable")
         info = QLabel(model_text + "\nModel: not verified or selected. Cloud and sensor access require separate setup.")
@@ -112,6 +115,7 @@ class Welcome(QWidget):
         footer = QHBoxLayout()
         legal = QLabel("Local-first. Explicit permissions. No model is granted OS authority.")
         legal.setObjectName("state")
+        legal.setWordWrap(True)
         footer.addWidget(legal, 1)
         skip = QPushButton("ENTER DESKTOP  →")
         skip.clicked.connect(self.close)
