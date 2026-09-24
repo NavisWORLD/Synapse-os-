@@ -1,0 +1,128 @@
+name: Synapse cosmic GUI acceptance recording
+on:
+  workflow_dispatch:
+  push:
+    branches: [demo/synapse-cosmic-gui-acceptance-001]
+permissions:
+  actions: read
+  contents: read
+jobs:
+  real-gui-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact candidate ISO from PR verification
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-os-nebula-amd64
+          path: /tmp/synapse-iso
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: NavisWORLD/Synapse-os-
+          run-id: 36054566153
+      - name: Install real virtual display and capture tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 qemu-system-gui xorriso xvfb ffmpeg xdotool
+      - name: Verify exact candidate ISO before boot
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd /tmp/synapse-iso
+          ISO="$(find . -maxdepth 1 -type f -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -s "$ISO"
+          EXPECTED="$(awk '{print $1}' ./*.iso.sha256)"
+          ACTUAL="$(sha256sum "$ISO" | awk '{print $1}')"
+          test "$EXPECTED" = "$ACTUAL"
+          mkdir -p /tmp/synapse-video
+          xorriso -osirrox on -indev "$ISO" -extract /live/vmlinuz /tmp/synapse-video/vmlinuz
+          xorriso -osirrox on -indev "$ISO" -extract /live/initrd.img /tmp/synapse-video/initrd.img
+          xorriso -osirrox on -indev "$ISO" -extract /synapse-genesis/manifest.json /tmp/synapse-video/genesis-manifest.json
+          echo "ISO checksum verified: $ACTUAL"
+          cat /tmp/synapse-video/genesis-manifest.json
+          echo "ISO_FILE=$PWD/$ISO" >> "$GITHUB_ENV"
+      - name: Record actual QEMU live boot and desktop attempts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$GITHUB_WORKSPACE/synapse-cosmic-vm-evidence"
+          mkdir -p "$EVIDENCE"
+          Xvfb :99 -screen 0 1280x720x24 -nolisten tcp > "$EVIDENCE/xvfb.log" 2>&1 &
+          XVFB_PID=$!
+          sleep 3
+          DISPLAY=:99 ffmpeg -nostdin -loglevel error -y \
+            -f x11grab -draw_mouse 1 -framerate 10 -video_size 1280x720 -i :99.0 \
+            -c:v libx264 -preset ultrafast -crf 28 -pix_fmt yuv420p \
+            "$EVIDENCE/SYNAPSE_COSMIC_REAL_VM.mp4" > "$EVIDENCE/recorder.log" 2>&1 &
+          REC_PID=$!
+          DISPLAY=:99 qemu-system-x86_64 \
+            -machine q35,accel=tcg -cpu max -smp 4 -m 6144 \
+            -kernel /tmp/synapse-video/vmlinuz -initrd /tmp/synapse-video/initrd.img \
+            -append 'boot=live components live-media=/dev/vda hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us console=ttyS0,115200n8 console=tty0 systemd.unit=graphical.target systemd.show_status=1 plymouth.enable=0' \
+            -drive "file=$ISO_FILE,format=raw,if=virtio,readonly=on" \
+            -nic user,model=virtio-net-pci \
+            -vga virtio -display gtk,gl=off -full-screen \
+            -serial "file:$EVIDENCE/guest-serial.log" -monitor none -no-reboot \
+            > "$EVIDENCE/qemu.log" 2>&1 &
+          VM_PID=$!
+          capture() {
+            local name="$1"
+            DISPLAY=:99 ffmpeg -nostdin -loglevel error -y -f x11grab \
+              -video_size 1280x720 -i :99.0 -frames:v 1 "$EVIDENCE/$name.png" \
+              >> "$EVIDENCE/screenshots.log" 2>&1 || true
+          }
+          sleep 195
+          capture 01-login-or-desktop
+          DISPLAY=:99 xdotool key Super_L || true
+          sleep 10
+          capture 02-launcher
+          DISPLAY=:99 xdotool key Escape || true
+          DISPLAY=:99 xdotool key alt+F2 || true
+          sleep 3
+          DISPLAY=:99 xdotool type --clearmodifiers --delay 45 synapse-control || true
+          DISPLAY=:99 xdotool key Return || true
+          sleep 25
+          capture 03-synapse-control
+          DISPLAY=:99 xdotool key alt+F2 || true
+          sleep 3
+          DISPLAY=:99 xdotool type --clearmodifiers --delay 45 dolphin || true
+          DISPLAY=:99 xdotool key Return || true
+          sleep 18
+          capture 04-file-manager
+          DISPLAY=:99 xdotool key alt+F2 || true
+          sleep 3
+          DISPLAY=:99 xdotool type --clearmodifiers --delay 45 konsole || true
+          DISPLAY=:99 xdotool key Return || true
+          sleep 18
+          capture 05-terminal
+          DISPLAY=:99 xdotool type --clearmodifiers --delay 85 'synapse status; synapse doctor' || true
+          DISPLAY=:99 xdotool key Return || true
+          sleep 18
+          capture 06-synapse-status-doctor
+          DISPLAY=:99 xdotool key alt+F2 || true
+          sleep 3
+          DISPLAY=:99 xdotool type --clearmodifiers --delay 40 synapse-beastos-web || true
+          DISPLAY=:99 xdotool key Return || true
+          sleep 25
+          capture 07-beastos-attempt
+          kill "$VM_PID" 2>/dev/null || true
+          wait "$VM_PID" 2>/dev/null || true
+          kill -INT "$REC_PID" 2>/dev/null || true
+          wait "$REC_PID" 2>/dev/null || true
+          kill "$XVFB_PID" 2>/dev/null || true
+          test -s "$EVIDENCE/SYNAPSE_COSMIC_REAL_VM.mp4"
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 \
+            "$EVIDENCE/SYNAPSE_COSMIC_REAL_VM.mp4" > "$EVIDENCE/VIDEO_METRICS.txt"
+          cp /tmp/synapse-iso/*.iso.sha256 "$EVIDENCE/ISO_SHA256.txt"
+          cp /tmp/synapse-video/genesis-manifest.json "$EVIDENCE/GENESIS_MANIFEST.json"
+          printf 'candidate_build_run=36054566153\nrecording_commit=%s\nvm_mode=real QEMU direct-kernel read-only candidate live ISO\nscreenshots=attempts; functional GUI requires independent inspection\n' "$GITHUB_SHA" > "$EVIDENCE/PROVENANCE.txt"
+          if grep -q 'SYNAPSE_LIVE_GUI:selected Plasma X11' "$EVIDENCE/guest-serial.log"; then echo 'guest_x11_override=OBSERVED' >> "$EVIDENCE/PROVENANCE.txt"; else echo 'guest_x11_override=NOT_OBSERVED' >> "$EVIDENCE/PROVENANCE.txt"; fi
+          sha256sum "$EVIDENCE/SYNAPSE_COSMIC_REAL_VM.mp4" > "$EVIDENCE/VIDEO_SHA256.txt"
+      - name: Upload actual video, screenshots and logs even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-cosmic-candidate-real-gui
+          path: synapse-cosmic-vm-evidence/
+          retention-days: 30
+          if-no-files-found: warn
