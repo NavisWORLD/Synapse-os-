@@ -79,6 +79,7 @@ jobs:
             etc/os-release \
             usr/local/bin/synapse \
             usr/local/bin/synapse-control \
+            usr/local/bin/synapse-beastos-web \
             usr/local/bin/synapse-genesis-writer \
             usr/bin/plasmashell \
             usr/bin/calamares \
@@ -95,6 +96,9 @@ jobs:
             usr/share/synapse/hardware/profiles.json \
             usr/share/synapse/phone-bootstrap.html \
             usr/share/synapse/GENESIS.html \
+            usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html \
+            usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js \
+            usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json \
             usr/share/doc/synapse-os/LICENSE \
             usr/share/doc/synapse-os/NOTICE \
             usr/share/doc/synapse-os/PROVENANCE.md \
@@ -107,6 +111,10 @@ jobs:
           grep -q '^ID=synapseos$' /tmp/synapse-release-root/etc/os-release
           test -s /tmp/synapse-release-root/usr/local/bin/synapse
           test -s /tmp/synapse-release-root/usr/local/bin/synapse-control
+          test -x /tmp/synapse-release-root/usr/local/bin/synapse-beastos-web
+          test -s /tmp/synapse-release-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
+          grep -q '/v1/beast/chat' /tmp/synapse-release-root/usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js
+          test -s /tmp/synapse-release-root/usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json
           test -s /tmp/synapse-release-root/usr/local/bin/synapse-genesis-writer
           test -s /tmp/synapse-release-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
           test -s /tmp/synapse-release-root/usr/share/synapse/GENESIS.html
@@ -200,7 +208,9 @@ jobs:
           sha = os.environ["GITHUB_SHA"]
           notes = f"""# Synapse OS USB Installer {tag}
 
-          Verified amd64/UEFI installer for Synapse OS Nebula.
+          Public **alpha / prerelease** AMD64/UEFI live and install image for Synapse OS Nebula.
+
+          This image is intended for noncommercial evaluation, development and disposable VM trials under the included Synapse Source License. It is not a production or physical-hardware certification. Share the official release URL; third-party redistribution or commercial use requires separate permission. Third-party Debian components retain their own licenses.
 
           This release was built from commit `{sha}` and passed:
 
@@ -212,6 +222,8 @@ jobs:
           - real GENESIS install onto a disposable virtual disk;
           - cold boot of the installed Synapse OS image.
 
+          Automated VM smoke uses a headless guest-ready marker. Graphical KDE login, VirtualBox/VMware, physical-disk installation, resident Zeref and optional RAWRPHØS model quality are not certified by these gates. The included BeastOS reference provider is not a ready-to-chat language model; local AI requires a separately configured compatible runtime/model.
+
           GitHub limits each release asset to under 2 GiB, so the ISO is published as ordered parts named:
 
           `SynapseOS-Nebula-amd64.iso.part-000`, `part-001`, ...
@@ -220,7 +232,9 @@ jobs:
 
           The large ISO parts are intentionally separate. Copying the files onto a USB is only staging; the reconstructed ISO must still be flashed as a raw disk image before the USB can boot.
 
-          See `USB_INSTALL.md` in the repository for Rufus, balenaEtcher, Linux/macOS `dd`, GALLOP, and GENESIS instructions.
+          **Installation:** See `docs/VM_INSTALL.md` for disposable virtual machines, and `USB_INSTALL.md` for checksum verification, Rufus, balenaEtcher, Linux/macOS `dd`, and the supported GENESIS preflight. Always back up data before installing.
+
+          **Updates:** `sudo apt update && sudo apt full-upgrade` applies Debian package security updates within the running installation; it does **not** install future Synapse code or new first-party releases. Follow `docs/UPDATES.md` for the separate ISO/OS upgrade path, backups, and release checksum verification. There is no claimed OTA Synapse update service.
           """
           Path("release/RELEASE_NOTES.md").write_text(notes, encoding="utf-8")
           PY
@@ -252,13 +266,13 @@ jobs:
             gh release edit "$TAG" \
               --title "Synapse OS ${TAG} USB Installer" \
               --notes-file release/RELEASE_NOTES.md \
-              --latest
+              --prerelease --latest=false
           else
             gh release create "$TAG" "${ASSETS[@]}" \
               --target "$GITHUB_SHA" \
               --title "Synapse OS ${TAG} USB Installer" \
               --notes-file release/RELEASE_NOTES.md \
-              --latest
+              --prerelease --latest=false
           fi
 
       - name: Preserve release bundle as workflow artifact
