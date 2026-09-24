@@ -61,6 +61,7 @@ Rectangle {
                 Layout.preferredWidth: 158
                 Layout.preferredHeight: 158
                 Rectangle {
+                    id: pulseRing
                     anchors.centerIn: parent
                     width: 148
                     height: 148
@@ -72,10 +73,10 @@ Rectangle {
                     ParallelAnimation {
                         loops: Animation.Infinite
                         running: true
-                        NumberAnimation { target: parent; property: "scale"; from: 0.75; to: 1.5; duration: 2800 }
+                        NumberAnimation { target: pulseRing; property: "scale"; from: 0.75; to: 1.5; duration: 2800 }
                         SequentialAnimation {
-                            NumberAnimation { target: parent; property: "opacity"; from: 0; to: 0.75; duration: 700 }
-                            NumberAnimation { target: parent; property: "opacity"; from: 0.75; to: 0; duration: 2100 }
+                            NumberAnimation { target: pulseRing; property: "opacity"; from: 0; to: 0.75; duration: 700 }
+                            NumberAnimation { target: pulseRing; property: "opacity"; from: 0.75; to: 0; duration: 2100 }
                         }
                     }
                 }
