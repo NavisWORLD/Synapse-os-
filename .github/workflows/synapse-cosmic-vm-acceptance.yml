@@ -58,7 +58,7 @@ jobs:
           DISPLAY=:99 qemu-system-x86_64 \
             -machine q35,accel=tcg -cpu max -smp 4 -m 6144 \
             -kernel /tmp/synapse-video/vmlinuz -initrd /tmp/synapse-video/initrd.img \
-            -append 'boot=live components live-media=/dev/vda hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us console=ttyS0,115200n8 console=tty0 systemd.unit=graphical.target systemd.show_status=1 plymouth.enable=0' \
+            -append 'boot=live components live-media=/dev/vda hostname=synapse-os username=cory locales=en_US.UTF-8 keyboard-layouts=us console=ttyS0,115200n8 console=tty0 systemd.unit=graphical.target systemd.show_status=1 plymouth.enable=0 systemd.journald.forward_to_console=1' \
             -drive "file=$ISO_FILE,format=raw,if=virtio,readonly=on" \
             -nic user,model=virtio-net-pci \
             -vga virtio -display gtk,gl=off -full-screen \
