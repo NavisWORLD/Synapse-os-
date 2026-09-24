@@ -1,5 +1,8 @@
 plasma-workspace-wayland
 python3-pyqt6
+xserver-xorg
+qml6-module-qtquick-controls
+qml6-module-qtquick-layouts
 python3-psutil
 xdg-utils
 plymouth
