@@ -28,7 +28,7 @@ class LiveX11ConfigTests(unittest.TestCase):
 
     def test_live_vm_compositor_override_is_idempotent(self):
         revised = patch_environment("PATH=/usr/bin\n")
-        self.assertEqual(revised, "PATH=/usr/bin\\nKWIN_COMPOSE=N\\n")
+        self.assertEqual(revised, "PATH=/usr/bin\nKWIN_COMPOSE=N\n")
         self.assertEqual(patch_environment(revised), revised)
         self.assertEqual(patch_environment("KWIN_COMPOSE=O\n"), "KWIN_COMPOSE=O\n")
 
