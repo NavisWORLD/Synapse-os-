@@ -1,0 +1,188 @@
+name: Synapse visual boot recording
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'demo/synapse-boot-recording-001'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  visual-boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download verified ISO artifact from green product head
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-os-nebula-amd64
+          path: /tmp/synapse-iso
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: NavisWORLD/Synapse-os-
+          run-id: 34292197266
+
+      - name: Install QEMU and recording tools
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-system-gui xorriso xvfb ffmpeg
+
+      - name: Verify downloaded ISO checksum and extract kernel
+        run: |
+          set -Eeuo pipefail
+          cd /tmp/synapse-iso
+          sha256sum -c *.iso.sha256
+          ISO="$(find . -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -n "$ISO"
+          mkdir -p /tmp/synapse-boot
+          xorriso -osirrox on -indev "$ISO" \
+            -extract /live/vmlinuz /tmp/synapse-boot/vmlinuz \
+            -extract /live/initrd.img /tmp/synapse-boot/initrd.img
+          cp "$ISO" /tmp/synapse-boot/SynapseOS.iso
+          cp *.iso.sha256 /tmp/synapse-boot/ISO_SHA256.txt
+
+      - name: Record graphical QEMU boot with independent serial verification
+        id: boot
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$GITHUB_WORKSPACE/BEASTOS_WEB_MACHINE/boot-evidence"
+          mkdir -p "$EVIDENCE"
+          Xvfb :99 -screen 0 1280x720x24 -nolisten tcp > /tmp/xvfb.log 2>&1 &
+          echo $! > /tmp/xvfb.pid
+          sleep 2
+          DISPLAY=:99 ffmpeg -loglevel error -y \
+            -f x11grab -draw_mouse 0 -framerate 24 -video_size 1280x720 -i :99.0 \
+            -c:v libx264 -preset veryfast -pix_fmt yuv420p \
+            "$EVIDENCE/SYNAPSE_QEMU_BOOT.mp4" > /tmp/ffmpeg-boot.log 2>&1 &
+          echo $! > /tmp/ffmpeg.pid
+
+          DISPLAY=:99 timeout --signal=TERM --kill-after=10s 165s \
+            qemu-system-x86_64 \
+              -machine q35 \
+              -cpu qemu64 \
+              -m 1024 \
+              -smp 2 \
+              -kernel /tmp/synapse-boot/vmlinuz \
+              -initrd /tmp/synapse-boot/initrd.img \
+              -append 'boot=live components live-media=/dev/vda synapse.vmtest=1 console=ttyS0,115200n8 console=tty0 systemd.show_status=1' \
+              -drive file=/tmp/synapse-boot/SynapseOS.iso,format=raw,if=virtio,readonly=on \
+              -display gtk,gl=off \
+              -full-screen \
+              -serial file:"$EVIDENCE/SYNAPSE_BOOT_SERIAL.log" \
+              -monitor none \
+              -no-reboot \
+              -nic user,model=virtio-net-pci \
+            > "$EVIDENCE/QEMU_STDERR.log" 2>&1 &
+          echo $! > /tmp/qemu-wrapper.pid
+
+          status='PROTOTYPE'
+          reason='guest readiness marker not observed'
+          for i in $(seq 1 165); do
+            if grep -Fq 'SYNAPSE_VM_READY' "$EVIDENCE/SYNAPSE_BOOT_SERIAL.log" 2>/dev/null; then
+              status='IMPLEMENTED_AND_TESTED'
+              reason='guest emitted SYNAPSE_VM_READY'
+              sleep 5
+              break
+            fi
+            if grep -Fq 'SYNAPSE_VM_FAIL:' "$EVIDENCE/SYNAPSE_BOOT_SERIAL.log" 2>/dev/null; then
+              reason="$(grep -F 'SYNAPSE_VM_FAIL:' "$EVIDENCE/SYNAPSE_BOOT_SERIAL.log" | tail -1)"
+              sleep 3
+              break
+            fi
+            if ! kill -0 "$(cat /tmp/qemu-wrapper.pid)" 2>/dev/null; then
+              reason='QEMU exited before readiness marker'
+              break
+            fi
+            sleep 1
+          done
+
+          kill "$(cat /tmp/qemu-wrapper.pid)" 2>/dev/null || true
+          wait "$(cat /tmp/qemu-wrapper.pid)" 2>/dev/null || true
+          kill -INT "$(cat /tmp/ffmpeg.pid)" 2>/dev/null || true
+          wait "$(cat /tmp/ffmpeg.pid)" 2>/dev/null || true
+          kill "$(cat /tmp/xvfb.pid)" 2>/dev/null || true
+
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$reason" > "$EVIDENCE/BOOT_VERDICT.txt"
+          test -s "$EVIDENCE/SYNAPSE_QEMU_BOOT.mp4"
+          test -s "$EVIDENCE/SYNAPSE_BOOT_SERIAL.log"
+
+      - name: Build hardware and boot receipts from actual QEMU/guest evidence
+        if: always()
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$GITHUB_WORKSPACE/BEASTOS_WEB_MACHINE/boot-evidence"
+          mkdir -p "$EVIDENCE"
+          python3 - <<'PY'
+          import hashlib, json, os, re
+          from pathlib import Path
+          root = Path('BEASTOS_WEB_MACHINE/boot-evidence')
+          serial_path = root / 'SYNAPSE_BOOT_SERIAL.log'
+          serial = serial_path.read_text(errors='replace') if serial_path.is_file() else ''
+          source_sha = Path('/tmp/synapse-boot/ISO_SHA256.txt').read_text().strip() if Path('/tmp/synapse-boot/ISO_SHA256.txt').is_file() else None
+          patterns = {
+              'cpu': r'(?im)^.*(?:smpboot|CPU0|processor).*$',
+              'memory': r'(?im)^.*Memory:.*$',
+              'pci': r'(?im)^.*PCI:.*$',
+              'virtio': r'(?im)^.*virtio.*$',
+              'network': r'(?im)^.*(?:NetworkManager|virtio_net|eth[0-9]|enp[0-9]).*$',
+              'display': r'(?im)^.*(?:VGA|drm|framebuffer|fb0).*$',
+              'block': r'(?im)^.*(?:virtio_blk|vda|ISO 9660).*$',
+          }
+          observed = {}
+          for name, pattern in patterns.items():
+              lines = re.findall(pattern, serial)
+              observed[name] = lines[:20]
+          (root / 'GUEST_HARDWARE_LINES.json').write_text(json.dumps(observed, indent=2, sort_keys=True) + '\n')
+          ready = 'SYNAPSE_VM_READY' in serial
+          failed = re.findall(r'SYNAPSE_VM_FAIL:[^\r\n]*', serial)
+          receipt = {
+              'schema': 'synapse-qemu-boot-recording-v1',
+              'status': 'IMPLEMENTED_AND_TESTED' if ready else 'PROTOTYPE',
+              'source_synapse_head': '0b0c47eac347bb039dba2d5e058e2efcc5922123',
+              'source_ci_run': 34292197266,
+              'source_iso_artifact_id': 10082417627,
+              'source_iso_artifact_digest': 'sha256:50eab32ba75947365f3fce515e1c438c7a0114e93cad70f52bdbbcd8f1c762c4',
+              'iso_sha256_file': source_sha,
+              'guest_ready_marker': ready,
+              'guest_fail_markers': failed[-5:],
+              'virtual_hardware_configured': {
+                  'machine': 'q35',
+                  'cpu_model': 'qemu64',
+                  'vcpus': 2,
+                  'memory_mib': 1024,
+                  'block': 'virtio read-only ISO',
+                  'network': 'virtio-net-pci with QEMU user networking',
+                  'display': 'QEMU graphical display rendered under Xvfb',
+                  'serial': 'ttyS0 captured independently to file',
+              },
+              'physical_hardware_validated': False,
+              'virtualized_hardware_only': True,
+              'model_involved_in_hardware_detection': False,
+          }
+          (root / 'RECEIPT.json').write_text(json.dumps(receipt, indent=2, sort_keys=True) + '\n')
+          PY
+          cp /tmp/synapse-boot/ISO_SHA256.txt "$EVIDENCE/ISO_SHA256.txt" 2>/dev/null || true
+          (
+            cd "$EVIDENCE"
+            find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+
+      - name: Preserve visual boot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-visual-boot-${{ github.sha }}
+          path: BEASTOS_WEB_MACHINE/boot-evidence/
+          if-no-files-found: error
+
+      - name: Enforce verified guest boot
+        if: steps.boot.outputs.status != 'IMPLEMENTED_AND_TESTED'
+        run: exit 1
