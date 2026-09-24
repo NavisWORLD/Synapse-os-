@@ -8,6 +8,7 @@ WELCOME = ROOT / "rootfs/usr/local/bin/synapse-welcome"
 AUTOSTART = ROOT / "rootfs/etc/xdg/autostart/synapse-welcome.desktop"
 APP = ROOT / "rootfs/usr/share/applications/synapse-welcome.desktop"
 HOOK = ROOT / "build/hooks/010-synapse.hook.chroot"
+FAVORITES = ROOT / "rootfs/etc/xdg/kicker-extra-favoritesrc"
 WALLPAPER = ROOT / "rootfs/usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg"
 
 
@@ -41,6 +42,10 @@ class CosmicDesktopSourceTests(unittest.TestCase):
         self.assertIn("chmod 0755 /usr/local/bin/synapse-welcome", hook)
         self.assertIn("Synapse-Welcome.desktop", hook)
         self.assertIn("COSMOS // BEAST BOX // CST", wallpaper)
+        favorites = FAVORITES.read_text(encoding="utf-8")
+        self.assertIn("beastos-web.desktop", favorites)
+        self.assertIn("synapse-control.desktop", favorites)
+        self.assertIn("IgnoreDefaults=false", favorites)
 
 
 if __name__ == "__main__":
