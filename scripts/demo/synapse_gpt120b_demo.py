@@ -37,7 +37,10 @@ def selected_model(response):
     model = str(profile.get("model") or profile.get("model_id") or "")
     if not re.search(r"gpt[-_ ]?oss.{0,20}120b", model, re.IGNORECASE):
         raise RuntimeError(f"Selected model does not attest gpt-oss 120b (reported: {model[:70]!r}).")
-    return model, str(profile.get("kind") or "")
+    kind = str(profile.get("kind") or "")
+    if kind.lower() in {"reference", "fixture", "mock"}:
+        raise RuntimeError("The selected GPT-120B label points to a reference fixture, not verified inference.")
+    return model, kind
 
 
 def turns_from(response):
@@ -91,6 +94,7 @@ def verify(evidence: Path):
     deadline = time.monotonic() + 600
     found_request = False
     found_reply = ""
+    reply_metadata = {}
     while time.monotonic() < deadline:
         now_model, _ = selected_model(ask("/api/bridge/provider", jar=jar))
         if now_model != state["model"]:
@@ -108,6 +112,7 @@ def verify(evidence: Path):
                         text = text_of(reply)
                         if text.strip():
                             found_reply = text
+                            reply_metadata = {key: str(reply[key]) for key in ("model", "provider") if key in reply}
                         break
                 break
         if found_reply:
@@ -120,12 +125,17 @@ def verify(evidence: Path):
         "configured_model": state["model"],
         "provider_kind": state["kind"],
         "unique_demo_marker": marker,
-        "verification": "authenticated read of live durable conversation after guest submission"
+        "reply_metadata": reply_metadata,
+        "provider_origin_attested": bool(
+            any(re.search(r"gpt[-_ ]?oss.{0,20}120b", value, re.IGNORECASE)
+                for value in reply_metadata.values())
+        ),
+        "verification": "authenticated read of live durable conversation after guest submission; a configured label is not a model-origin attestation"
     }
     (evidence / "MODEL_REPLY_VERDICT.json").write_text(json.dumps(receipt, indent=2))
     if found_reply:
         (evidence / "MODEL_REPLY.txt").write_text(found_reply)
-        print(f"VERIFIED: a new live {state['model']} assistant reply followed the guest demo request.")
+        print(f"VERIFIED: a new assistant reply followed guest request under configured {state['model']} profile. Inspect receipt for independent model-origin attestation.")
     else:
         raise RuntimeError("Live guest conversation did not produce a verified new assistant turn; never present video as a successful model conversation.")
 
