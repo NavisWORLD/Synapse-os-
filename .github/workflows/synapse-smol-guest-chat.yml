@@ -1,0 +1,205 @@
+name: Synapse SmolLM real guest conversation
+
+on:
+  push:
+    branches: [demo/synapse-guest-smol-real-chat-001]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  one-real-guest-conversation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      SOURCE_RUN: "36092197398"
+      SOURCE_SHA: "7841773114b33a02499c13ab4c31a37cc3592aca"
+      BEASTBOX_ALLOW_SMOLLM_DEMO: ${{ vars.BEASTBOX_ALLOW_SMOLLM_DEMO }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secure owner access + verified no-spend local SmolLM preflight
+        env:
+          DEMO_PASSWORD: ${{ secrets.BEASTBOX_DEMO_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          python3 scripts/demo/synapse_smol_guest_demo.py preflight
+
+      - name: Download green exact polished Synapse alpha-5 ISO
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-os-nebula-amd64
+          path: /tmp/synapse-iso
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: NavisWORLD/Synapse-os-
+          run-id: 36092197398
+
+      - name: Install sandbox VM and recording tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 qemu-system-gui ovmf xorriso xvfb ffmpeg xdotool
+
+      - name: Verify actual ISO GRUB and checksum
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd /tmp/synapse-iso
+          ISO="$(find . -maxdepth 1 -type f -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -s "$ISO"
+          EXPECTED="$(awk '{print $1}' ./*.iso.sha256)"
+          ACTUAL="$(sha256sum "$ISO" | awk '{print $1}')"
+          test "$ACTUAL" = "$EXPECTED"
+          mkdir -p /tmp/synapse-gpt-demo
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/grub.cfg /tmp/synapse-gpt-demo/grub.cfg
+          grep -q 'SYNAPSE OS // NEBULA // LIVE' /tmp/synapse-gpt-demo/grub.cfg
+          grep -q 'SYNAPSE OS // GENESIS // GATED INSTALLER' /tmp/synapse-gpt-demo/grub.cfg
+          ! grep -q 'Debian GNU/Linux' /tmp/synapse-gpt-demo/grub.cfg
+          echo "ISO_FILE=$PWD/$ISO" >> "$GITHUB_ENV"
+          echo "ISO_SHA256=$ACTUAL" >> "$GITHUB_ENV"
+
+      - name: Record one SmolLM chat initiated within real Synapse VM
+        shell: bash
+        env:
+          DEMO_PASSWORD: ${{ secrets.BEASTBOX_DEMO_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$GITHUB_WORKSPACE/synapse-smol-evidence"
+          mkdir -p "$EVIDENCE"
+          chmod 0700 "$EVIDENCE"
+
+          Xvfb :99 -screen 0 1280x800x24 -nolisten tcp > "$EVIDENCE/xvfb.log" 2>&1 &
+          XVFB_PID=$!
+          sleep 3
+          DISPLAY=:99 ffmpeg -nostdin -loglevel error -y \
+            -f x11grab -draw_mouse 1 -framerate 15 -video_size 1280x800 -i :99.0 \
+            -c:v libx264 -preset ultrafast -crf 25 -pix_fmt yuv420p \
+            "$EVIDENCE/SYNAPSE_SMOL_GUEST_REAL_CONVERSATION.mp4" > "$EVIDENCE/recorder.log" 2>&1 &
+          REC_PID=$!
+
+          cp /usr/share/OVMF/OVMF_VARS_4M.fd /tmp/synapse-gpt-demo/OVMF_VARS.fd
+          DISPLAY=:99 qemu-system-x86_64 \
+            -machine q35,accel=tcg -cpu qemu64 -smp 4 -m 6144 \
+            -drive "if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd" \
+            -drive "if=pflash,format=raw,file=/tmp/synapse-gpt-demo/OVMF_VARS.fd" \
+            -drive "file=$ISO_FILE,format=raw,if=virtio,readonly=on" \
+            -boot order=c -nic user,model=virtio-net-pci \
+            -vga virtio -display gtk,gl=off -full-screen \
+            -serial "file:$EVIDENCE/guest-serial.log" -monitor none -no-reboot \
+            > "$EVIDENCE/qemu.log" 2>&1 &
+          VM_PID=$!
+
+          cleanup() {
+            kill "$VM_PID" 2>/dev/null || true
+            wait "$VM_PID" 2>/dev/null || true
+            kill -INT "$REC_PID" 2>/dev/null || true
+            wait "$REC_PID" 2>/dev/null || true
+            kill "$XVFB_PID" 2>/dev/null || true
+            rm -f /tmp/synapse-smol-demo-session.cookies
+          }
+          trap cleanup EXIT
+
+          focus() {
+            local win
+            win="$(DISPLAY=:99 xdotool search --onlyvisible --name 'QEMU' 2>/dev/null | tail -n 1 || true)"
+            test -z "$win" || DISPLAY=:99 xdotool windowactivate --sync "$win" || true
+          }
+          key() {
+            focus
+            DISPLAY=:99 xdotool key --clearmodifiers "$@" || true
+          }
+          type_guest() {
+            focus
+            DISPLAY=:99 xdotool type --clearmodifiers --delay 45 "$1" || true
+          }
+          capture() {
+            DISPLAY=:99 ffmpeg -nostdin -loglevel error -y -f x11grab \
+              -video_size 1280x800 -i :99.0 -frames:v 1 "$EVIDENCE/$1.png" \
+              >> "$EVIDENCE/screenshots.log" 2>&1 || true
+          }
+          krun() {
+            key alt+F2
+            sleep 2
+            type_guest "$1"
+            key Return
+          }
+
+          sleep 8; capture 00-uefi
+          sleep 8; capture 01-synapse-grub
+          key Return
+          sleep 24; capture 02-cosmic-boot
+          sleep 45; capture 03-cosmic-desktop-start
+          sleep 130; capture 04-synapse-desktop
+
+          # All browser interaction occurs within the actual QEMU guest,
+          # never in an offscreen host browser or an edited/mock landing page.
+          krun 'firefox https://www.beastboxcosmos.xyz/workspace'
+          sleep 50
+          capture 05-live-owner-login
+
+          # The browser's password input is a masked field. Neither the
+          # password value nor the cookie jar is printed or included in artifacts.
+          key Tab
+          key Tab
+          type_guest "$DEMO_PASSWORD"
+          key Return
+          sleep 32
+          capture 06-live-workstation
+
+          PROMPT="DEMO_ID $DEMO_MARKER. I'm chatting with your local SmolLM model through the live Beast Box website opened inside a genuine Synapse OS virtual machine. This virtual machine runs within a GitHub Actions runner. How do you feel about being inside this nested setup? If you don't experience feelings, say so naturally; describe what this technically demonstrates and give one funny one-line reaction. Keep it to about four sentences."
+          capture 07-before-guest-send
+          # The React composer is the lower-center region at this VM size.
+          # Screenshots and an authenticated read-after-write determine whether
+          # the actual guest request succeeded; no host-side POST is permitted.
+          focus
+          DISPLAY=:99 xdotool mousemove 604 653 click 1 || true
+          type_guest "$PROMPT"
+          sleep 3
+          capture 08-guest-composed-prompt
+          key Return
+          sleep 12
+          capture 09-guest-chat-submitted
+
+          VERIFY_OK=0
+          if python3 scripts/demo/synapse_smol_guest_demo.py verify --evidence "$EVIDENCE"; then
+            VERIFY_OK=1
+          fi
+          # If the local model is slow, the host verifier patiently polls for
+          # the unique guest-submitted turn. It NEVER retries inference.
+          key ctrl+r
+          sleep 16
+          capture 10-authenticated-model-reply
+          krun 'synapse-control'
+          sleep 18
+          capture 11-synapse-control-and-cloud-beast
+          key meta+d
+          sleep 10
+          capture 12-cosmic-desktop-finale
+
+          cp /tmp/synapse-iso/*.iso.sha256 "$EVIDENCE/ISO_SHA256.txt"
+          printf 'source_run=%s\nsource_sha=%s\nrecording_commit=%s\niso_sha256=%s\nsite=www.beastboxcosmos.xyz\nunique_guest_turn=%s\n' \
+            "$SOURCE_RUN" "$SOURCE_SHA" "$GITHUB_SHA" "$ISO_SHA256" "$DEMO_MARKER" \
+            > "$EVIDENCE/PROVENANCE.txt"
+
+          if grep -Eqi 'Freeze in OpenGL initialization detected|kwin_x11.*SIGABRT' "$EVIDENCE/guest-serial.log"; then
+            echo "FAIL: KWin crash signature" > "$EVIDENCE/GUI_VERDICT.txt"
+            exit 1
+          fi
+          test -s "$EVIDENCE/SYNAPSE_SMOL_GUEST_REAL_CONVERSATION.mp4"
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 \
+            "$EVIDENCE/SYNAPSE_SMOL_GUEST_REAL_CONVERSATION.mp4" > "$EVIDENCE/VIDEO_METRICS.txt"
+          sha256sum "$EVIDENCE/SYNAPSE_SMOL_GUEST_REAL_CONVERSATION.mp4" > "$EVIDENCE/VIDEO_SHA256.txt"
+          test "$VERIFY_OK" = 1 || { echo "FAIL: no authenticated new model reply" > "$EVIDENCE/GUI_VERDICT.txt"; exit 1; }
+          echo "VERIFIED LIVE GUEST TURN AND AUTHENTICATED ASSISTANT REPLY; REVIEW VIDEO FOR VISIBLE PROOF" > "$EVIDENCE/GUI_VERDICT.txt"
+
+      - name: Upload unedited video, screenshots and sanitized model receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-smol-guest-real-conversation
+          path: synapse-smol-evidence/
+          if-no-files-found: warn
+          retention-days: 14
