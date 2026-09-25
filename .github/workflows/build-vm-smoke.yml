@@ -382,8 +382,11 @@ jobs:
           ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
           test -s "$ISO"
           ISO_SHA="$(sha256sum "$ISO" | awk '{print $1}')"
+          test -s /tmp/synapse-image/filesystem.squashfs
           python3 scripts/evolution_vm_gate.py --repo . --receipt-dir "$STAGED" \
-            --iso "$ISO" --iso-sha256 "$ISO_SHA" --output "$EVIDENCE" --timeout 420
+            --iso "$ISO" --iso-sha256 "$ISO_SHA" --output "$EVIDENCE" \
+            --previously-verified-squashfs /tmp/synapse-image/filesystem.squashfs \
+            --timeout 420
           test -s "$EVIDENCE/COMPARISON.json"
           python3 - <<'PY'
           import json,os,pathlib
