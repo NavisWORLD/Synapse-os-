@@ -43,15 +43,15 @@ jobs:
         run: |
           npm install --no-save @playwright/test@1.55.0
           npx playwright install --with-deps chromium
-      - name: Materialize exact Beast Box v0.6.0 kit
+      - name: Materialize exact Beast Box v0.7.0 kit
         run: |
           set -Eeuo pipefail
           python3 BEASTOS_WEB_MACHINE/scripts/fetch-beast-kit.py \
-            --destination /tmp/beast-box-combined-0.6.0.zip \
+            --destination /tmp/beast-box-combined-0.7.0.zip \
             --extract-to /tmp/beast-kit > /tmp/beast-kit-receipt.json
           python3 -m venv /tmp/beast-runtime
           /tmp/beast-runtime/bin/pip install --no-index --no-deps \
-            /tmp/beast-kit/cosmos_beast_box-0.6.0-py3-none-any.whl
+            /tmp/beast-kit/cosmos_beast_box-0.7.0-py3-none-any.whl
           printf '%s' '{"schema":"beastbox-request-v1","operation":"init"}' | \
             /tmp/beast-runtime/bin/beastbox runtime exchange \
               --data-dir /tmp/beast-data \
@@ -114,7 +114,7 @@ jobs:
           receipt = {
               'schema': 'beastos-browser-evidence-v1',
               'synapse_commit': os.environ['GITHUB_SHA'],
-              'beast_release': 'v0.6.0',
+              'beast_release': 'v0.7.0',
               'beast_provider': 'reference',
               'provider_classification': 'Beast Box deterministic reference provider; not a language model',
               'physical_hardware_validated': False,
@@ -223,7 +223,7 @@ jobs:
             usr/share/synapse/hardware/profiles.json \
             usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html \
             usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js \
-            usr/share/synapse/beast-kit/beast-v0.6.0.json \
+            usr/share/synapse/beast-kit/beast-v0.7.0.json \
             usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json \
             usr/share/synapse/beast-kit/RELEASE_PROVENANCE.json \
             usr/share/synapse/beast-kit/SHA256SUMS \
@@ -287,10 +287,10 @@ jobs:
           grep -q 'BOOTABLE USB VERIFIED' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           grep -q 'navigator.usb' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           grep -q 'DEFAULT_PORT = 8788' /tmp/synapse-root/usr/lib/synapse/python/synapse/usb_flash_server.py
-          grep -q 'v0.6.0' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.6.0.json
-          grep -q '331f03c5d6a4aab0b2e32314293e36c7a94be393' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.6.0.json
-          grep -q 'c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.6.0.json
-          grep -q 'c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2' /tmp/synapse-root/usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json
+          grep -q 'v0.6.0' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
+          grep -q '331f03c5d6a4aab0b2e32314293e36c7a94be393' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
+          grep -q 'c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
+          grep -q '9e436d7af016c4d25b0b1ba6902357e01986a48a34f3315b0003c116d6c68bbb' /tmp/synapse-root/usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json
           grep -q '/src/beast/conversation.js' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
           grep -q '/v1/beast/chat' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js
           grep -q '127.0.0.1' /tmp/synapse-root/usr/local/bin/synapse-beastos-web
