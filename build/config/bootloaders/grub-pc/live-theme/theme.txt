@@ -3,9 +3,6 @@
 title-text: "SYNAPSE OS // NEBULA"
 title-color: "#eefcff"
 desktop-color: "#020611"
-terminal-box: "0"
-terminal-border: "0"
-
 + boot_menu {
   left = 14%
   top = 31%
@@ -17,7 +14,6 @@ terminal-border: "0"
   item_height = 44
   item_padding = 15
   item_spacing = 10
-  selected_item_pixmap_style = "select_*.png"
 }
 
 + label {
