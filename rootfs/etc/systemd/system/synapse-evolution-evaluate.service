@@ -1,0 +1,21 @@
+[Unit]
+Description=Synapse Evolution disposable VM evaluator (explicit kernel opt-in)
+ConditionKernelCommandLine=synapse.evolve_vm=1
+ConditionPathExists=/run/live/medium
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/synapse/evolution-vm-evaluator.py
+TimeoutStartSec=165
+RuntimeDirectory=synapse-evolution-eval
+RuntimeDirectoryMode=0755
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target
