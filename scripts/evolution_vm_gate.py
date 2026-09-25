@@ -190,7 +190,7 @@ def qemu_args(iso: Path, payload: Path, kernel: Path, initrd: Path,
 
 
 def vm_trial(args: list[str], serial: Path, err: Path, role: str,
-             timeout: int) -> dict:
+             timeout: int, expected_checks: set[str] | None = None) -> dict:
     with err.open("wb") as errors:
         guest = subprocess.Popen(
             args, stdout=subprocess.DEVNULL, stderr=errors,
@@ -217,7 +217,9 @@ def vm_trial(args: list[str], serial: Path, err: Path, role: str,
                                 or receipt.get("candidate_files_applied") != (role == "candidate")
                                 or receipt.get("production_modified") is not False
                                 or receipt.get("network_policy") != "HOST_QEMU_NIC_DISABLED"
-                                or set(receipt.get("checks", {})) != {"status", "doctor"}
+                                or set(receipt.get("checks", {})) != (
+                                    expected_checks or {"status", "doctor"}
+                                )
                                 or not all(v.get("passed") for v in receipt["checks"].values())
                             ):
                                 raise ValueError("guest acceptance receipt malformed")
@@ -280,12 +282,21 @@ def main(argv: list[str] | None = None) -> int:
             "promotion": "OWNER_REVIEW_REQUIRED",
             "smoke_only_not_performance_proof": True,
         }
+        selected_debugger = any(
+            path.as_posix() == "src/synapse/debugger.py" for path, _ in files
+        )
+        expected_checks = {"status", "doctor", "debugger_contract"} if selected_debugger else {"status", "doctor"}
+        result["functional_comparison"] = (
+            "INDEPENDENT_DEBUGGER_DEFAULT_AND_OPT_IN_REGRESSION"
+            if selected_debugger else "TWO_FIXED_SYSTEM_SMOKE_CHECKS_ONLY"
+        )
         for role in ("baseline", "candidate"):
             serial = out / f"{role}-serial.log"
             err = out / f"{role}-qemu-stderr.log"
             command = qemu_args(args.iso.resolve(strict=True), payload,
                                 kernel, initrd, role, serial)
-            result[role] = vm_trial(command, serial, err, role, args.timeout)
+            result[role] = vm_trial(command, serial, err, role, args.timeout,
+                                    expected_checks=expected_checks)
             if result[role].get("source_commit") != receipt["base_commit"]:
                 raise ValueError("guest receipt base identity mismatch")
         (out / "COMPARISON.json").write_text(

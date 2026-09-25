@@ -1,0 +1,74 @@
+name: Verify real corrected model handoff before full VM build
+
+on:
+  push:
+    branches: [experiment/synapse-model-corrected-vm-010]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  real-evidence-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax, prior Evolution source gates and new baseline contract
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -Eeuo pipefail
+          python3 -m py_compile scripts/model_trace_artifact_handoff.py \
+            scripts/evolution_vm_gate.py rootfs/usr/local/lib/synapse/evolution-vm-evaluator.py
+          python3 -m unittest discover -s tests -p test_debugger_trace_baseline.py -v
+          python3 -m unittest discover -s tests -p test_evolution_vm_gate.py -v
+      - name: Fetch the original real model feedback artifact by immutable run ID
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-real-coder-feedback-evidence
+          path: ${{ runner.temp }}/model-feedback
+          run-id: 36150869207
+          repository: NavisWORLD/Synapse-os-
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Rebind original actual model output to clean current source
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/model_trace_artifact_handoff.py \
+            --artifact "$RUNNER_TEMP/model-feedback" --repo . \
+            --output "$RUNNER_TEMP/verified-corrected-handoff"
+          python3 - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          directory=Path(os.environ["RUNNER_TEMP"])/"verified-corrected-handoff"
+          source=json.loads((directory/"ORIGIN_HANDOFF.json").read_text())
+          receipt=json.loads((directory/"RECEIPT.json").read_text())
+          assert source["baseline_bytes_verified"] is True
+          assert source["corrected_real_model_run"] == 36150869207
+          assert receipt["production_modified"] is False
+          assert receipt["tests"] == "NOT_RUN"
+          assert receipt["promotion"] == "OWNER_REVIEW_REQUIRED"
+          assert "reset_events" in (directory/"PATCH_REVIEW.diff").read_text()
+          assert subprocess.check_output(
+              ["git", "status", "--porcelain", "--untracked-files=no"],
+              text=True
+          ).strip()==""
+          print("MODEL_CORRECTION_BOUND_SOURCE_PASS: original model artifacts and exact patch match, repo untouched")
+          PY
+      - name: Preserve only validated handoff receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-model-correction-handoff-preflight
+          path: |
+            ${{ runner.temp }}/verified-corrected-handoff/ORIGIN_HANDOFF.json
+            ${{ runner.temp }}/verified-corrected-handoff/RECEIPT.json
+            ${{ runner.temp }}/verified-corrected-handoff/PATCH_REVIEW.diff
+          if-no-files-found: error
+          retention-days: 14

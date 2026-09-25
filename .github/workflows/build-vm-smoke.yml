@@ -412,6 +412,82 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Download exact successful real-model feedback artifact
+        if: github.head_ref == 'experiment/synapse-model-corrected-vm-010'
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-real-coder-feedback-evidence
+          path: ${{ runner.temp }}/synapse-model-original
+          run-id: 36150869207
+          repository: NavisWORLD/Synapse-os-
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify actual model-generated patch and run both REAL offline VM debugger checks
+        if: github.head_ref == 'experiment/synapse-model-corrected-vm-010'
+        shell: bash
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$RUNNER_TEMP/real-corrected-model-vm"
+          HANDOFF="$RUNNER_TEMP/corrected-model-handoff"
+          mkdir -p "$EVIDENCE"
+          python3 -m py_compile scripts/model_trace_artifact_handoff.py \
+            scripts/evolution_vm_gate.py \
+            rootfs/usr/local/lib/synapse/evolution-vm-evaluator.py
+          python3 scripts/model_trace_artifact_handoff.py \
+            --artifact "$RUNNER_TEMP/synapse-model-original" \
+            --repo . --output "$HANDOFF"
+          test -s "$HANDOFF/ORIGIN_HANDOFF.json"
+          test -s "$HANDOFF/RECEIPT.json"
+          test -s /tmp/synapse-image/filesystem.squashfs
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -s "$ISO"
+          ISO_SHA="$(sha256sum "$ISO" | cut -d' ' -f1)"
+          python3 scripts/evolution_vm_gate.py \
+            --repo . --receipt-dir "$HANDOFF" \
+            --iso "$ISO" --iso-sha256 "$ISO_SHA" \
+            --output "$EVIDENCE" \
+            --previously-verified-squashfs /tmp/synapse-image/filesystem.squashfs \
+            --timeout 420
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          d=Path(os.environ["RUNNER_TEMP"])/"real-corrected-model-vm"
+          report=json.loads((d/"COMPARISON.json").read_text())
+          handoff=json.loads((Path(os.environ["RUNNER_TEMP"])/"corrected-model-handoff"/"ORIGIN_HANDOFF.json").read_text())
+          assert report["functional_comparison"] == "INDEPENDENT_DEBUGGER_DEFAULT_AND_OPT_IN_REGRESSION"
+          assert report["networking"] == "DISABLED_BY_QEMU_-nic_none"
+          assert report["production_modified"] is False
+          assert report["promotion"] == "OWNER_REVIEW_REQUIRED"
+          assert handoff["corrected_real_model_run"] == 36150869207
+          assert handoff["rest_of_patch_trusted_fixed_template"] is True
+          for mode in ("baseline", "candidate"):
+              checks=report[mode]["checks"]
+              assert set(checks)=={"status", "doctor", "debugger_contract"}
+              assert all(item["passed"] is True for item in checks.values())
+              dbg=checks["debugger_contract"]
+              assert dbg["default_behavior_preserved"] is True
+              assert dbg["role_specific_expectation_met"] is True
+          print("REAL_MODEL_CODE_TWO_VM_BEHAVIOR_PASS: genuine feedback-corrected one-liner, two offline guests, independent debugger regression")
+          PY
+          cp "$HANDOFF/RECEIPT.json" "$EVIDENCE/STAGED_PATCH_RECEIPT.json"
+          cp "$HANDOFF/PATCH_REVIEW.diff" "$EVIDENCE/STAGED_PATCH_REVIEW.diff"
+          cp "$HANDOFF/ORIGIN_HANDOFF.json" "$EVIDENCE/ORIGIN_HANDOFF.json"
+          cp "$RUNNER_TEMP/synapse-model-original/RESULT.json" "$EVIDENCE/ORIGINAL_REAL_MODEL_FEEDBACK.json"
+          cp "$RUNNER_TEMP/synapse-model-original/ACTUAL_FEEDBACK_REPLY.txt" "$EVIDENCE/ACTUAL_MODEL_CORRECTION.txt"
+          cp "$RUNNER_TEMP/synapse-model-original/VERIFIED_PREVIOUS_REPLY.txt" "$EVIDENCE/ORIGINAL_REJECTED_MODEL_REPLY.txt"
+
+      - name: Archive real model-authored one-liner and TWO VM behavior receipts
+        if: always() && github.head_ref == 'experiment/synapse-model-corrected-vm-010'
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-real-model-corrected-two-vm-evidence
+          path: ${{ runner.temp }}/real-corrected-model-vm/
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Install to disposable NBD disk and boot installed Synapse
         shell: bash
         run: |
