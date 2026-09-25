@@ -1,0 +1,229 @@
+name: Synapse alpha5 polished showcase
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [demo/synapse-alpha5-polished-showcase-002]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  polished-showcase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      SOURCE_RUN_ID: "36092197398"
+      SOURCE_SHA: "7841773114b33a02499c13ab4c31a37cc3592aca"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for exact polished alpha5 build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${SOURCE_RUN_ID}"
+          for attempt in $(seq 1 150); do
+            json="$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" "$api")"
+            read -r status conclusion head_sha < <(
+              python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["status"], d.get("conclusion") or "-", d["head_sha"])' <<<"$json"
+            )
+            printf 'source=%s status=%s conclusion=%s sha=%s\n' "$SOURCE_RUN_ID" "$status" "$conclusion" "$head_sha"
+            test "$head_sha" = "$SOURCE_SHA" || { echo "source SHA drift" >&2; exit 2; }
+            if [ "$status" = "completed" ]; then
+              test "$conclusion" = "success" || { echo "source build failed" >&2; exit 3; }
+              exit 0
+            fi
+            sleep 20
+          done
+          exit 4
+
+      - name: Download exact ISO
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-os-nebula-amd64
+          path: /tmp/synapse-iso
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: NavisWORLD/Synapse-os-
+          run-id: 36092197398
+
+      - name: Install QEMU and capture tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 qemu-system-gui ovmf xorriso xvfb ffmpeg xdotool
+
+      - name: Verify exact Synapse image
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd /tmp/synapse-iso
+          ISO="$(find . -maxdepth 1 -type f -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -s "$ISO"
+          EXPECTED="$(awk '{print $1}' ./*.iso.sha256)"
+          ACTUAL="$(sha256sum "$ISO" | awk '{print $1}')"
+          test "$EXPECTED" = "$ACTUAL"
+          mkdir -p /tmp/synapse-showcase
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/grub.cfg /tmp/synapse-showcase/grub.cfg
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/live-theme/theme.txt /tmp/synapse-showcase/theme.txt
+          xorriso -osirrox on -indev "$ISO" -extract /synapse-genesis/manifest.json /tmp/synapse-showcase/genesis-manifest.json
+          grep -q 'SYNAPSE OS // NEBULA // LIVE' /tmp/synapse-showcase/grub.cfg
+          grep -q 'SYNAPSE OS // GENESIS // GATED INSTALLER' /tmp/synapse-showcase/grub.cfg
+          grep -q 'COSMOS // BEAST BOX // CST' /tmp/synapse-showcase/theme.txt
+          grep -q 'synapse.genesis=1' /tmp/synapse-showcase/grub.cfg
+          ! grep -q 'Debian GNU/Linux' /tmp/synapse-showcase/grub.cfg
+          echo "ISO_FILE=$PWD/$ISO" >> "$GITHUB_ENV"
+          echo "ISO_SHA256=$ACTUAL" >> "$GITHUB_ENV"
+
+      - name: Record polished real Synapse OS showcase
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$GITHUB_WORKSPACE/synapse-showcase"
+          mkdir -p "$EVIDENCE"
+
+          Xvfb :99 -screen 0 1280x800x24 -nolisten tcp > "$EVIDENCE/xvfb.log" 2>&1 &
+          XVFB_PID=$!
+          sleep 3
+
+          DISPLAY=:99 ffmpeg -nostdin -loglevel error -y \
+            -f x11grab -draw_mouse 1 -framerate 15 -video_size 1280x800 -i :99.0 \
+            -c:v libx264 -preset ultrafast -crf 25 -pix_fmt yuv420p \
+            "$EVIDENCE/SYNAPSE_ALPHA5_POLISHED_SHOWCASE.mp4" > "$EVIDENCE/recorder.log" 2>&1 &
+          REC_PID=$!
+
+          OVMF_CODE=/usr/share/OVMF/OVMF_CODE_4M.fd
+          OVMF_VARS=/usr/share/OVMF/OVMF_VARS_4M.fd
+          cp "$OVMF_VARS" /tmp/synapse-showcase/OVMF_VARS.fd
+
+          DISPLAY=:99 qemu-system-x86_64 \
+            -machine q35,accel=tcg -cpu qemu64 -smp 4 -m 6144 \
+            -drive "if=pflash,format=raw,readonly=on,file=$OVMF_CODE" \
+            -drive "if=pflash,format=raw,file=/tmp/synapse-showcase/OVMF_VARS.fd" \
+            -drive "file=$ISO_FILE,format=raw,if=virtio,readonly=on" \
+            -boot order=c -nic user,model=virtio-net-pci \
+            -vga virtio -display gtk,gl=off -full-screen \
+            -serial "file:$EVIDENCE/guest-serial.log" -monitor none -no-reboot \
+            > "$EVIDENCE/qemu.log" 2>&1 &
+          VM_PID=$!
+
+          focus_vm() {
+            local win
+            win="$(DISPLAY=:99 xdotool search --onlyvisible --name 'QEMU' 2>/dev/null | tail -n1 || true)"
+            if [ -n "$win" ]; then DISPLAY=:99 xdotool windowactivate --sync "$win" || true; fi
+          }
+          key() {
+            focus_vm
+            DISPLAY=:99 xdotool key --clearmodifiers "$@" || true
+          }
+          type_guest() {
+            focus_vm
+            DISPLAY=:99 xdotool type --clearmodifiers --delay 55 "$1" || true
+          }
+          krun() {
+            key alt+F2
+            sleep 2
+            type_guest "$1"
+            key Return
+          }
+          capture() {
+            DISPLAY=:99 ffmpeg -nostdin -loglevel error -y -f x11grab \
+              -video_size 1280x800 -i :99.0 -frames:v 1 "$EVIDENCE/$1.png" \
+              >> "$EVIDENCE/screenshots.log" 2>&1 || true
+          }
+
+          sleep 8; capture 00-uefi
+          sleep 8; capture 01-synapse-grub
+          key Return
+          sleep 20; capture 02-cosmic-plymouth
+          sleep 35; capture 03-cosmic-transition
+          sleep 65; capture 04-session-start
+          sleep 95; capture 05-cosmic-desktop
+          sleep 80; capture 06-synapse-welcome
+
+          # Launch Beast Box from the focused first-party welcome.
+          key Return
+          sleep 55
+          focus_vm
+          DISPLAY=:99 xdotool key --clearmodifiers ctrl+l || true
+          type_guest 'http://127.0.0.1:8790/'
+          key Return
+          sleep 35
+          capture 07-beast-box-cockpit
+
+          # Launch native apps through KDE KRunner so browser focus cannot steal
+          # Synapse Welcome shortcuts.
+          krun 'synapse-control'
+          sleep 28
+          capture 08-synapse-control-overview
+          key ctrl+Tab
+          key ctrl+Tab
+          sleep 5
+          capture 09-synapse-control-beast-cosmos
+
+          krun 'dolphin'
+          sleep 22
+          capture 10-files
+
+          krun 'konsole'
+          sleep 24
+          capture 11-terminal
+          type_guest 'synapse status'
+          key Return
+          sleep 18
+          capture 12-synapse-status
+          type_guest 'synapse doctor'
+          key Return
+          sleep 20
+          capture 13-synapse-doctor
+          type_guest '/opt/synapse/beast-runtime/bin/beastbox --help | head -n 24'
+          key Return
+          sleep 18
+          capture 14-beast-runtime
+          type_guest 'printf "\\n--- SYNAPSE IDENTITY ---\\n"; cat /etc/os-release | head -n 8'
+          key Return
+          sleep 16
+          capture 15-os-identity
+
+          krun 'systemsettings'
+          sleep 28
+          capture 16-system-settings
+
+          # Finish on the real cosmic desktop.
+          key meta+d
+          sleep 12
+          capture 17-final-cosmic-desktop
+
+          kill "$VM_PID" 2>/dev/null || true
+          wait "$VM_PID" 2>/dev/null || true
+          kill -INT "$REC_PID" 2>/dev/null || true
+          wait "$REC_PID" 2>/dev/null || true
+          kill "$XVFB_PID" 2>/dev/null || true
+
+          test -s "$EVIDENCE/SYNAPSE_ALPHA5_POLISHED_SHOWCASE.mp4"
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 \
+            "$EVIDENCE/SYNAPSE_ALPHA5_POLISHED_SHOWCASE.mp4" > "$EVIDENCE/VIDEO_METRICS.txt"
+          cp /tmp/synapse-iso/*.iso.sha256 "$EVIDENCE/ISO_SHA256.txt"
+          cp /tmp/synapse-showcase/grub.cfg "$EVIDENCE/FINAL_GRUB.cfg"
+          cp /tmp/synapse-showcase/theme.txt "$EVIDENCE/FINAL_GRUB_THEME.txt"
+          cp /tmp/synapse-showcase/genesis-manifest.json "$EVIDENCE/GENESIS_MANIFEST.json"
+          printf 'source_run=%s\nsource_sha=%s\nrecording_commit=%s\niso_sha256=%s\nvm=QEMU TCG + OVMF + exact read-only candidate ISO\n' \
+            "$SOURCE_RUN_ID" "$SOURCE_SHA" "$GITHUB_SHA" "$ISO_SHA256" > "$EVIDENCE/PROVENANCE.txt"
+
+          if grep -Eqi 'Freeze in OpenGL initialization detected|kwin_x11.*SIGABRT' "$EVIDENCE/guest-serial.log"; then
+            echo "FAIL: known KWin OpenGL crash signature recurred" | tee "$EVIDENCE/GUI_VERDICT.txt"
+            exit 1
+          fi
+          echo "NO KNOWN KWIN OPENGL CRASH SIGNATURE OBSERVED; VISIBLE APP RESULTS REQUIRE MANUAL REVIEW" > "$EVIDENCE/GUI_VERDICT.txt"
+          sha256sum "$EVIDENCE/SYNAPSE_ALPHA5_POLISHED_SHOWCASE.mp4" > "$EVIDENCE/VIDEO_SHA256.txt"
+
+      - name: Upload polished showcase evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-alpha5-polished-showcase
+          path: synapse-showcase/
+          if-no-files-found: warn
+          retention-days: 30
