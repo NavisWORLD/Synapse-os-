@@ -8,6 +8,7 @@ from . import __version__
 from .core import benchmark, cosmos_probe, doctor, dump_json, current_power_profile, set_profile, system_status
 from .dsl import apply as apply_plan, parse_file
 from .evolution import observe as evolution_observe, stage as evolution_stage
+from .evolution_model import prepare as evolution_prepare, run_local as evolution_run_local
 
 
 def _human_status(data: dict) -> str:
@@ -54,6 +55,22 @@ def build_parser() -> argparse.ArgumentParser:
     estage.add_argument("--repo", type=Path, required=True)
     estage.add_argument("--output", type=Path, required=True,
                         help="existing or new directory outside the source tree")
+    epacket = esub.add_parser("prepare", help="prepare bounded model-neutral task JSON")
+    epacket.add_argument("--repo", type=Path, required=True)
+    epacket.add_argument("--path", required=True)
+    epacket.add_argument("--goal", required=True)
+    elocal = esub.add_parser("local", help="one owner-approved local Beast exchange; never cloud")
+    elocal.add_argument("--repo", type=Path, required=True)
+    elocal.add_argument("--path", required=True)
+    elocal.add_argument("--goal", required=True)
+    elocal.add_argument("--beast-executable", type=Path, required=True)
+    elocal.add_argument("--beast-data-dir", type=Path, required=True)
+    elocal.add_argument("--provider", choices=("ollama", "compatible"), required=True)
+    elocal.add_argument("--model", required=True)
+    elocal.add_argument("--url", required=True, help="http://127.0.0.1:PORT[/v1] only")
+    elocal.add_argument("--output", type=Path, required=True)
+    elocal.add_argument("--approve-code-in-memory", action="store_true",
+                        help="acknowledge Beast will persist the selected code in continuity")
     return p
 
 
@@ -82,8 +99,18 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "evolve":
             if args.evolve_command == "observe":
                 print(dump_json(evolution_observe(args.repo)))
-            else:
+            elif args.evolve_command == "stage":
                 print(dump_json(evolution_stage(args.proposal, args.repo, args.output)))
+            elif args.evolve_command == "prepare":
+                print(dump_json(evolution_prepare(args.repo, args.goal, args.path)))
+            else:
+                print(dump_json(evolution_run_local(
+                    repo=args.repo, goal=args.goal, path_name=args.path,
+                    executable=args.beast_executable, data_dir=args.beast_data_dir,
+                    provider=args.provider, model=args.model, url=args.url,
+                    output_parent=args.output,
+                    code_memory_approved=args.approve_code_in_memory,
+                )))
         return 0
     except (ValueError, OSError) as exc:
         print(f"synapse: {exc}", file=sys.stderr)
