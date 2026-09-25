@@ -23,7 +23,7 @@ BeastOS localhost bridge (127.0.0.1 only)
         |
         +-- Synapse authority ledger ----> device / file / VM grants
         |
-        +-- Beast runtime exchange ------> Beast Box v0.6.0 durable runtime
+        +-- Beast runtime exchange ------> Beast Box v0.7.0 durable runtime
         |
         +-- QEMU controller -------------> optional disposable Linux guest
         |
@@ -34,20 +34,20 @@ The browser is not the persistent AI runtime. Beast Box owns durable continuity.
 
 ## Pinned Beast integration
 
-Synapse consumes the published Beast Box **v0.6.0 portable runtime preview/prerelease** as a versioned external input.
+Synapse consumes the published Beast Box **v0.7.0 portable runtime preview/prerelease** as a versioned external input.
 
 | Field | Value |
 | --- | --- |
-| Tag | `v0.6.0` |
-| Commit | `331f03c5d6a4aab0b2e32314293e36c7a94be393` |
-| Asset | `beast-box-combined-0.6.0.zip` |
-| Size | `676405` bytes |
-| SHA-256 | `c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2` |
+| Tag | `v0.7.0` |
+| Commit | `97f153225ea2f8910f1c91194a65b97f94246c2b` |
+| Asset | `beast-box-combined-0.7.0.zip` |
+| Size | `846825` bytes |
+| SHA-256 | `9e436d7af016c4d25b0b1ba6902357e01986a48a34f3315b0003c116d6c68bbb` |
 | Runtime API | `beastbox runtime exchange` |
 
-The canonical pin is `manifests/beast-v0.6.0.json`. `scripts/fetch-beast-kit.py` accepts no caller-controlled download URL. It fetches the pinned GitHub release asset, verifies exact size and SHA-256, rejects unsafe ZIP entries, and requires the published wheel. Offline builders may supply `SYNAPSE_BEAST_KIT_SOURCE`; the supplied file must pass the same manifest verification.
+The canonical pin is `manifests/beast-v0.7.0.json`. `scripts/fetch-beast-kit.py` accepts no caller-controlled download URL. It fetches the pinned GitHub release asset, verifies exact size and SHA-256, rejects unsafe ZIP entries, and requires the published wheel. Offline builders may supply `SYNAPSE_BEAST_KIT_SOURCE`; the supplied file must pass the same manifest verification.
 
-The Synapse image installs only the verified `cosmos_beast_box-0.6.0-py3-none-any.whl` into `/opt/synapse/beast-runtime`. No Beast source tree is copied into or reimplemented by Synapse.
+The Synapse image installs only the verified `cosmos_beast_box-0.7.0-py3-none-any.whl` into `/opt/synapse/beast-runtime`. No Beast source tree is copied into or reimplemented by Synapse.
 
 ## Beast exchange
 
@@ -219,7 +219,7 @@ A minimal authority/continuity demonstration is:
 
 | Feature | Status |
 | --- | --- |
-| Beast v0.6.0 exchange adapter | IMPLEMENTED_AND_TESTED at unit-contract level; CI E2E pending per commit |
+| Beast v0.7.0 exchange adapter | IMPLEMENTED_AND_TESTED at unit-contract level; CI E2E pending per commit |
 | Persistent continuity through Beast | IMPLEMENTED; end-to-end browser CI must pass before verified wording |
 | Model switching / authority reset | IMPLEMENTED_AND_TESTED |
 | PWA shell | IMPLEMENTED; browser CI required for verified wording |
