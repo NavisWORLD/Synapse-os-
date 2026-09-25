@@ -1,0 +1,54 @@
+name: Real public SmolLM2 Instruct bounded Evolution experiment
+
+on:
+  push:
+    branches: [experiment/synapse-smol-instruct-evolution-004]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cpu-one-task:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install open CPU model runtime
+        run: |
+          set -Eeuo pipefail
+          python3 -m pip install --disable-pip-version-check 'torch==2.6.0+cpu' \
+            --index-url https://download.pytorch.org/whl/cpu
+          python3 -m pip install --disable-pip-version-check \
+            'transformers==4.52.4' 'huggingface_hub==0.31.4' 'safetensors==0.5.3'
+      - name: One genuine local SmolLM2 model-generated docstring trial
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+          HF_HUB_DISABLE_TELEMETRY: "1"
+          HF_HUB_DISABLE_IMPLICIT_TOKEN: "1"
+          HF_HOME: ${{ runner.temp }}/hf-offline-cache
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/smol_real_doc_trial.py --repo . --output "$RUNNER_TEMP/smol-evidence"
+          if test -e "$RUNNER_TEMP/smol-evidence/staged"; then
+            STAGED="$(find "$RUNNER_TEMP/smol-evidence/staged" -name RECEIPT.json -print -quit)"
+            if test -n "$STAGED"; then
+              cp "$STAGED" "$RUNNER_TEMP/smol-evidence/STAGE1_RECEIPT.json"
+              cp "$(dirname "$STAGED")/PATCH_REVIEW.diff" \
+                "$RUNNER_TEMP/smol-evidence/STAGE1_PATCH_REVIEW.diff"
+            fi
+          fi
+      - name: Publish actual inference and review receipt, never fake a success
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-real-smollm2-cpu-evolution-evidence
+          path: ${{ runner.temp }}/smol-evidence/
+          if-no-files-found: warn
+          retention-days: 14
