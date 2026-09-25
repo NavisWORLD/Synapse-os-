@@ -96,7 +96,7 @@ def validate(repo: Path, receipt_dir: Path) -> tuple[dict, list[tuple[Path, byte
 
 
 def verify_iso(repo: Path, iso: Path, expected_sha: str, files: list[tuple[Path, bytes]],
-               work: Path) -> tuple[Path, Path]:
+               work: Path, preextracted: Path | None = None) -> tuple[Path, Path]:
     if not re.fullmatch(r"[a-f0-9]{64}", expected_sha):
         raise ValueError("explicit trusted ISO SHA-256 required")
     iso = iso.resolve(strict=True)
@@ -108,16 +108,27 @@ def verify_iso(repo: Path, iso: Path, expected_sha: str, files: list[tuple[Path,
             hasher.update(block)
     if hasher.hexdigest() != expected_sha:
         raise ValueError("Synapse candidate ISO SHA-256 mismatch")
-    image = work / "filesystem.squashfs"
+    # Reuse a prior extraction only in the SAME CI build job after that job
+    # verified the exact image SHA and performed its own image payload checks.
+    # Do not advertise re-used images as independently bit-for-bit attested.
+    if preextracted is not None:
+        if preextracted.is_symlink() or not preextracted.is_file():
+            raise ValueError("trusted prior extraction must be an existing regular file")
+        image = preextracted.resolve(strict=True)
+    else:
+        image = work / "filesystem.squashfs"
+        tool("xorriso", "-osirrox", "on", "-indev", str(iso),
+             "-extract", "/live/filesystem.squashfs", str(image), timeout=80)
+    if not image.is_file() or not image.stat().st_size:
+        raise ValueError("required live filesystem missing")
     kernel, initrd = work / "vmlinuz", work / "initrd.img"
     for path, dest in (
-        ("/live/filesystem.squashfs", image),
         ("/live/vmlinuz", kernel), ("/live/initrd.img", initrd),
     ):
         tool("xorriso", "-osirrox", "on", "-indev", str(iso),
              "-extract", path, str(dest), timeout=80)
         if not dest.is_file() or not dest.stat().st_size:
-            raise ValueError("required file missing from verified Synapse image")
+            raise ValueError("required boot input missing from verified ISO")
     expected_guest = (repo / GUEST_SCRIPT).read_bytes()
     actual_guest = tool("unsquashfs", "-cat", str(image),
                         "usr/local/lib/synapse/evolution-vm-evaluator.py", timeout=80)
@@ -232,6 +243,8 @@ def main(argv: list[str] | None = None) -> int:
     cli.add_argument("--iso", required=True, type=Path)
     cli.add_argument("--iso-sha256", required=True)
     cli.add_argument("--output", required=True, type=Path)
+    cli.add_argument("--previously-verified-squashfs", type=Path,
+                     help="reuse same-job extraction after full ISO verification")
     cli.add_argument("--timeout", type=int, default=300)
     args = cli.parse_args(argv)
     if not 60 <= args.timeout <= 540:
@@ -244,7 +257,10 @@ def main(argv: list[str] | None = None) -> int:
     out.mkdir(parents=True, exist_ok=True, mode=0o700)
     with tempfile.TemporaryDirectory(prefix="synapse-qemu-evo-", dir=out) as temporary:
         scratch = Path(temporary)
-        kernel, initrd = verify_iso(root, args.iso, args.iso_sha256, files, scratch)
+        kernel, initrd = verify_iso(
+            root, args.iso, args.iso_sha256, files, scratch,
+            preextracted=args.previously_verified_squashfs,
+        )
         payload = create_payload(receipt, files, scratch)
         result = {
             "schema": "synapse.evolution.vm.comparison.v1",
@@ -254,6 +270,10 @@ def main(argv: list[str] | None = None) -> int:
             "receipt_patch_sha256": receipt["patch_sha256"],
             "networking": "DISABLED_BY_QEMU_-nic_none",
             "qemu_acceleration": "TCG_ONLY",
+            "filesystem_source": (
+                "REUSED_SAME_VERIFIED_CI_JOB_EXTRACTION"
+                if args.previously_verified_squashfs else "EXTRACTED_FROM_PINNED_ISO"
+            ),
             "host_secrets_sent": False,
             "candidate_executed_on_host": False,
             "production_modified": False,
