@@ -1,0 +1,98 @@
+name: Synapse Evolution isolated source gates
+
+on:
+  push:
+    branches: [feature/synapse-evolution-isolated-001]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stage1-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify Stage 1 source syntax
+        run: |
+          python3 -m compileall -q src/synapse/evolution.py src/synapse/evolution_model.py src/synapse/cli.py tests/test_evolution.py tests/test_evolution_model.py
+      - name: Prove static-only staging and repository protection
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python3 -m unittest discover -s tests -p test_evolution.py -v
+          python3 -m unittest discover -s tests -p test_evolution_model.py -v
+      - name: Inspect actual control CLI
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python3 -m synapse.cli evolve --help
+          python3 -m synapse.cli evolve observe --repo .
+          python3 -m synapse.cli evolve prepare --repo . --path docs/UI.md --goal "Describe a review-only UI improvement." > "$RUNNER_TEMP/evolution-task.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          task=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"])/"evolution-task.json").read_text())
+          assert task["schema"]=="synapse.evolution.task.v1"
+          assert task["authority"]=="PROPOSAL_ONLY_NO_TOOLS_NO_EXECUTION_NO_DEPLOYMENT"
+          assert task["path"]=="docs/UI.md"
+          print("MODEL_TASK_PACKET_PASS: bounded local-only task with exact pinned source")
+          PY
+
+      - name: Exercise real repository detached stage with deterministic fixture
+        env:
+          PYTHONPATH: src:.
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          p = Path("docs/UI.md")
+          before = p.read_bytes()
+          sha = hashlib.sha256(before).hexdigest()
+          baseline = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          proposal = {
+              "schema": "synapse.evolution.proposal.v1",
+              "base_commit": baseline,
+              "goal": "Demonstrate reversible proposal review; this is a deterministic fixture, not model inference.",
+              "model_label": "DETERMINISTIC_TEST_FIXTURE_NO_INFERENCE",
+              "changes": [{"path": "docs/UI.md", "before_sha256": sha,
+                           "after_text": before.decode("utf-8") +
+                           "\n<!-- synthetic evolution trial, NEVER applied to main -->\n"}],
+          }
+          dest = Path(os.environ["RUNNER_TEMP"])
+          (dest / "evolution-fixture.json").write_text(json.dumps(proposal))
+          PY
+          python3 -m synapse.cli evolve stage "$RUNNER_TEMP/evolution-fixture.json" \
+            --repo . --output "$RUNNER_TEMP/evolution-review" > "$RUNNER_TEMP/stage-result.json"
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"])
+          result = json.loads((root / "stage-result.json").read_text())
+          workspace = Path(result["workspace"])
+          receipt = json.loads((workspace.parent / "RECEIPT.json").read_text())
+          assert receipt["tests"] == "NOT_RUN" and receipt["vm_boot"] == "NOT_RUN"
+          assert receipt["production_modified"] is False
+          assert receipt["promotion"] == "OWNER_REVIEW_REQUIRED"
+          assert "synthetic evolution trial" in (workspace / "docs/UI.md").read_text()
+          assert "synthetic evolution trial" not in Path("docs/UI.md").read_text()
+          assert not subprocess.check_output(["git", "status", "--porcelain"],
+                                              text=True).strip()
+          print("STAGE_1_FIXTURE_PASS: detached patch + SHA receipts; repository unchanged")
+          evidence = root / "evolution-review-evidence"
+          evidence.mkdir()
+          for file in ("RECEIPT.json", "PATCH_REVIEW.diff"):
+              (evidence / file).write_bytes((workspace.parent / file).read_bytes())
+          PY
+
+      - name: Archive actual Stage 1 receipt and review patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-evolution-stage1-fixture-evidence
+          path: ${{ runner.temp }}/evolution-review-evidence/
+          if-no-files-found: error
+          retention-days: 14
