@@ -184,6 +184,9 @@ def stage(proposal_path: Path, repo: Path, output_parent: Path) -> dict:
     verified = validate(proposal, root, head)  # fail before any staging writes
     if output_parent.is_symlink():
         raise ValueError("output cannot be a symlink")
+    candidate = output_parent.resolve(strict=False)
+    if candidate == root or candidate.is_relative_to(root):
+        raise ValueError("output must live outside the source repository")
     output_parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     parent = output_parent.resolve(strict=True)
     if parent == root or parent.is_relative_to(root):
