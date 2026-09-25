@@ -348,6 +348,67 @@ jobs:
           test -n "$ISO"
           SYNAPSE_QEMU_LOG=/tmp/synapse-vm/serial.log bash scripts/qemu-smoke.sh amd64 "$ISO"
 
+      - name: Real disconnected QEMU baseline vs candidate Evolution VM trial
+        if: github.head_ref == 'feature/synapse-evolution-disposable-vm-002'
+        shell: bash
+        env:
+          PYTHONPATH: src:.
+        run: |
+          set -Eeuo pipefail
+          python3 -m py_compile scripts/evolution_vm_gate.py rootfs/usr/local/lib/synapse/evolution-vm-evaluator.py
+          python3 -m unittest discover -s tests -p test_evolution_vm_gate.py -v
+          EVIDENCE="$RUNNER_TEMP/synapse-evolution-vm"
+          mkdir -p "$EVIDENCE"
+          python3 - <<'PY'
+          import hashlib,json,os,subprocess
+          from pathlib import Path
+          path=Path('src/synapse/core.py')
+          original=path.read_bytes()
+          after=original.decode('utf-8') + "\n\ndef synapse_evolution_vm_trial_fixture():\n    return 'TRIAL_ONLY_NOT_A_MODEL'\n"
+          proposal={
+            "schema":"synapse.evolution.proposal.v1",
+            "base_commit":subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),
+            "goal":"Verify fixed source patch inside two disposable offline Synapse VM boots.",
+            "model_label":"DETERMINISTIC_VM_TRIAL_NO_MODEL_INFERENCE",
+            "changes":[{"path":"src/synapse/core.py",
+                        "before_sha256":hashlib.sha256(original).hexdigest(),
+                        "after_text":after}]
+          }
+          (Path(os.environ["RUNNER_TEMP"])/"evolution-vm-fixture.json").write_text(json.dumps(proposal))
+          PY
+          python3 -m synapse.cli evolve stage "$RUNNER_TEMP/evolution-vm-fixture.json" \
+            --repo . --output "$RUNNER_TEMP/staged-evolution-vm" > "$RUNNER_TEMP/staged-evolution-receipt.json"
+          STAGED="$(python3 -c 'import json,sys,pathlib; print(pathlib.Path(json.load(open(sys.argv[1]))["workspace"]).parent)' "$RUNNER_TEMP/staged-evolution-receipt.json")"
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -s "$ISO"
+          ISO_SHA="$(sha256sum "$ISO" | awk '{print $1}')"
+          python3 scripts/evolution_vm_gate.py --repo . --receipt-dir "$STAGED" \
+            --iso "$ISO" --iso-sha256 "$ISO_SHA" --output "$EVIDENCE" --timeout 420
+          test -s "$EVIDENCE/COMPARISON.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ["RUNNER_TEMP"])/"synapse-evolution-vm"/"COMPARISON.json"
+          d=json.loads(p.read_text())
+          assert d["networking"]=="DISABLED_BY_QEMU_-nic_none"
+          assert d["candidate"]["candidate_files_applied"] is True
+          assert d["baseline"]["candidate_files_applied"] is False
+          assert d["promotion"]=="OWNER_REVIEW_REQUIRED"
+          assert all(d[mode]["checks"][name]["passed"]
+                     for mode in ("baseline","candidate") for name in ("status","doctor"))
+          print("EVOLUTION_VM_CI_PASS: two real offline boots and fixed checks; NOT a model-patch safety proof")
+          PY
+          cp "$STAGED/RECEIPT.json" "$EVIDENCE/STAGED_PATCH_RECEIPT.json"
+          cp "$STAGED/PATCH_REVIEW.diff" "$EVIDENCE/STAGED_PATCH_REVIEW.diff"
+
+      - name: Archive disconnected Evolution VM receipts
+        if: always() && github.head_ref == 'feature/synapse-evolution-disposable-vm-002'
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-evolution-disconnected-vm-evidence
+          path: \${{ runner.temp }}/synapse-evolution-vm/
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Install to disposable NBD disk and boot installed Synapse
         shell: bash
         run: |
