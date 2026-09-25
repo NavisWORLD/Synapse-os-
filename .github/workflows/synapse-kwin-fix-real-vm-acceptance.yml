@@ -1,6 +1,8 @@
 name: Synapse KWin repair real VM acceptance
 on:
   workflow_dispatch:
+  push:
+    branches: [demo/synapse-kwin-fix-real-vm-001]
 permissions:
   actions: read
   contents: read
