@@ -30,7 +30,8 @@ class DebuggerBaselineContract(unittest.TestCase):
             self.assertEqual(len(debugger.run()["events"]), 1)
             self.assertEqual(len(debugger.run()["events"]), 2)
         self.assertIs(original_list, debugger.events)
-        self.assertNotIn("reset_events", inspect.signature(Debugger.run).parameters)
+        self.assertIn("reset_events", inspect.signature(Debugger.run).parameters)
+        self.assertIs(inspect.signature(Debugger.run).parameters["reset_events"].default, False)
 
 
 if __name__ == "__main__":

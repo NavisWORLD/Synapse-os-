@@ -18,6 +18,8 @@ class Debugger:
         event["breakpoint"] = event.get("line") in self.breakpoints
         self.events.append(event)
 
-    def run(self) -> dict[str, Any]:
+    def run(self, *, reset_events: bool = False) -> dict[str, Any]:
+        if reset_events:
+            self.events.clear()
         result = VM(self.module, capabilities=self.capabilities, trace=self._trace).run()
         return {"result": result, "events": self.events}
