@@ -26,7 +26,7 @@ MODEL = "HuggingFaceTB/SmolLM2-135M-Instruct"
 PATH = "src/synapse/debugger.py"
 GOAL = "Document what Debugger._trace records, without changing executable behavior."
 ANCHOR = "    def _trace(self, event: dict[str, Any]) -> None:\n"
-MAX_NEW = 140
+MAX_NEW = 56
 
 
 def digest(data: bytes) -> str:
@@ -87,15 +87,13 @@ def main() -> int:
         use_safetensors=True, torch_dtype=torch.float32
     ).eval()
     task = (
-        "Write ONE accurate Python docstring sentence for this _trace method, "
-        "explicitly describing an event and breakpoint. "
-        "Use ONLY a short plain English sentence, not code, not quotes. "
-        "Do not assert it executes tools or modifies files.\n\n"
-        "METHOD:\n"
-        "    def _trace(self, event: dict[str, Any]) -> None:\n"
-        "        event = dict(event)\n"
-        "        event[\"breakpoint\"] = event.get(\"line\") in self.breakpoints\n"
-        "        self.events.append(event)\n"
+        "Write exactly ONE short English documentation sentence. "
+        "Start the sentence with Record and include the words event and breakpoint. "
+        "Behavior to document: a debugger creates a copy of an incoming event, "
+        "marks the copy as a breakpoint when its line matches one of the "
+        "configured breakpoints, and appends the copied event to its event list. "
+        "Only provide the plain-English sentence. This is not a programming "
+        "or code-generation question.\n"
     )
     before = time.monotonic()
     raw = generate(model, tokenizer, task)
