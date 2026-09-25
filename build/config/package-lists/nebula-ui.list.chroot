@@ -9,3 +9,4 @@ xdg-utils
 plymouth
 plymouth-themes
 grub2-common
+x11-xserver-utils
