@@ -8,6 +8,7 @@ WELCOME = ROOT / "rootfs/usr/local/bin/synapse-welcome"
 AUTOSTART = ROOT / "rootfs/etc/xdg/autostart/synapse-welcome.desktop"
 APP = ROOT / "rootfs/usr/share/applications/synapse-welcome.desktop"
 HOOK = ROOT / "build/hooks/010-synapse.hook.chroot"
+KDE_WELCOME = ROOT / "rootfs/etc/skel/.config/plasma-welcomerc"
 FAVORITES = ROOT / "rootfs/etc/xdg/kicker-extra-favoritesrc"
 WALLPAPER = ROOT / "rootfs/usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg"
 
@@ -46,6 +47,7 @@ class CosmicDesktopSourceTests(unittest.TestCase):
         self.assertIn("beastos-web.desktop", favorites)
         self.assertIn("synapse-control.desktop", favorites)
         self.assertIn("IgnoreDefaults=false", favorites)
+        self.assertIn("ShouldShow=false", KDE_WELCOME.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
