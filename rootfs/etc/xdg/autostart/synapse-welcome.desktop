@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Welcome to Synapse OS
+Comment=First-run launchpad for Beast Box and Synapse Control
+Exec=/usr/local/bin/synapse-welcome --first-run
+TryExec=/usr/local/bin/synapse-welcome
+Icon=synapse-os
+OnlyShowIn=KDE;
+Terminal=false
+NoDisplay=true
+X-KDE-autostart-after=panel

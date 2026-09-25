@@ -200,6 +200,7 @@ jobs:
             etc/systemd/system/synapse-agent.service \
             usr/local/bin/synapse \
             usr/local/bin/synapse-control \
+            usr/local/bin/synapse-welcome \
             usr/local/bin/synapse-beastos-web \
             usr/local/bin/synapse-genesis-writer \
             usr/local/bin/synapse-usb-flash-server \
@@ -219,6 +220,10 @@ jobs:
             usr/lib/synapse/python/synapse/usb_flash_server.py \
             usr/include/synapse/synapse.h \
             usr/share/applications/beastos-web.desktop \
+            usr/share/applications/synapse-welcome.desktop \
+            etc/xdg/autostart/synapse-welcome.desktop \
+            etc/xdg/kicker-extra-favoritesrc \
+            etc/skel/.config/plasma-welcomerc \
             usr/share/icons/hicolor/scalable/apps/beastos-web.svg \
             usr/share/synapse/hardware/profiles.json \
             usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html \
@@ -257,6 +262,11 @@ jobs:
           test -s /tmp/synapse-root/usr/local/bin/synapse-genesis-writer
           test -x /tmp/synapse-root/usr/local/bin/synapse-usb-flash-server
           test -x /tmp/synapse-root/usr/local/bin/synapse-beastos-web
+          test -x /tmp/synapse-root/usr/local/bin/synapse-welcome
+          test -s /tmp/synapse-root/usr/share/applications/synapse-welcome.desktop
+          test -s /tmp/synapse-root/etc/xdg/autostart/synapse-welcome.desktop
+          grep -q '^ShouldShow=false$' /tmp/synapse-root/etc/skel/.config/plasma-welcomerc
+          grep -q 'beastos-web.desktop' /tmp/synapse-root/etc/xdg/kicker-extra-favoritesrc
           test -x /tmp/synapse-root/opt/synapse/beast-runtime/bin/beastbox
           test -x /tmp/synapse-root/usr/bin/qemu-system-x86_64
           test -s /tmp/synapse-root/usr/share/applications/beastos-web.desktop

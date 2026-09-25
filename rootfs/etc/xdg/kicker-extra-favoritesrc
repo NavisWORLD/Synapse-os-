@@ -1,0 +1,4 @@
+[General]
+Prepend=synapse-welcome.desktop;beastos-web.desktop;synapse-control.desktop;cosmos.desktop
+Append=org.kde.dolphin.desktop;org.kde.konsole.desktop
+IgnoreDefaults=false

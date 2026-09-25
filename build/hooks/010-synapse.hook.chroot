@@ -3,6 +3,7 @@ set -eu
 
 chmod 0755 /usr/local/bin/synapse
 chmod 0755 /usr/local/bin/synapse-control
+chmod 0755 /usr/local/bin/synapse-welcome
 chmod 0755 /usr/local/lib/synapse/live-x11-session.py
 chmod 0755 /usr/local/lib/synapse/vm-smoke
 
@@ -49,4 +50,5 @@ cp /usr/share/applications/install-synapse.desktop /etc/skel/Desktop/Install-Syn
 cp /usr/share/applications/synapse-control.desktop /etc/skel/Desktop/Synapse-Control.desktop
 cp /usr/share/applications/synapse-recovery.desktop /etc/skel/Desktop/Synapse-Recovery.desktop
 cp /usr/share/applications/cosmos.desktop /etc/skel/Desktop/COSMOS.desktop
+cp /usr/share/applications/synapse-welcome.desktop /etc/skel/Desktop/Synapse-Welcome.desktop
 chmod +x /etc/skel/Desktop/*.desktop

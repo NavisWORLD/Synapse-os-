@@ -79,6 +79,7 @@ jobs:
             etc/os-release \
             usr/local/bin/synapse \
             usr/local/bin/synapse-control \
+            usr/local/bin/synapse-welcome \
             usr/local/bin/synapse-beastos-web \
             usr/local/bin/synapse-genesis-writer \
             usr/bin/plasmashell \
@@ -96,6 +97,10 @@ jobs:
             usr/share/synapse/hardware/profiles.json \
             usr/share/synapse/phone-bootstrap.html \
             usr/share/synapse/GENESIS.html \
+            usr/share/applications/synapse-welcome.desktop \
+            etc/xdg/autostart/synapse-welcome.desktop \
+            etc/xdg/kicker-extra-favoritesrc \
+            etc/skel/.config/plasma-welcomerc \
             usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html \
             usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js \
             usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json \
@@ -111,6 +116,11 @@ jobs:
           grep -q '^ID=synapseos$' /tmp/synapse-release-root/etc/os-release
           test -s /tmp/synapse-release-root/usr/local/bin/synapse
           test -s /tmp/synapse-release-root/usr/local/bin/synapse-control
+          test -x /tmp/synapse-release-root/usr/local/bin/synapse-welcome
+          test -s /tmp/synapse-release-root/usr/share/applications/synapse-welcome.desktop
+          test -s /tmp/synapse-release-root/etc/xdg/autostart/synapse-welcome.desktop
+          grep -q '^ShouldShow=false$' /tmp/synapse-release-root/etc/skel/.config/plasma-welcomerc
+          grep -q 'beastos-web.desktop' /tmp/synapse-release-root/etc/xdg/kicker-extra-favoritesrc
           test -x /tmp/synapse-release-root/usr/local/bin/synapse-beastos-web
           test -s /tmp/synapse-release-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
           grep -q '/v1/beast/chat' /tmp/synapse-release-root/usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js
