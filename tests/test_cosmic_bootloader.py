@@ -12,8 +12,8 @@ class CosmicBootloaderTests(unittest.TestCase):
         grub = GRUB.read_text(encoding="utf-8")
         self.assertIn("SYNAPSE OS // NEBULA // LIVE", grub)
         self.assertIn("SYNAPSE OS // GENESIS // GATED INSTALLER", grub)
-        self.assertIn("KERNEL_LIVE APPEND_LIVE", grub)
-        self.assertIn("LB_BOOTAPPEND_LIVE_FAILSAFE", grub)
+        self.assertIn("@KERNEL_LIVE@ @APPEND_LIVE@", grub)
+        self.assertIn("@LB_BOOTAPPEND_LIVE_FAILSAFE@", grub)
         self.assertNotIn("Debian GNU/Linux", grub)
 
     def test_theme_is_asset_light_and_cosmic(self):
