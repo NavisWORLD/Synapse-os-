@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from . import __version__
 from .core import benchmark, cosmos_probe, doctor, dump_json, current_power_profile, set_profile, system_status
 from .dsl import apply as apply_plan, parse_file
+from .evolution import observe as evolution_observe, stage as evolution_stage
 
 
 def _human_status(data: dict) -> str:
@@ -43,6 +45,15 @@ def build_parser() -> argparse.ArgumentParser:
     csub.add_parser("probe")
     plan = sub.add_parser("apply")
     plan.add_argument("path")
+    evolve = sub.add_parser("evolve", help="observe or safely stage a proposed change")
+    esub = evolve.add_subparsers(dest="evolve_command", required=True)
+    eobserve = esub.add_parser("observe", help="read bounded local health and source digest")
+    eobserve.add_argument("--repo", type=Path, required=True)
+    estage = esub.add_parser("stage", help="create an isolated review checkout, without running code")
+    estage.add_argument("proposal", type=Path)
+    estage.add_argument("--repo", type=Path, required=True)
+    estage.add_argument("--output", type=Path, required=True,
+                        help="existing or new directory outside the source tree")
     return p
 
 
@@ -68,6 +79,11 @@ def main(argv: list[str] | None = None) -> int:
             print(dump_json(cosmos_probe()))
         elif args.command == "apply":
             print(dump_json(apply_plan(parse_file(args.path))))
+        elif args.command == "evolve":
+            if args.evolve_command == "observe":
+                print(dump_json(evolution_observe(args.repo)))
+            else:
+                print(dump_json(evolution_stage(args.proposal, args.repo, args.output)))
         return 0
     except (ValueError, OSError) as exc:
         print(f"synapse: {exc}", file=sys.stderr)
