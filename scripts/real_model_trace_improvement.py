@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One pinned real CPU-model attempt at a strictly bounded debugger improvement.
+"""A distinct pinned real coder-model attempt after SmolLM2's rejected first trial.
 
 The model generates ONLY a proposed single method-call statement. An exact
 allowlist checks the raw suggestion; trusted source assembly then creates an
@@ -22,8 +22,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from synapse.evolution import SCHEMA, _repository, stage
 from synapse.evolution_model import prepare
 
-MODEL = "HuggingFaceTB/SmolLM2-135M-Instruct"
-REVISION = "12fd25f77366fa6b3b4b768ec3050bf629380bac"
+MODEL = "Qwen/Qwen2.5-Coder-0.5B-Instruct"
+REVISION = "ea99d3edbfc6669b8b24cbaa6a98ec0e857f0155"
 PATH = "src/synapse/debugger.py"
 GOAL = "Add an explicitly opt-in fresh trace for Debugger.run while preserving default behavior."
 ANCHOR = "    def run(self) -> dict[str, Any]:\n"
@@ -38,14 +38,17 @@ def sha(blob: bytes) -> str:
 def model_turn(model, tokenizer) -> tuple[str, str]:
     # No private code or secrets enter the public model for this experiment.
     task = (
-        "A Python class keeps trace records in a list named self.events. "
-        "Name ONE Python statement that empties this same list in place "
-        "without reassigning it. Reply with just the statement on one line. "
-        "No prose, code blocks or additional changes."
+        "Complete the blank with just one valid Python statement. "
+        "Inside a Python method, self.events is a list of debugger trace records. "
+        "The new optional reset_events flag is True and should empty the existing "
+        "list IN PLACE (do not replace the list). "
+        "Missing code after 'if reset_events:' is: ____ "
+        "Return only the fully qualified missing statement, on one line, "
+        "with no code fences, no explanation and no indentation."
     )
     prompt = tokenizer.apply_chat_template(
         [
-            {"role": "system", "content": "Return exactly one minimal Python statement, no explanation."},
+            {"role": "system", "content": "You are a Python code completion engine. Return ONLY the one-line Python statement."},
             {"role": "user", "content": task},
         ],
         tokenize=False,
@@ -54,7 +57,7 @@ def model_turn(model, tokenizer) -> tuple[str, str]:
     tokens = tokenizer(prompt, return_tensors="pt", truncation=False)
     with torch.inference_mode():
         output = model.generate(
-            **tokens, max_new_tokens=24, do_sample=False,
+            **tokens, max_new_tokens=32, do_sample=False,
             pad_token_id=tokenizer.eos_token_id,
         )
     return task, tokenizer.decode(
