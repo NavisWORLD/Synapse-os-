@@ -1,0 +1,51 @@
+# Synapse OS live-boot theme. Keep this deterministic and asset-light so
+# firmware / VM graphics differences do not prevent the menu from rendering.
+title-text: "SYNAPSE OS // NEBULA"
+title-color: "#eefcff"
+desktop-color: "#020611"
+terminal-box: "0"
+terminal-border: "0"
+
++ boot_menu {
+  left = 14%
+  top = 31%
+  width = 72%
+  height = 42%
+  item_font = "Unifont Regular 18"
+  item_color = "#9fcde8"
+  selected_item_color = "#ffffff"
+  item_height = 44
+  item_padding = 15
+  item_spacing = 10
+  selected_item_pixmap_style = "select_*.png"
+}
+
++ label {
+  text = "COSMOS // BEAST BOX // CST"
+  left = 0
+  top = 20%
+  width = 100%
+  align = "center"
+  color = "#72e6ff"
+  font = "Unifont Regular 15"
+}
+
++ label {
+  text = "THE DESKTOP IS THE SUIT. THE BEAST IS THE ENGINE."
+  left = 0
+  top = 80%
+  width = 100%
+  align = "center"
+  color = "#8e94c9"
+  font = "Unifont Regular 12"
+}
+
++ label {
+  text = "ENTER: BOOT   //   G: GENESIS"
+  left = 0
+  top = 87%
+  width = 100%
+  align = "center"
+  color = "#b7d6e8"
+  font = "Unifont Regular 11"
+}
