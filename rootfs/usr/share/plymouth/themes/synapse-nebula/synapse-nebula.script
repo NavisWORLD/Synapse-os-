@@ -37,7 +37,7 @@ logo_sprite = Sprite(logo);
 logo_sprite.SetX(screen_w / 2 - logo.GetWidth() / 2);
 logo_sprite.SetY(screen_h / 2 - 54);
 
-sub = Image.Text("NEBULA  //  COSMOS  //  CST", 0.38, 0.82, 1.00);
+sub = Image.Text("COSMOS  //  BEAST BOX  //  CST", 0.38, 0.82, 1.00);
 sub_sprite = Sprite(sub);
 sub_sprite.SetX(screen_w / 2 - sub.GetWidth() / 2);
 sub_sprite.SetY(screen_h / 2 + 6);
