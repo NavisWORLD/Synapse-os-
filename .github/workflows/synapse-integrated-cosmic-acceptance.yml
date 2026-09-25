@@ -1,0 +1,175 @@
+name: Synapse integrated cosmic desktop acceptance
+on:
+  workflow_dispatch:
+  push:
+    branches: [demo/synapse-integrated-cosmic-acceptance-001]
+permissions:
+  actions: read
+  contents: read
+jobs:
+  real-integrated-gui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact integrated candidate ISO
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-os-nebula-amd64
+          path: /tmp/synapse-iso
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: NavisWORLD/Synapse-os-
+          run-id: 36078071363
+
+      - name: Install QEMU and capture tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 qemu-system-gui ovmf xorriso xvfb ffmpeg xdotool
+
+      - name: Verify candidate ISO and provenance payload
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd /tmp/synapse-iso
+          ISO="$(find . -maxdepth 1 -type f -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -s "$ISO"
+          EXPECTED="$(awk '{print $1}' ./*.iso.sha256)"
+          ACTUAL="$(sha256sum "$ISO" | awk '{print $1}')"
+          test "$EXPECTED" = "$ACTUAL"
+          mkdir -p /tmp/synapse-accept
+          xorriso -osirrox on -indev "$ISO" -extract /synapse-genesis/manifest.json /tmp/synapse-accept/genesis-manifest.json
+          echo "ISO_FILE=$PWD/$ISO" >> "$GITHUB_ENV"
+          echo "ISO_SHA256=$ACTUAL" >> "$GITHUB_ENV"
+          echo "Verified integrated candidate: $ACTUAL"
+          cat /tmp/synapse-accept/genesis-manifest.json
+
+      - name: Record genuine UEFI boot and hands-on Synapse session
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$GITHUB_WORKSPACE/synapse-integrated-evidence"
+          mkdir -p "$EVIDENCE"
+
+          Xvfb :99 -screen 0 1280x720x24 -nolisten tcp > "$EVIDENCE/xvfb.log" 2>&1 &
+          XVFB_PID=$!
+          sleep 3
+
+          DISPLAY=:99 ffmpeg -nostdin -loglevel error -y \
+            -f x11grab -draw_mouse 1 -framerate 12 -video_size 1280x720 -i :99.0 \
+            -c:v libx264 -preset ultrafast -crf 27 -pix_fmt yuv420p \
+            "$EVIDENCE/SYNAPSE_INTEGRATED_COSMIC_VM.mp4" > "$EVIDENCE/recorder.log" 2>&1 &
+          REC_PID=$!
+
+          OVMF_CODE=/usr/share/OVMF/OVMF_CODE_4M.fd
+          OVMF_VARS=/usr/share/OVMF/OVMF_VARS_4M.fd
+          test -s "$OVMF_CODE" && test -s "$OVMF_VARS"
+          cp "$OVMF_VARS" /tmp/synapse-accept/OVMF_VARS.fd
+
+          DISPLAY=:99 qemu-system-x86_64 \
+            -machine q35,accel=tcg -cpu qemu64 -smp 2 -m 6144 \
+            -drive "if=pflash,format=raw,readonly=on,file=$OVMF_CODE" \
+            -drive "if=pflash,format=raw,file=/tmp/synapse-accept/OVMF_VARS.fd" \
+            -drive "file=$ISO_FILE,format=raw,if=virtio,readonly=on" \
+            -boot order=c \
+            -nic user,model=virtio-net-pci \
+            -vga virtio -display gtk,gl=off -full-screen \
+            -serial "file:$EVIDENCE/guest-serial.log" -monitor none -no-reboot \
+            > "$EVIDENCE/qemu.log" 2>&1 &
+          VM_PID=$!
+
+          capture() {
+            local name="$1"
+            DISPLAY=:99 ffmpeg -nostdin -loglevel error -y -f x11grab \
+              -video_size 1280x720 -i :99.0 -frames:v 1 "$EVIDENCE/$name.png" \
+              >> "$EVIDENCE/screenshots.log" 2>&1 || true
+          }
+
+          # Preserve several real frames through firmware/GRUB/Plymouth/session
+          # rather than judging startup from only the final desktop.
+          sleep 10; capture 00-boot-10s
+          sleep 20; capture 01-boot-30s
+          sleep 30; capture 02-boot-60s
+          sleep 60; capture 03-boot-120s
+          sleep 120; capture 04-boot-240s
+          sleep 120; capture 05-first-run
+
+          # The integrated image disables KDE's stock Welcome Center and
+          # autostarts the first-party Synapse Welcome. Exercise that window
+          # by keyboard so clicks do not depend on one VM resolution.
+          DISPLAY=:99 xdotool key Tab || true
+          sleep 2
+          capture 06-synapse-welcome-focus
+          DISPLAY=:99 xdotool key Return || true
+          sleep 40
+          capture 07-beastbox-from-welcome
+          DISPLAY=:99 xdotool key alt+F4 || true
+          sleep 6
+
+          DISPLAY=:99 xdotool key Tab || true
+          DISPLAY=:99 xdotool key Return || true
+          sleep 25
+          capture 08-synapse-control-from-welcome
+          DISPLAY=:99 xdotool key alt+F4 || true
+          sleep 6
+
+          DISPLAY=:99 xdotool key Tab || true
+          DISPLAY=:99 xdotool key Return || true
+          sleep 20
+          capture 09-files-from-welcome
+          DISPLAY=:99 xdotool key alt+F4 || true
+          sleep 6
+
+          DISPLAY=:99 xdotool key Tab || true
+          DISPLAY=:99 xdotool key Return || true
+          sleep 25
+          capture 10-terminal-from-welcome
+
+          # Run the actual CLI only after a visible terminal has been given
+          # time to open. The screenshots remain evidence, not assertions.
+          DISPLAY=:99 xdotool type --clearmodifiers --delay 95 'synapse status' || true
+          DISPLAY=:99 xdotool key Return || true
+          sleep 18
+          capture 11-synapse-status
+          DISPLAY=:99 xdotool type --clearmodifiers --delay 95 'synapse doctor' || true
+          DISPLAY=:99 xdotool key Return || true
+          sleep 20
+          capture 12-synapse-doctor
+
+          # Return to the desktop without issuing any destructive guest action.
+          DISPLAY=:99 xdotool key alt+F4 || true
+          sleep 8
+          DISPLAY=:99 xdotool key alt+F4 || true
+          sleep 8
+          capture 13-final-desktop
+
+          kill "$VM_PID" 2>/dev/null || true
+          wait "$VM_PID" 2>/dev/null || true
+          kill -INT "$REC_PID" 2>/dev/null || true
+          wait "$REC_PID" 2>/dev/null || true
+          kill "$XVFB_PID" 2>/dev/null || true
+
+          test -s "$EVIDENCE/SYNAPSE_INTEGRATED_COSMIC_VM.mp4"
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 \
+            "$EVIDENCE/SYNAPSE_INTEGRATED_COSMIC_VM.mp4" > "$EVIDENCE/VIDEO_METRICS.txt"
+          cp /tmp/synapse-iso/*.iso.sha256 "$EVIDENCE/ISO_SHA256.txt"
+          cp /tmp/synapse-accept/genesis-manifest.json "$EVIDENCE/GENESIS_MANIFEST.json"
+          printf 'candidate_build_run=36078071363\ncandidate_pr=28\ncandidate_head=26e5c6172f92d9486e4d20ebb6d6310a0fa3b16b\nrecording_commit=%s\niso_sha256=%s\nvm_mode=QEMU TCG + OVMF EFI + read-only candidate hybrid ISO\n' \
+            "$GITHUB_SHA" "$ISO_SHA256" > "$EVIDENCE/PROVENANCE.txt"
+
+          if grep -Eqi 'Freeze in OpenGL initialization detected|kwin_x11.*SIGABRT' "$EVIDENCE/guest-serial.log"; then
+            echo "FAIL: prior KWin OpenGL crash signature recurred" | tee "$EVIDENCE/GUI_VERDICT.txt"
+            exit 1
+          fi
+          echo "NO PRIOR KWIN OPENGL CRASH SIGNATURE OBSERVED; VISIBLE APP RESULTS REQUIRE MANUAL REVIEW" \
+            > "$EVIDENCE/GUI_VERDICT.txt"
+          sha256sum "$EVIDENCE/SYNAPSE_INTEGRATED_COSMIC_VM.mp4" > "$EVIDENCE/VIDEO_SHA256.txt"
+
+      - name: Upload unedited video, screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-integrated-cosmic-real-gui
+          path: synapse-integrated-evidence/
+          retention-days: 30
+          if-no-files-found: warn
