@@ -18,19 +18,29 @@ jobs:
           persist-credentials: false
       - name: Verify Stage 1 source syntax
         run: |
-          python3 -m compileall -q src/synapse/evolution.py src/synapse/cli.py tests/test_evolution.py
+          python3 -m compileall -q src/synapse/evolution.py src/synapse/evolution_model.py src/synapse/cli.py tests/test_evolution.py tests/test_evolution_model.py
       - name: Prove static-only staging and repository protection
         env:
           PYTHONPATH: src:.
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
           python3 -m unittest discover -s tests -p test_evolution.py -v
+          python3 -m unittest discover -s tests -p test_evolution_model.py -v
       - name: Inspect actual control CLI
         env:
           PYTHONPATH: src:.
         run: |
           python3 -m synapse.cli evolve --help
           python3 -m synapse.cli evolve observe --repo .
+          python3 -m synapse.cli evolve prepare --repo . --path docs/UI.md --goal "Describe a review-only UI improvement." > "$RUNNER_TEMP/evolution-task.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          task=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"])/"evolution-task.json").read_text())
+          assert task["schema"]=="synapse.evolution.task.v1"
+          assert task["authority"]=="PROPOSAL_ONLY_NO_TOOLS_NO_EXECUTION_NO_DEPLOYMENT"
+          assert task["path"]=="docs/UI.md"
+          print("MODEL_TASK_PACKET_PASS: bounded local-only task with exact pinned source")
+          PY
 
       - name: Exercise real repository detached stage with deterministic fixture
         env:
