@@ -100,7 +100,8 @@ class EvolutionTests(unittest.TestCase):
         self.assertTrue(first["cosmos"]["web"])
 
     def test_untrusted_change_cannot_modify_engine_or_authority(self):
-        for path in ("src/synapse/evolution.py", "src/synapse/cli.py",
+        for path in ("src/synapse/evolution.py", "src/synapse/evolution_model.py",
+                     "src/synapse/evolution_review.py", "src/synapse/cli.py",
                      "src/synapse/agent.py", ".github/workflows/evil.yml",
                      "rootfs/etc/shadow", "docs/../../outside.md",
                      "docs//README.md", "/tmp/evil.py", "src/synapse/../../../secret.py"):
