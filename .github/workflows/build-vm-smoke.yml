@@ -43,15 +43,15 @@ jobs:
         run: |
           npm install --no-save @playwright/test@1.55.0
           npx playwright install --with-deps chromium
-      - name: Materialize exact Beast Box v0.6.0 kit
+      - name: Materialize exact Beast Box v0.7.0 kit
         run: |
           set -Eeuo pipefail
           python3 BEASTOS_WEB_MACHINE/scripts/fetch-beast-kit.py \
-            --destination /tmp/beast-box-combined-0.6.0.zip \
+            --destination /tmp/beast-box-combined-0.7.0.zip \
             --extract-to /tmp/beast-kit > /tmp/beast-kit-receipt.json
           python3 -m venv /tmp/beast-runtime
           /tmp/beast-runtime/bin/pip install --no-index --no-deps \
-            /tmp/beast-kit/cosmos_beast_box-0.6.0-py3-none-any.whl
+            /tmp/beast-kit/cosmos_beast_box-0.7.0-py3-none-any.whl
           printf '%s' '{"schema":"beastbox-request-v1","operation":"init"}' | \
             /tmp/beast-runtime/bin/beastbox runtime exchange \
               --data-dir /tmp/beast-data \
@@ -114,7 +114,7 @@ jobs:
           receipt = {
               'schema': 'beastos-browser-evidence-v1',
               'synapse_commit': os.environ['GITHUB_SHA'],
-              'beast_release': 'v0.6.0',
+              'beast_release': 'v0.7.0',
               'beast_provider': 'reference',
               'provider_classification': 'Beast Box deterministic reference provider; not a language model',
               'physical_hardware_validated': False,
@@ -195,11 +195,26 @@ jobs:
           mkdir -p /tmp/synapse-image /tmp/synapse-root
           xorriso -osirrox on -indev "$ISO" -extract /live/filesystem.squashfs /tmp/synapse-image/filesystem.squashfs
           xorriso -osirrox on -indev "$ISO" -extract /synapse-genesis/manifest.json /tmp/synapse-image/genesis-manifest.json
+          mkdir -p /tmp/synapse-bootloader/live-theme
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/grub.cfg /tmp/synapse-bootloader/grub.cfg
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/theme.cfg /tmp/synapse-bootloader/theme.cfg
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/live-theme/theme.txt /tmp/synapse-bootloader/live-theme/theme.txt
+          test -s /tmp/synapse-bootloader/grub.cfg
+          test -s /tmp/synapse-bootloader/theme.cfg
+          test -s /tmp/synapse-bootloader/live-theme/theme.txt
+          grep -q 'SYNAPSE OS // NEBULA // LIVE' /tmp/synapse-bootloader/grub.cfg
+          grep -q 'SYNAPSE OS // GENESIS // GATED INSTALLER' /tmp/synapse-bootloader/grub.cfg
+          grep -q 'COSMOS // BEAST BOX // CST' /tmp/synapse-bootloader/live-theme/theme.txt
+          grep -q 'set theme=/boot/grub/live-theme/theme.txt' /tmp/synapse-bootloader/theme.cfg
+          grep -q 'synapse.genesis=1' /tmp/synapse-bootloader/grub.cfg
+          ! grep -q 'KERNEL_LIVE\|INITRD_LIVE\|APPEND_LIVE' /tmp/synapse-bootloader/grub.cfg
+          ! grep -q 'Debian GNU/Linux' /tmp/synapse-bootloader/grub.cfg
           unsquashfs -f -d /tmp/synapse-root /tmp/synapse-image/filesystem.squashfs \
             etc/os-release \
             etc/systemd/system/synapse-agent.service \
             usr/local/bin/synapse \
             usr/local/bin/synapse-control \
+            usr/local/bin/synapse-welcome \
             usr/local/bin/synapse-beastos-web \
             usr/local/bin/synapse-genesis-writer \
             usr/local/bin/synapse-usb-flash-server \
@@ -219,11 +234,17 @@ jobs:
             usr/lib/synapse/python/synapse/usb_flash_server.py \
             usr/include/synapse/synapse.h \
             usr/share/applications/beastos-web.desktop \
+            usr/share/applications/synapse-welcome.desktop \
+            etc/xdg/autostart/synapse-welcome.desktop \
+            etc/xdg/kicker-extra-favoritesrc \
+            etc/skel/.config/plasma-welcomerc \
+            etc/skel/.config/kdeglobals \
+            usr/share/color-schemes/SynapseNebula.colors \
             usr/share/icons/hicolor/scalable/apps/beastos-web.svg \
             usr/share/synapse/hardware/profiles.json \
             usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html \
             usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js \
-            usr/share/synapse/beast-kit/beast-v0.6.0.json \
+            usr/share/synapse/beast-kit/beast-v0.7.0.json \
             usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json \
             usr/share/synapse/beast-kit/RELEASE_PROVENANCE.json \
             usr/share/synapse/beast-kit/SHA256SUMS \
@@ -241,6 +262,7 @@ jobs:
             usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg \
             usr/share/sddm/themes/synapse-nebula/Main.qml \
             usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth \
+            usr/share/plymouth/themes/synapse-nebula/synapse-nebula.script \
             usr/share/grub/themes/synapse-nebula/theme.txt
           grep -q '^ID=synapseos$' /tmp/synapse-root/etc/os-release
           test -s /tmp/synapse-root/usr/lib/synapse/python/synapse/hardware.py
@@ -257,6 +279,13 @@ jobs:
           test -s /tmp/synapse-root/usr/local/bin/synapse-genesis-writer
           test -x /tmp/synapse-root/usr/local/bin/synapse-usb-flash-server
           test -x /tmp/synapse-root/usr/local/bin/synapse-beastos-web
+          test -x /tmp/synapse-root/usr/local/bin/synapse-welcome
+          test -s /tmp/synapse-root/usr/share/applications/synapse-welcome.desktop
+          test -s /tmp/synapse-root/etc/xdg/autostart/synapse-welcome.desktop
+          grep -q '^ShouldShow=false$' /tmp/synapse-root/etc/skel/.config/plasma-welcomerc
+          grep -q '^ColorScheme=SynapseNebula$' /tmp/synapse-root/etc/skel/.config/kdeglobals
+          grep -q '^Name=Synapse Nebula$' /tmp/synapse-root/usr/share/color-schemes/SynapseNebula.colors
+          grep -q 'beastos-web.desktop' /tmp/synapse-root/etc/xdg/kicker-extra-favoritesrc
           test -x /tmp/synapse-root/opt/synapse/beast-runtime/bin/beastbox
           test -x /tmp/synapse-root/usr/bin/qemu-system-x86_64
           test -s /tmp/synapse-root/usr/share/applications/beastos-web.desktop
@@ -287,10 +316,10 @@ jobs:
           grep -q 'BOOTABLE USB VERIFIED' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           grep -q 'navigator.usb' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           grep -q 'DEFAULT_PORT = 8788' /tmp/synapse-root/usr/lib/synapse/python/synapse/usb_flash_server.py
-          grep -q 'v0.6.0' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.6.0.json
-          grep -q '331f03c5d6a4aab0b2e32314293e36c7a94be393' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.6.0.json
-          grep -q 'c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.6.0.json
-          grep -q 'c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2' /tmp/synapse-root/usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json
+          grep -q 'v0.7.0' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
+          grep -q '97f153225ea2f8910f1c91194a65b97f94246c2b' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
+          grep -q '9e436d7af016c4d25b0b1ba6902357e01986a48a34f3315b0003c116d6c68bbb' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
+          grep -q '9e436d7af016c4d25b0b1ba6902357e01986a48a34f3315b0003c116d6c68bbb' /tmp/synapse-root/usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json
           grep -q '/src/beast/conversation.js' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
           grep -q '/v1/beast/chat' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js
           grep -q '127.0.0.1' /tmp/synapse-root/usr/local/bin/synapse-beastos-web
@@ -306,6 +335,9 @@ jobs:
           unsquashfs -ll /tmp/synapse-image/filesystem.squashfs | grep 'libsynapse_abi\.so' >/dev/null
           grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/sddm/themes/synapse-nebula/Main.qml
           grep -q 'Synapse Nebula' /tmp/synapse-root/usr/share/plymouth/themes/synapse-nebula/synapse-nebula.plymouth
+          grep -q 'COSMOS  //  BEAST BOX  //  CST' /tmp/synapse-root/usr/share/plymouth/themes/synapse-nebula/synapse-nebula.script
+          grep -q 'Plymouth.SetRefreshFunction' /tmp/synapse-root/usr/share/plymouth/themes/synapse-nebula/synapse-nebula.script
+          grep -q 'COSMOS // BEAST BOX // CST' /tmp/synapse-root/usr/share/sddm/themes/synapse-nebula/Main.qml
           grep -q 'SYNAPSE OS' /tmp/synapse-root/usr/share/grub/themes/synapse-nebula/theme.txt
 
       - name: Boot amd64 live ISO in QEMU

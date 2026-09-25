@@ -1,5 +1,6 @@
 [General]
-ColorScheme=BreezeDark
+ColorScheme=SynapseNebula
+AccentColor=77,222,255
 
 [KDE]
 SingleClick=false

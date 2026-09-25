@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Synapse Live Desktop Polish
+Comment=Keep live evaluation visually Synapse-native and VM-usable
+Exec=/usr/local/lib/synapse/live-desktop-polish
+TryExec=/usr/local/lib/synapse/live-desktop-polish
+OnlyShowIn=KDE;
+Terminal=false
+NoDisplay=true
+X-KDE-autostart-after=panel
