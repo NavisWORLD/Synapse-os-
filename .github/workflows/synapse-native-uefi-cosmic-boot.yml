@@ -1,6 +1,8 @@
 name: Synapse native cosmic UEFI boot recording
 on:
   workflow_dispatch:
+  push:
+    branches: [demo/synapse-cosmic-uefi-boot-001]
 permissions:
   actions: read
   contents: read
