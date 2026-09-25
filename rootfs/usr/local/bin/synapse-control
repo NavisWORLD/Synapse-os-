@@ -6,12 +6,21 @@ import shutil
 import socket
 import subprocess
 import sys
+from pathlib import Path
+import json
+
+# The Synapse control package is shipped as first-party files in the live image.
+if Path("/usr/lib/synapse/python/synapse/evolution_review.py").is_file():
+    sys.path.insert(0, "/usr/lib/synapse/python")
+from synapse.evolution_review import review_display
 
 import psutil
 from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
+    QFileDialog,
+    QPlainTextEdit,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -100,8 +109,10 @@ class Window(QMainWindow):
         self.tabs.addTab(self.overview_tab(), "Overview")
         self.tabs.addTab(self.performance_tab(), "Performance")
         self.tabs.addTab(self.cosmos_tab(), "Beast / COSMOS")
+        self.tabs.addTab(self.evolution_tab(), "Evolution")
         self.tabs.addTab(self.recovery_tab(), "Recovery")
-        tab_map = {"overview": 0, "performance": 1, "cosmos": 2, "beast": 2, "recovery": 3}
+        tab_map = {"overview": 0, "performance": 1, "cosmos": 2,
+                   "beast": 2, "evolution": 3, "recovery": 4}
         self.tabs.setCurrentIndex(tab_map.get(initial_tab, 0))
 
         self.setCentralWidget(root)
@@ -190,6 +201,69 @@ class Window(QMainWindow):
         layout.addWidget(refresh)
         layout.addStretch()
         return widget
+
+    def evolution_tab(self) -> QWidget:
+        """Review receipts as data. This screen has NO update or code execution path."""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        header = QLabel("SYNAPSE EVOLUTION // REVIEW BAY")
+        header.setObjectName("section")
+        layout.addWidget(header)
+        intro = QLabel(
+            "Load a completed Evolution review bundle to inspect source and "
+            "model provenance. Imports are read-only and are NOT proof of a "
+            "GitHub-signed artifact; verify the pinned run links independently."
+        )
+        intro.setObjectName("muted")
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+        open_review = QPushButton("Inspect local review receipt (JSON)")
+        open_review.clicked.connect(self.load_evolution_review)
+        layout.addWidget(open_review)
+        self.evolution_report = QPlainTextEdit()
+        self.evolution_report.setReadOnly(True)
+        self.evolution_report.setPlainText(
+            "NO REVIEW LOADED\\n\\n"
+            "Models may propose. Independent VMs may test. "
+            "Only the owner can authorize promotion.\\n\\n"
+            "No automatic merge, update, credential transfer or tool authority."
+        )
+        self.evolution_report.setObjectName("console")
+        layout.addWidget(self.evolution_report, 1)
+        status = QLabel(
+            "MODEL ≠ MEMORY   •   MODEL ≠ STATE   •   MODEL ≠ AUTHORITY"
+        )
+        status.setObjectName("muted")
+        status.setWordWrap(True)
+        layout.addWidget(status)
+        return widget
+
+    def load_evolution_review(self) -> None:
+        file, _ = QFileDialog.getOpenFileName(
+            self, "Inspect an Evolution review receipt", str(Path.home()),
+            "Evolution review JSON (*.json)"
+        )
+        if not file:
+            return
+        try:
+            candidate = Path(file)
+            if candidate.is_symlink() or not candidate.is_file():
+                raise ValueError("review receipt must be a regular file")
+            if not 1 <= candidate.stat().st_size <= 32_768:
+                raise ValueError("review receipt exceeds its file size limit")
+            data = json.loads(candidate.read_text(encoding="utf-8"))
+            summary = review_display(data)
+            self.evolution_report.setPlainText(
+                "LOCAL READ-ONLY REVIEW\\n"
+                "This display does NOT authenticate imported JSON.\\n\\n"
+                + summary + "\\n\\n"
+                "Promotion authority: OWNER ONLY. Live OS unchanged."
+            )
+        except (ValueError, OSError, UnicodeError, json.JSONDecodeError):
+            self.evolution_report.setPlainText(
+                "REJECTED: review file invalid, unavailable or not supported. "
+                "No system changes were attempted."
+            )
 
     def recovery_tab(self) -> QWidget:
         widget = QWidget()
