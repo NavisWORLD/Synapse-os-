@@ -1,0 +1,37 @@
+#!/bin/sh
+set -eu
+
+# Cosmetic/live-session cleanup only. Never alter installed desktops.
+case " $(cat /proc/cmdline 2>/dev/null || true) " in
+  *" boot=live "*) ;;
+  *) exit 0 ;;
+esac
+
+desktop="${XDG_DESKTOP_DIR:-$HOME/Desktop}"
+if [ -d "$desktop" ]; then
+  for entry in "$desktop"/*.desktop; do
+    [ -f "$entry" ] || continue
+    if grep -Fxq 'Name=Install Debian' "$entry" 2>/dev/null; then
+      rm -f -- "$entry"
+    fi
+  done
+fi
+
+# Make unaccelerated QEMU evaluation more usable when the virtual output
+# advertises a larger standard mode. Physical hardware is deliberately ignored.
+vendor="$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)"
+case "$(printf '%s' "$vendor" | tr '[:upper:]' '[:lower:]')" in
+  *qemu*|*bochs*) ;;
+  *) exit 0 ;;
+esac
+
+command -v xrandr >/dev/null 2>&1 || exit 0
+output="$(xrandr --query 2>/dev/null | awk '/ connected/{print $1; exit}')"
+[ -n "$output" ] || exit 0
+
+for mode in 1024x768 1024x600 800x600; do
+  if xrandr --query 2>/dev/null | awk -v mode="$mode" '$1 == mode { found=1 } END { exit !found }'; then
+    xrandr --output "$output" --mode "$mode" >/dev/null 2>&1 || true
+    break
+  fi
+done
