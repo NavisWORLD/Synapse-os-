@@ -95,7 +95,7 @@ def main() -> int:
     if output == root or output.is_relative_to(root):
         raise ValueError("model evidence directory must be outside source checkout")
     output.mkdir(parents=True, exist_ok=True, mode=0o700)
-    hub = model_info(MODEL, token=False)
+    hub = model_info(MODEL, revision=REVISION, token=False)
     if hub.sha != REVISION:
         raise RuntimeError("pinned public model revision differs from expected; no silent update")
     tokenizer = AutoTokenizer.from_pretrained(
