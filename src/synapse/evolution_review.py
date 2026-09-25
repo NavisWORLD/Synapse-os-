@@ -253,14 +253,18 @@ def review_display(bundle: object) -> str:
     checks = bundle.get("two_vm_checks")
     if not isinstance(checks, dict):
         raise ValueError("receipt has no declared VM evidence")
+    def check_names(role: str) -> str:
+        raw = checks.get(role)
+        if not isinstance(raw, list) or not all(isinstance(s, str) for s in raw):
+            return "not established"
+        return ", ".join(raw[:8])
+
     fields = [
         ("Candidate", bundle.get("source_path")),
         ("Model label", bundle.get("model_id")),
         ("Model-authored scope", bundle.get("model_authored_scope")),
-        ("Baseline checks", ", ".join(checks.get("baseline", []))
-         if isinstance(checks.get("baseline"), list) else "not established"),
-        ("Candidate checks", ", ".join(checks.get("candidate", []))
-         if isinstance(checks.get("candidate"), list) else "not established"),
+        ("Baseline checks", check_names("baseline")),
+        ("Candidate checks", check_names("candidate")),
         ("Source hash", bundle.get("candidate_sha256")),
         ("Review status", "READ ONLY — requires independent approval"),
     ]
