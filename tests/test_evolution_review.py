@@ -36,6 +36,13 @@ class ReviewDisplayTests(unittest.TestCase):
         self.assertIn("READ ONLY", text)
         self.assertIn("requires independent approval", text)
 
+    def test_malformed_imported_json_cannot_crash_display(self):
+        displayed = er.review_display({
+            "schema": er.SCHEMA,
+            "two_vm_checks": {"baseline": [1, {"unsafe": "field"}], "candidate": None},
+        })
+        self.assertIn("not established", displayed)
+
     def test_native_tab_has_no_execution_or_auto_grants(self):
         ui = (ROOT / "rootfs/usr/local/bin/synapse-control").read_text()
         section = ui[ui.index("    def evolution_tab"):ui.index("    def recovery_tab")]
