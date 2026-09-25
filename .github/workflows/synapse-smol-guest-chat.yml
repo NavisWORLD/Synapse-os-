@@ -16,7 +16,6 @@ jobs:
     env:
       SOURCE_RUN: "36092197398"
       SOURCE_SHA: "7841773114b33a02499c13ab4c31a37cc3592aca"
-      BEASTBOX_ALLOW_SMOLLM_DEMO: ${{ vars.BEASTBOX_ALLOW_SMOLLM_DEMO }}
     steps:
       - uses: actions/checkout@v4
 
