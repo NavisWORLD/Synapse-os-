@@ -195,6 +195,20 @@ jobs:
           mkdir -p /tmp/synapse-image /tmp/synapse-root
           xorriso -osirrox on -indev "$ISO" -extract /live/filesystem.squashfs /tmp/synapse-image/filesystem.squashfs
           xorriso -osirrox on -indev "$ISO" -extract /synapse-genesis/manifest.json /tmp/synapse-image/genesis-manifest.json
+          mkdir -p /tmp/synapse-bootloader/live-theme
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/grub.cfg /tmp/synapse-bootloader/grub.cfg
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/theme.cfg /tmp/synapse-bootloader/theme.cfg
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/live-theme/theme.txt /tmp/synapse-bootloader/live-theme/theme.txt
+          test -s /tmp/synapse-bootloader/grub.cfg
+          test -s /tmp/synapse-bootloader/theme.cfg
+          test -s /tmp/synapse-bootloader/live-theme/theme.txt
+          grep -q 'SYNAPSE OS // NEBULA // LIVE' /tmp/synapse-bootloader/grub.cfg
+          grep -q 'SYNAPSE OS // GENESIS // GATED INSTALLER' /tmp/synapse-bootloader/grub.cfg
+          grep -q 'COSMOS // BEAST BOX // CST' /tmp/synapse-bootloader/live-theme/theme.txt
+          grep -q 'set theme=/boot/grub/live-theme/theme.txt' /tmp/synapse-bootloader/theme.cfg
+          grep -q 'synapse.genesis=1' /tmp/synapse-bootloader/grub.cfg
+          ! grep -q 'KERNEL_LIVE\|INITRD_LIVE\|APPEND_LIVE' /tmp/synapse-bootloader/grub.cfg
+          ! grep -q 'Debian GNU/Linux' /tmp/synapse-bootloader/grub.cfg
           unsquashfs -f -d /tmp/synapse-root /tmp/synapse-image/filesystem.squashfs \
             etc/os-release \
             etc/systemd/system/synapse-agent.service \
