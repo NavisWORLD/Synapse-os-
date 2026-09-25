@@ -1,0 +1,251 @@
+name: Synapse nested Beast Box website demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [demo/synapse-nested-beastbox-web-001]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  nested-web-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      SOURCE_RUN_ID: "36087739498"
+      SOURCE_SHA: "5e3d0a25b8c7deeee73487b38c0780d8fc73496f"
+      BEASTBOX_URL: "https://www.beastboxcosmos.xyz"
+      DEMO_PASSWORD: ${{ secrets.BEASTBOX_DEMO_PASSWORD || secrets.BEASTBOX_OWNER_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require password through GitHub secret only
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [ -z "${DEMO_PASSWORD:-}" ]; then
+            echo "Missing BEASTBOX_DEMO_PASSWORD (or BEASTBOX_OWNER_PASSWORD) GitHub Actions secret." >&2
+            echo "The owner password is intentionally never committed to this public branch." >&2
+            exit 2
+          fi
+
+      - name: Inspect authenticated model status without inference
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          python3 - <<'PY' >/tmp/beastbox-login.json
+          import json, os
+          print(json.dumps({"password": os.environ["DEMO_PASSWORD"]}))
+          PY
+          curl -fsS -c /tmp/beastbox-cookies.txt \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/beastbox-login.json \
+            "$BEASTBOX_URL/api/session" >/tmp/session.json
+          rm -f /tmp/beastbox-login.json
+
+          curl -fsS -b /tmp/beastbox-cookies.txt "$BEASTBOX_URL/api/status" >/tmp/status.json
+          curl -fsS -b /tmp/beastbox-cookies.txt "$BEASTBOX_URL/api/bridge/provider" >/tmp/provider.json || printf '{"profile":null}\n' >/tmp/provider.json
+
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          status=json.loads(Path('/tmp/status.json').read_text())
+          provider=json.loads(Path('/tmp/provider.json').read_text())
+          profile=provider.get('profile') if isinstance(provider,dict) else None
+          profile=profile if isinstance(profile,dict) else {}
+          kind=str(profile.get('kind','')).lower()
+          model=str(profile.get('model','UNKNOWN'))
+          backend=bool(status.get('backendReachable'))
+          local=backend and kind in {'local','local_gguf','gguf','ollama_local','smollm2'}
+          print(f"backend_reachable={backend}")
+          print(f"provider_kind={kind or 'unknown'}")
+          print(f"provider_model={model}")
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf-8') as fh:
+              fh.write(f"PROVIDER_KIND={kind}\n")
+              fh.write(f"PROVIDER_MODEL={model}\n")
+              fh.write(f"ALLOW_CHAT={'1' if local else '0'}\n")
+          sanitized={
+              'backendReachable': backend,
+              'backendStatus': status.get('backendStatus'),
+              'provider': {k:v for k,v in profile.items() if k not in {'api_key','token','secret','password'}}
+          }
+          Path('/tmp/provider-sanitized.json').write_text(json.dumps(sanitized,indent=2))
+          PY
+          rm -f /tmp/beastbox-cookies.txt /tmp/session.json /tmp/status.json /tmp/provider.json
+
+      - name: Download exact proven alpha5 ISO
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-os-nebula-amd64
+          path: /tmp/synapse-iso
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: NavisWORLD/Synapse-os-
+          run-id: 36087739498
+
+      - name: Install VM and recording tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 qemu-system-gui ovmf xorriso xvfb ffmpeg xdotool
+
+      - name: Verify exact ISO
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd /tmp/synapse-iso
+          ISO="$(find . -maxdepth 1 -type f -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -s "$ISO"
+          EXPECTED="$(awk '{print $1}' ./*.iso.sha256)"
+          ACTUAL="$(sha256sum "$ISO" | awk '{print $1}')"
+          test "$EXPECTED" = "$ACTUAL"
+          mkdir -p /tmp/nested-demo
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/grub.cfg /tmp/nested-demo/grub.cfg
+          grep -q 'SYNAPSE OS // NEBULA // LIVE' /tmp/nested-demo/grub.cfg
+          ! grep -q 'Debian GNU/Linux' /tmp/nested-demo/grub.cfg
+          echo "ISO_FILE=$PWD/$ISO" >> "$GITHUB_ENV"
+          echo "ISO_SHA256=$ACTUAL" >> "$GITHUB_ENV"
+
+      - name: Record website running inside Synapse OS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EVIDENCE="$GITHUB_WORKSPACE/synapse-nested-web-demo"
+          mkdir -p "$EVIDENCE"
+          cp /tmp/provider-sanitized.json "$EVIDENCE/PROVIDER_STATUS.json"
+
+          Xvfb :99 -screen 0 1280x800x24 -nolisten tcp > "$EVIDENCE/xvfb.log" 2>&1 &
+          XVFB_PID=$!
+          sleep 3
+          DISPLAY=:99 ffmpeg -nostdin -loglevel error -y \
+            -f x11grab -draw_mouse 1 -framerate 15 -video_size 1280x800 -i :99.0 \
+            -c:v libx264 -preset ultrafast -crf 25 -pix_fmt yuv420p \
+            "$EVIDENCE/SYNAPSE_NESTED_BEASTBOX_WEB.mp4" > "$EVIDENCE/recorder.log" 2>&1 &
+          REC_PID=$!
+
+          OVMF_CODE=/usr/share/OVMF/OVMF_CODE_4M.fd
+          OVMF_VARS=/usr/share/OVMF/OVMF_VARS_4M.fd
+          cp "$OVMF_VARS" /tmp/nested-demo/OVMF_VARS.fd
+
+          DISPLAY=:99 qemu-system-x86_64 \
+            -machine q35,accel=tcg -cpu qemu64 -smp 4 -m 6144 \
+            -drive "if=pflash,format=raw,readonly=on,file=$OVMF_CODE" \
+            -drive "if=pflash,format=raw,file=/tmp/nested-demo/OVMF_VARS.fd" \
+            -drive "file=$ISO_FILE,format=raw,if=virtio,readonly=on" \
+            -boot order=c -nic user,model=virtio-net-pci \
+            -vga virtio -display gtk,gl=off -full-screen \
+            -serial "file:$EVIDENCE/guest-serial.log" -monitor none -no-reboot \
+            > "$EVIDENCE/qemu.log" 2>&1 &
+          VM_PID=$!
+
+          focus_vm() {
+            local win
+            win="$(DISPLAY=:99 xdotool search --onlyvisible --name 'QEMU' 2>/dev/null | tail -n1 || true)"
+            [ -z "$win" ] || DISPLAY=:99 xdotool windowactivate --sync "$win" || true
+          }
+          key() {
+            focus_vm
+            DISPLAY=:99 xdotool key --clearmodifiers "$@" || true
+          }
+          type_guest() {
+            focus_vm
+            DISPLAY=:99 xdotool type --clearmodifiers --delay 45 "$1" || true
+          }
+          capture() {
+            DISPLAY=:99 ffmpeg -nostdin -loglevel error -y -f x11grab \
+              -video_size 1280x800 -i :99.0 -frames:v 1 "$EVIDENCE/$1.png" \
+              >> "$EVIDENCE/screenshots.log" 2>&1 || true
+          }
+          krun() {
+            key alt+F2
+            sleep 2
+            type_guest "$1"
+            key Return
+          }
+
+          sleep 8; capture 00-uefi
+          sleep 8; capture 01-synapse-grub
+          key Return
+          sleep 20; capture 02-cosmic-boot
+          sleep 35; capture 03-cosmic-transition
+          sleep 75; capture 04-session
+          sleep 115; capture 05-synapse-desktop
+
+          krun 'firefox https://www.beastboxcosmos.xyz/workspace'
+          sleep 40
+          capture 06-beastbox-owner-login
+
+          # Content focus: Back-to-Cosmos link -> owner password field.
+          focus_vm
+          DISPLAY=:99 xdotool key --clearmodifiers Tab || true
+          DISPLAY=:99 xdotool key --clearmodifiers Tab || true
+          DISPLAY=:99 xdotool type --clearmodifiers --delay 35 "$DEMO_PASSWORD" || true
+          key Return
+          sleep 28
+          capture 07-beastbox-workstation
+
+          # Record Brain Bay before any model call so the configured provider is
+          # visible and no billable inference is triggered just for a demo.
+          focus_vm
+          DISPLAY=:99 xdotool key --clearmodifiers ctrl+l || true
+          type_guest 'https://www.beastboxcosmos.xyz/workspace'
+          key Return
+          sleep 12
+          capture 08-workstation-status
+
+          if [ "$ALLOW_CHAT" = "1" ]; then
+            # The authenticated preflight established that the current provider
+            # is local/non-billable. Click the large chat composer near the
+            # lower center of the workstation, then send one bounded turn.
+            focus_vm
+            DISPLAY=:99 xdotool mousemove 620 650 click 1 || true
+            type_guest 'Hello from inside Synapse OS. In one sentence, identify this as a nested Beast Box demo.'
+            key Return
+            sleep 90
+            capture 09-live-model-reply
+          else
+            echo "Chat skipped: provider was not independently classified as local/non-billable." \
+              > "$EVIDENCE/CHAT_SKIPPED.txt"
+            capture 09-chat-safely-skipped
+          fi
+
+          krun 'synapse-control'
+          sleep 25
+          capture 10-synapse-control-with-web-beast
+
+          key meta+d
+          sleep 10
+          capture 11-final-desktop
+
+          kill "$VM_PID" 2>/dev/null || true
+          wait "$VM_PID" 2>/dev/null || true
+          kill -INT "$REC_PID" 2>/dev/null || true
+          wait "$REC_PID" 2>/dev/null || true
+          kill "$XVFB_PID" 2>/dev/null || true
+
+          test -s "$EVIDENCE/SYNAPSE_NESTED_BEASTBOX_WEB.mp4"
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 \
+            "$EVIDENCE/SYNAPSE_NESTED_BEASTBOX_WEB.mp4" > "$EVIDENCE/VIDEO_METRICS.txt"
+          cp /tmp/synapse-iso/*.iso.sha256 "$EVIDENCE/ISO_SHA256.txt"
+          printf 'source_run=%s\nsource_sha=%s\nrecording_commit=%s\niso_sha256=%s\nsite=%s\nprovider_kind=%s\nprovider_model=%s\nchat_allowed=%s\n' \
+            "$SOURCE_RUN_ID" "$SOURCE_SHA" "$GITHUB_SHA" "$ISO_SHA256" \
+            "$BEASTBOX_URL" "$PROVIDER_KIND" "$PROVIDER_MODEL" "$ALLOW_CHAT" \
+            > "$EVIDENCE/PROVENANCE.txt"
+
+          if grep -Eqi 'Freeze in OpenGL initialization detected|kwin_x11.*SIGABRT' "$EVIDENCE/guest-serial.log"; then
+            echo "FAIL: known KWin OpenGL crash signature recurred" | tee "$EVIDENCE/GUI_VERDICT.txt"
+            exit 1
+          fi
+          echo "NO KNOWN KWIN OPENGL CRASH SIGNATURE OBSERVED; VIDEO REQUIRES VISUAL REVIEW" > "$EVIDENCE/GUI_VERDICT.txt"
+          sha256sum "$EVIDENCE/SYNAPSE_NESTED_BEASTBOX_WEB.mp4" > "$EVIDENCE/VIDEO_SHA256.txt"
+
+      - name: Upload nested Beast Box demo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-nested-beastbox-web
+          path: synapse-nested-web-demo/
+          if-no-files-found: warn
+          retention-days: 30
