@@ -1,0 +1,96 @@
+name: Render real native Synapse Evolution Review Bay
+
+on:
+  push:
+    branches: [demo/synapse-evolution-review-gui-013]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  genuine-pyqt-native-ui-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install only desktop PyQt and system telemetry requirements
+        run: |
+          python3 -m pip install --disable-pip-version-check \
+            PyQt6==6.8.1 psutil==6.1.1
+      - name: Download previously verified historical review bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-evolution-owner-review-bundle
+          path: ${{ runner.temp }}/previous-review
+          repository: NavisWORLD/Synapse-os-
+          run-id: 36188369700
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Actually launch native Qt control, open review JSON and capture screenshot
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$RUNNER_TEMP/synapse-evolution-ui-capture"
+          python3 - <<'PY'
+          import importlib.machinery, importlib.util, json, os
+          from pathlib import Path
+          from unittest import mock
+          from PyQt6.QtWidgets import QApplication, QFileDialog
+          from PyQt6.QtCore import Qt
+
+          native=Path("rootfs/usr/local/bin/synapse-control")
+          loader=importlib.machinery.SourceFileLoader("synapse_native_control", str(native))
+          spec=importlib.util.spec_from_loader(loader.name, loader)
+          mod=importlib.util.module_from_spec(spec)
+          loader.exec_module(mod)
+          app=QApplication([])
+          window=mod.Window("evolution")
+          window.show()
+          app.processEvents()
+          assert window.tabs.tabText(window.tabs.currentIndex())=="Evolution"
+          assert window.evolution_report.isReadOnly()
+          assert "NO REVIEW LOADED" in window.evolution_report.toPlainText()
+          packet=Path(os.environ["RUNNER_TEMP"])/"previous-review"/"REVIEW_BUNDLE.json"
+          assert packet.is_file()
+          assert json.loads(packet.read_text())["schema"] == "synapse.evolution.owner_review.v1"
+          with mock.patch.object(QFileDialog, "getOpenFileName", return_value=(str(packet),"json")):
+              window.load_evolution_review()
+          app.processEvents()
+          shown=window.evolution_report.toPlainText()
+          assert "Qwen/Qwen2.5-Coder-0.5B-Instruct" in shown
+          assert "independent approval" in shown
+          assert "LOCAL READ-ONLY REVIEW" in shown
+          dest=Path(os.environ["RUNNER_TEMP"])/"synapse-evolution-ui-capture"
+          image=dest/"SYNAPSE_EVOLUTION_REVIEW_NATIVE_QT.png"
+          assert window.grab().save(str(image), "PNG")
+          assert image.stat().st_size>10000
+          (dest/"UI_SMOKE_VERDICT.json").write_text(json.dumps({
+              "schema":"synapse.evolution.native_ui_smoke.v1",
+              "native_gui_launched":True,
+              "review_tab_rendered":True,
+              "real_prior_review_bundle_loaded":True,
+              "imported_json_is_not_authenticated_by_ui":True,
+              "no_model_inference":True,
+              "no_auto_merge_or_os_install":True,
+              "rendering_context":"OFFSCREEN_QT_ON_GITHUB_RUNNER_NOT_A_BOOTED_SYNapse_VM"
+          },indent=2)+"\n")
+          print("NATIVE_UI_SMOKE_PASS: original source Qt window displays actual pinned review JSON")
+          window.close()
+          app.quit()
+          PY
+      - name: Archive honest screenshot and reproducible UI test verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-evolution-native-review-ui-evidence
+          path: ${{ runner.temp }}/synapse-evolution-ui-capture/
+          if-no-files-found: error
+          retention-days: 14
