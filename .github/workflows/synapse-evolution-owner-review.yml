@@ -1,0 +1,97 @@
+name: Synapse Evolution owner review evidence gate
+
+on:
+  push:
+    branches: [feature/synapse-evolution-review-gate-012]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  pinned-source-and-vm-owner-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check review engine and native GUI syntax
+        run: |
+          set -Eeuo pipefail
+          python3 -m py_compile src/synapse/evolution_review.py \
+            rootfs/usr/local/bin/synapse-control tests/test_evolution_review.py
+      - name: Download exact successful model correction and two disconnected guest receipts
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-real-model-corrected-two-vm-evidence
+          path: ${{ runner.temp }}/real-vm-evidence
+          run-id: 36151721750
+          repository: NavisWORLD/Synapse-os-
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Independently check full candidate source CI result from public GitHub API
+        run: |
+          set -Eeuo pipefail
+          curl --fail --location --silent --show-error --retry 2 \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'User-Agent: synapse-evolution-owner-review' \
+            'https://api.github.com/repos/NavisWORLD/Synapse-os-/actions/runs/36154999097' \
+            -o "$RUNNER_TEMP/exact-candidate-ci.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          d=json.loads((Path(os.environ["RUNNER_TEMP"])/"exact-candidate-ci.json").read_text())
+          assert d["id"]==36154999097
+          assert d["head_sha"]=="f851993d0737a8c218c06c5792b7688b125a5f2c"
+          assert d["conclusion"]=="success"
+          assert d["repository"]["full_name"]=="NavisWORLD/Synapse-os-"
+          print("EXACT_CANDIDATE_CI_VERIFIED_FROM_GITHUB")
+          PY
+      - name: Verify actual historic artifacts and deliberately tamper-test the reviewer
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+          SYNAPSE_REAL_EVIDENCE_DIR: ${{ runner.temp }}/real-vm-evidence
+          SYNAPSE_EXACT_CI_JSON: ${{ runner.temp }}/exact-candidate-ci.json
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p test_evolution_review.py -v
+          python3 -m synapse.evolution_review \
+            --artifact "$SYNAPSE_REAL_EVIDENCE_DIR" \
+            --repo . --ci-run-json "$SYNAPSE_EXACT_CI_JSON" \
+            --output "$RUNNER_TEMP/owner-review-bundle"
+          test -s "$RUNNER_TEMP/owner-review-bundle/REVIEW_BUNDLE.json"
+          test -s "$RUNNER_TEMP/owner-review-bundle/ROLLBACK_PREVIEW.diff"
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Prepare inspection-only provenance bundle
+        run: |
+          set -Eeuo pipefail
+          ROOT="$RUNNER_TEMP/owner-review-bundle"
+          ORIGINAL="$RUNNER_TEMP/real-vm-evidence"
+          cp "$ORIGINAL/ORIGIN_HANDOFF.json" "$ROOT/ORIGIN_HANDOFF.json"
+          cp "$ORIGINAL/COMPARISON.json" "$ROOT/COMPARISON.json"
+          cp "$ORIGINAL/STAGED_PATCH_RECEIPT.json" "$ROOT/STAGED_PATCH_RECEIPT.json"
+          cp "$ORIGINAL/ACTUAL_MODEL_CORRECTION.txt" "$ROOT/ACTUAL_MODEL_CORRECTION.txt"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          folder=Path(os.environ["RUNNER_TEMP"])/"owner-review-bundle"
+          d=json.loads((Path(os.environ["RUNNER_TEMP"])/"exact-candidate-ci.json").read_text())
+          sanitized={"run_id":d["id"],"head_sha":d["head_sha"],
+                     "conclusion":d["conclusion"],"head_branch":d["head_branch"],
+                     "html_url":d["html_url"]}
+          (folder/"VERIFIED_CANDIDATE_CI.json").write_text(json.dumps(sanitized,indent=2)+"\n")
+          PY
+          (cd "$ROOT"; sha256sum REVIEW_BUNDLE.json ROLLBACK_PREVIEW.diff \
+            ORIGINAL_DEBUGGER_BASELINE.py.txt ORIGIN_HANDOFF.json \
+            COMPARISON.json STAGED_PATCH_RECEIPT.json ACTUAL_MODEL_CORRECTION.txt \
+            VERIFIED_CANDIDATE_CI.json > SHA256SUMS)
+          echo 'OWNER_REVIEW_BUNDLE_VERIFIED: no merges, installations or authority grants.'
+      - name: Upload reviewable evidence for human approval
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-evolution-owner-review-bundle
+          path: ${{ runner.temp }}/owner-review-bundle/
+          if-no-files-found: error
+          retention-days: 30
