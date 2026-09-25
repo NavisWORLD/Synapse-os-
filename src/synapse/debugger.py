@@ -13,6 +13,7 @@ class Debugger:
     capabilities: RuntimeCapabilities = field(default_factory=RuntimeCapabilities)
 
     def _trace(self, event: dict[str, Any]) -> None:
+        """A debugger creates a copy of an incoming event, marks the copy as a breakpoint when its line matches one of the configured breakpoints, and appends the copied event to its event list."""
         event = dict(event)
         event["breakpoint"] = event.get("line") in self.breakpoints
         self.events.append(event)
