@@ -287,9 +287,9 @@ jobs:
           grep -q 'BOOTABLE USB VERIFIED' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           grep -q 'navigator.usb' /tmp/synapse-root/usr/share/synapse/FLASH_USB.html
           grep -q 'DEFAULT_PORT = 8788' /tmp/synapse-root/usr/lib/synapse/python/synapse/usb_flash_server.py
-          grep -q 'v0.6.0' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
-          grep -q '331f03c5d6a4aab0b2e32314293e36c7a94be393' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
-          grep -q 'c2a5bf5e3cb972ec3e5f1aa45f06d7e77e9b6de115e049f06e830a1f4c312ad2' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
+          grep -q 'v0.7.0' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
+          grep -q '97f153225ea2f8910f1c91194a65b97f94246c2b' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
+          grep -q '9e436d7af016c4d25b0b1ba6902357e01986a48a34f3315b0003c116d6c68bbb' /tmp/synapse-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
           grep -q '9e436d7af016c4d25b0b1ba6902357e01986a48a34f3315b0003c116d6c68bbb' /tmp/synapse-root/usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json
           grep -q '/src/beast/conversation.js' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
           grep -q '/v1/beast/chat' /tmp/synapse-root/usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js
