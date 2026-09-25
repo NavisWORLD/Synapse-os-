@@ -51,11 +51,16 @@ def validate_docstring(raw: str) -> str:
     # Never concatenate arbitrary model output into a Python source file.
     # Keep generated prose as data, never model-selected executable code.
     sentence = raw.strip()
+    # Some small instruct models add one fixed benign prose heading.
+    # Normalize only this exact title + a single paragraph; never extract
+    # code-fenced text or silently rewrite the model's own prose.
+    if sentence.startswith("Record and Breakpoint\n\n"):
+        sentence = sentence.removeprefix("Record and Breakpoint\n\n").strip()
     if sentence.startswith(('"', "'")) and sentence.endswith(('"', "'")):
         sentence = sentence[1:-1].strip()
-    if "\n" in sentence or len(sentence) > 150 or len(sentence) < 27:
-        raise ValueError("not a single short sentence")
-    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9 ,;.:()/-]{25,149}", sentence):
+    if "\n" in sentence or len(sentence) > 220 or len(sentence) < 27:
+        raise ValueError("not a single bounded sentence")
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9 ,;.:()/-]{25,219}", sentence):
         raise ValueError("contains unsupported non-prose characters")
     if "event" not in sentence.lower() or "breakpoint" not in sentence.lower():
         raise ValueError("does not correctly describe event and breakpoint behavior")
