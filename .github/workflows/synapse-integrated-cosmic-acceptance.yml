@@ -84,14 +84,23 @@ jobs:
               -video_size 1280x720 -i :99.0 -frames:v 1 "$EVIDENCE/$name.png" \
               >> "$EVIDENCE/screenshots.log" 2>&1 || true
           }
+          focus_vm() {
+            local win
+            win="$(DISPLAY=:99 xdotool search --onlyvisible --name 'QEMU' 2>/dev/null | tail -n1 || true)"
+            if [ -n "$win" ]; then
+              DISPLAY=:99 xdotool windowactivate --sync "$win" || true
+            fi
+          }
 
           # Preserve the firmware/bootloader before choosing the default live
           # entry. The previous acceptance accidentally sat at Debian GRUB for
           # the entire recording, so an uploaded MP4 alone is not a pass.
           sleep 10; capture 00-boot-10s
           sleep 8; capture 01-grub-before-boot
+          focus_vm
           DISPLAY=:99 xdotool key Return || true
           sleep 12
+          focus_vm
           DISPLAY=:99 xdotool key Return || true
           sleep 20; capture 02-post-grub-50s
           sleep 40; capture 03-boot-90s
