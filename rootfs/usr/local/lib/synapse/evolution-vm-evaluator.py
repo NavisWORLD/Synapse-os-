@@ -130,7 +130,8 @@ def trusted_payload(root: Path) -> tuple[dict, list[tuple[Path, bytes]]]:
 def run_smoke(work: Path) -> dict:
     if not compileall.compile_dir(str(work / "synapse"), quiet=2, force=True):
         fail("STATIC_SOURCE_COMPILE_FAILED")
-    if shutil.which("runuser") is None:
+    runuser = shutil.which("runuser")
+    if runuser is None:
         fail("NONROOT_RUNUSER_MISSING")
     env = ["env", "-i", "PATH=/usr/bin:/bin", "HOME=/tmp",
            "PYTHONDONTWRITEBYTECODE=1", "PYTHONPATH=" + str(work)]
@@ -143,7 +144,7 @@ def run_smoke(work: Path) -> dict:
         start = time.monotonic()
         try:
             proc = subprocess.run(
-                ["runuser", "-u", "nobody", "--", *env, *command],
+                [runuser, "-u", "nobody", "--", *env, *command],
                 cwd=work, capture_output=True, text=True, timeout=35,
                 check=False, env={"PATH": "/usr/bin:/bin"},
             )
