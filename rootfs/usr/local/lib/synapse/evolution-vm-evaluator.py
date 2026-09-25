@@ -171,6 +171,114 @@ def run_smoke(work: Path) -> dict:
     return summary
 
 
+
+# Trusted, fixed independent regression. The candidate may change debugger.py
+# ONLY after the previous separate SHA/file allowlist checks. It cannot choose
+# which tests to run, change test parameters or forge the harness success marker.
+DEBUGGER_CONTRACT_CODE = r"""
+import inspect
+import json
+import sys
+from unittest.mock import patch
+from synapse.debugger import Debugger
+
+mode = sys.argv[1]
+assert mode in ("baseline", "candidate")
+
+class StubVM:
+    def __init__(self, module, *, capabilities, trace):
+        self.trace = trace
+
+    def run(self):
+        original = {"line": 7, "payload": "immutable-input"}
+        self.trace(original)
+        assert "breakpoint" not in original
+        return {"ok": True}
+
+with patch("synapse.debugger.VM", StubVM):
+    dbg = Debugger(module=None, breakpoints={7})
+    original_events = dbg.events
+    first = dbg.run()
+    pass_first = (
+        len(dbg.events) == 1 and first["events"] is original_events
+        and dbg.events[0]["breakpoint"] is True
+    )
+    second = dbg.run()
+    pass_default = (
+        pass_first and len(dbg.events) == 2
+        and second["events"] is original_events
+        and all(item["breakpoint"] is True for item in dbg.events)
+    )
+    if mode == "candidate":
+        sig = inspect.signature(Debugger.run)
+        pass_optional = (
+            "reset_events" in sig.parameters
+            and sig.parameters["reset_events"].default is False
+        )
+        third = dbg.run(reset_events=True)
+        pass_optional = (
+            pass_optional and third["events"] is original_events
+            and dbg.events is original_events and len(dbg.events) == 1
+            and dbg.events[0]["breakpoint"] is True
+        )
+    else:
+        pass_optional = (
+            "reset_events" not in inspect.signature(Debugger.run).parameters
+        )
+    passed = pass_default and pass_optional
+    print(json.dumps({
+        "passed": passed, "default_behavior_preserved": pass_default,
+        "role_specific_expectation_met": pass_optional
+    }, sort_keys=True))
+    if not passed:
+        raise SystemExit(2)
+"""
+
+
+def debugger_contract(work: Path, mode: str) -> dict:
+    if mode not in {"baseline", "candidate"}:
+        fail("INVALID_DEBUGGER_CONTRACT_MODE")
+    runuser = shutil.which("runuser")
+    if runuser is None:
+        fail("NONROOT_RUNUSER_MISSING")
+    environment = [
+        "env", "-i", "PATH=/usr/bin:/bin", "HOME=/tmp",
+        "PYTHONDONTWRITEBYTECODE=1", "PYTHONPATH=" + str(work)
+    ]
+    started = time.monotonic()
+    try:
+        proc = subprocess.run(
+            [runuser, "-u", "nobody", "--", *environment,
+             "/usr/bin/python3", "-c", DEBUGGER_CONTRACT_CODE, mode],
+            cwd=work, capture_output=True, text=True,
+            timeout=35, check=False, env={"PATH": "/usr/bin:/bin"}
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        fail("DEBUGGER_CONTRACT_TIMEOUT_OR_UNAVAILABLE")
+    if proc.returncode or len(proc.stdout.encode("utf-8")) > 12_000:
+        fail("DEBUGGER_BEHAVIOR_REGRESSION")
+    try:
+        result = json.loads(proc.stdout)
+    except ValueError:
+        fail("UNTRUSTED_DEBUGGER_RESULT_JSON")
+    if (
+        not isinstance(result, dict)
+        or set(result) != {
+            "passed", "default_behavior_preserved",
+            "role_specific_expectation_met"
+        }
+        or any(result.get(key) is not True for key in result)
+    ):
+        fail("DEBUGGER_BEHAVIOR_CONTRACT_FAILED")
+    return {
+        "passed": True,
+        "default_behavior_preserved": True,
+        "role_specific_expectation_met": True,
+        "duration_ms": int((time.monotonic() - started) * 1000),
+        "test_input": "TWO_DEFAULT_RUNS_AND_ROLE_GATED_RESET",
+    }
+
+
 def main() -> None:
     mode = role()
     root = mount_payload()
@@ -185,6 +293,12 @@ def main() -> None:
         for filename, content in files:
             (package / filename).write_bytes(content)
     results = run_smoke(work)
+    selected_debugger = any(
+        entry["path"] == "src/synapse/debugger.py"
+        for entry in manifest["changes"]
+    )
+    if selected_debugger:
+        results["debugger_contract"] = debugger_contract(work, mode)
     receipt = {
         "schema": "synapse.evolution.vm.guest_result.v1",
         "role": mode,
@@ -193,7 +307,10 @@ def main() -> None:
         "candidate_files_applied": mode == "candidate",
         "network_policy": "HOST_QEMU_NIC_DISABLED",
         "checks": results,
-        "tests": "TWO_FIXED_BOUNDED_SMOKE_CHECKS",
+        "tests": (
+            "TWO_FIXED_SMOKE_CHECKS_PLUS_DEBUGGER_BEHAVIOR_CONTRACT"
+            if selected_debugger else "TWO_FIXED_BOUNDED_SMOKE_CHECKS"
+        ),
         "model_origin_attested": False,
         "production_modified": False,
     }
