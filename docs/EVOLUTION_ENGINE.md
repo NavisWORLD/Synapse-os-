@@ -59,6 +59,46 @@ The source commit and original file digest must match. If a user or another
 agent changes the repo, make a fresh observation and re-propose:
 **never silently rebase a model-generated change**.
 
+## Stage 1.5 — opt-in real local model adapter
+
+Stage 1.5 can send a single bounded, user-approved task to an existing Beast
+Box runtime using an explicitly chosen LOCAL Ollama or compatible model.
+Neither the Vercel website password nor a cloud provider is used here.
+The exact source path, clean base Git commit, original SHA-256, source bytes,
+and strict replacement proposal schema go into the bounded task packet.
+
+PREPARE ONLY, no model invocation:
+
+    PYTHONPATH=src python3 -m synapse.cli evolve prepare --repo . \
+      --path src/synapse/hardware.py --goal 'Suggest one measurable improvement.'
+
+OPTIONAL one-turn live local inference, using an owner-installed model:
+
+    PYTHONPATH=src python3 -m synapse.cli evolve local --repo . \
+      --path src/synapse/hardware.py \
+      --goal 'Suggest one measurable improvement.' \
+      --beast-executable /opt/synapse/beast-runtime/bin/beastbox \
+      --beast-data-dir /home/owner/.local/share/beastbox/beastos-web \
+      --provider ollama --model OWNER_INSTALLED_MODEL_NAME \
+      --url http://127.0.0.1:11434 \
+      --output /tmp/synapse-evolution-review \
+      --approve-code-in-memory
+
+The final flag is mandatory because Beast can retain selected source text and
+the completed exchange in the chosen continuity directory. Use a separate
+disposable owner-owned Beast data directory if the experiment should not join
+your ongoing memory. Inspect exactly what code is being sent.
+
+The adapter rejects remote URLs, reference/fixture providers, missing consent,
+ambiguous or invalid JSON, stale hashes, changed source and unauthorized edits.
+It supplies no remote approval, inherited cloud keys, shell, OS authority or
+automatic fallback. Model output is strictly a proposal. Its label is NOT
+independent model-origin attestation.
+
+The CI model tests use an explicitly injected stub reply; they do not claim
+that a real model ran. A genuine inference receipt and independent disposable
+VM evaluation remain separate milestones.
+
 ## Where autonomy begins — and where it stops
 
 The current Stage 1 API is a proposal handoff boundary. A later model
