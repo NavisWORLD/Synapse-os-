@@ -62,7 +62,7 @@ jobs:
             -drive "file=$ISO_FILE,format=raw,if=virtio,readonly=on" \
             -nic user,model=virtio-net-pci \
             -vga virtio -display gtk,gl=off -full-screen \
-            -serial "file:$EVIDENCE/guest-serial.log" -monitor none -no-reboot \
+            -serial "file:$EVIDENCE/guest-serial.log" -monitor "unix:/tmp/synapse-hmp.sock,server,nowait" -no-reboot \
             > "$EVIDENCE/qemu.log" 2>&1 &
           VM_PID=$!
           capture() {
@@ -71,59 +71,50 @@ jobs:
               -video_size 1280x720 -i :99.0 -frames:v 1 "$EVIDENCE/$name.png" \
               >> "$EVIDENCE/screenshots.log" 2>&1 || true
           }
-          # Software-rendered Plasma on TCG can take several minutes. The KDE
-          # first-run Welcome page is not the desktop: dismiss it explicitly
-          # before attempting to exercise launchers and native applications.
-          sleep 345
-          capture 00-first-run-before-skip
-          # Real guest is a 640x480 QEMU framebuffer at top left of 1280x720
-          # host capture. KDE Welcome Skip is at (44,439), not the host
-          # desktop's (44,485). Do not mistake the Welcome page for a working
-          # application demo.
-          DISPLAY=:99 xdotool mousemove 45 438 click 1 || true
+          # All input below is injected directly into the guest through
+          # QEMU HMP; host xdotool was only hovering the GTK viewport.
+          guest() {
+            python3 scripts/vm_guest_input.py /tmp/synapse-hmp.sock "$@" \
+              >> "$EVIDENCE/input-monitor.log" 2>&1
+          }
+          sleep 325
+          capture 00-kde-first-run
+          guest key alt-f4
+          sleep 12
+          capture 01-real-desktop
+          guest key alt-f2
           sleep 4
-          DISPLAY=:99 xdotool mousemove 625 14 click 1 || true
-          sleep 18
-          capture 01-desktop-after-welcome
-
-          # Launch Konsole through the visible Plasma application launcher.
-          DISPLAY=:99 xdotool mousemove 34 481 click 1 || true
-          sleep 5
-          DISPLAY=:99 xdotool type --clearmodifiers --delay 110 'konsole' || true
-          sleep 6
-          capture 02-terminal-search
-          DISPLAY=:99 xdotool key Return || true
-          sleep 24
-          capture 03-terminal-open
-
-          # With Konsole focused, run real commands, one at a time, without
-          # depending on KRunner's D-Bus availability under slow TCG emulation.
-          DISPLAY=:99 xdotool type --clearmodifiers --delay 90 'synapse status' || true
-          DISPLAY=:99 xdotool key Return || true
-          sleep 17
-          capture 04-synapse-status
-          DISPLAY=:99 xdotool type --clearmodifiers --delay 90 'synapse doctor' || true
-          DISPLAY=:99 xdotool key Return || true
-          sleep 17
-          capture 05-synapse-doctor
-
-          # Execute real apps through an already running shell; app snapshots
-          # are evidence of attempts until their visible windows are checked.
-          DISPLAY=:99 xdotool type --clearmodifiers --delay 95 'synapse-control >/tmp/synapse-control-demo.log 2>&1 &' || true
-          DISPLAY=:99 xdotool key Return || true
+          guest type konsole
+          sleep 4
+          capture 02-terminal-launch-request
+          guest key ret
           sleep 22
+          capture 03-terminal-open
+          guest type 'synapse status'
+          guest key ret
+          sleep 14
+          capture 04-synapse-status
+          guest type 'synapse doctor'
+          guest key ret
+          sleep 14
+          capture 05-synapse-doctor
+          guest key alt-f2
+          sleep 3
+          guest type synapse-control
+          guest key ret
+          sleep 18
           capture 06-synapse-control
-          DISPLAY=:99 xdotool key alt+Tab || true
-          sleep 2
-          DISPLAY=:99 xdotool type --clearmodifiers --delay 95 'dolphin >/tmp/synapse-dolphin-demo.log 2>&1 &' || true
-          DISPLAY=:99 xdotool key Return || true
+          guest key alt-f2
+          sleep 3
+          guest type dolphin
+          guest key ret
           sleep 18
           capture 07-file-manager
-          DISPLAY=:99 xdotool key alt+Tab || true
-          sleep 2
-          DISPLAY=:99 xdotool type --clearmodifiers --delay 95 'synapse-beastos-web >/tmp/synapse-beastos-demo.log 2>&1 &' || true
-          DISPLAY=:99 xdotool key Return || true
-          sleep 30
+          guest key alt-f2
+          sleep 3
+          guest type synapse-beastos-web
+          guest key ret
+          sleep 25
           capture 08-beastos
           kill "$VM_PID" 2>/dev/null || true
           wait "$VM_PID" 2>/dev/null || true
