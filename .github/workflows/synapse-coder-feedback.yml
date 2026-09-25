@@ -1,0 +1,78 @@
+name: Real coder correction after hash-verified failed model turn
+
+on:
+  push:
+    branches: [experiment/synapse-coder-feedback-loop-009]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  real-coder-correction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download exact prior failed Qwen reply and verdict (not a fixture)
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-real-qwen-coder-trace-evidence
+          path: ${{ runner.temp }}/prior-model-artifact
+          run-id: 36150437142
+          repository: NavisWORLD/Synapse-os-
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify genuine predecessor output and safe feedback script syntax
+        run: |
+          set -Eeuo pipefail
+          python3 -m py_compile scripts/real_model_trace_feedback.py
+          test -s "$RUNNER_TEMP/prior-model-artifact/RESULT.json"
+          test -s "$RUNNER_TEMP/prior-model-artifact/ACTUAL_MODEL_REPLY.txt"
+          printf 'prior_reply_sha256='
+          sha256sum "$RUNNER_TEMP/prior-model-artifact/ACTUAL_MODEL_REPLY.txt" | cut -d' ' -f1
+      - name: Install unbilled, local CPU model runtime
+        run: |
+          set -Eeuo pipefail
+          python3 -m pip install --disable-pip-version-check 'torch==2.6.0+cpu' \
+            --index-url https://download.pytorch.org/whl/cpu
+          python3 -m pip install --disable-pip-version-check \
+            'transformers==4.52.4' 'huggingface_hub==0.31.4' 'safetensors==0.5.3'
+      - name: ONE real local feedback correction and exact same validation gate
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+          HF_HUB_DISABLE_TELEMETRY: "1"
+          HF_HUB_DISABLE_IMPLICIT_TOKEN: "1"
+          HF_HOME: ${{ runner.temp }}/hf-feedback-only
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/real_model_trace_feedback.py --repo . \
+            --original-artifact "$RUNNER_TEMP/prior-model-artifact" \
+            --output "$RUNNER_TEMP/model-feedback-evidence"
+          python3 - <<'PY'
+          import json,os,pathlib
+          directory=pathlib.Path(os.environ["RUNNER_TEMP"])/"model-feedback-evidence"
+          result=json.loads((directory/"RESULT.json").read_text())
+          assert result["real_feedback_inference_completed"]
+          assert result["production_modified"] is False
+          print("FEEDBACK_MODEL_OUTCOME:",result["outcome"])
+          if result["candidate_staged"]:
+              assert (directory/"RECEIPT.json").is_file()
+              print("GATE_PASSED: independently reviewed model correction staged; no VM execution yet")
+          else:
+              print("GATE_REJECTED: no candidate and no invented source patch")
+          PY
+      - name: Archive byte-identical model dialogue and stage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-real-coder-feedback-evidence
+          path: ${{ runner.temp }}/model-feedback-evidence/
+          if-no-files-found: warn
+          retention-days: 14
