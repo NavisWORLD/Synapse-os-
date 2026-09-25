@@ -98,17 +98,23 @@ class Welcome(QWidget):
         self.notice.setObjectName("state")
         self.notice.setWordWrap(True)
 
-        for name, program, primary in (
-            ("OPEN BEAST BOX   /   AI COCKPIT", str(BEAST_LAUNCHER), True),
-            ("SYNAPSE CONTROL   /   SYSTEM", "/usr/local/bin/synapse-control", False),
-            ("FILES   /   DOLPHIN", "/usr/bin/dolphin", False),
-            ("TERMINAL   /   KONSOLE", "/usr/bin/konsole", False),
+        primary_button = None
+        for name, program, primary, shortcut in (
+            ("OPEN BEAST BOX   /   AI COCKPIT   [ALT+B]", str(BEAST_LAUNCHER), True, "Alt+B"),
+            ("SYNAPSE CONTROL   /   SYSTEM   [ALT+S]", "/usr/local/bin/synapse-control", False, "Alt+S"),
+            ("FILES   /   DOLPHIN   [ALT+F]", "/usr/bin/dolphin", False, "Alt+F"),
+            ("TERMINAL   /   KONSOLE   [ALT+T]", "/usr/bin/konsole", False, "Alt+T"),
         ):
             button = QPushButton(name)
+            button.setShortcut(shortcut)
             if primary:
                 button.setObjectName("primary")
+                button.setDefault(True)
+                primary_button = button
             button.clicked.connect(lambda _checked=False, binary=program: self.open_app(binary))
             panel_layout.addWidget(button)
+        if primary_button is not None:
+            primary_button.setFocus()
         panel_layout.addWidget(self.notice)
         outer.addWidget(panel)
 
