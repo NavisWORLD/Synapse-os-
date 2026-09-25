@@ -223,9 +223,9 @@ class Window(QMainWindow):
         self.evolution_report = QPlainTextEdit()
         self.evolution_report.setReadOnly(True)
         self.evolution_report.setPlainText(
-            "NO REVIEW LOADED\\n\\n"
+            "NO REVIEW LOADED\n\n"
             "Models may propose. Independent VMs may test. "
-            "Only the owner can authorize promotion.\\n\\n"
+            "Only the owner can authorize promotion.\n\n"
             "No automatic merge, update, credential transfer or tool authority."
         )
         self.evolution_report.setObjectName("console")
@@ -254,9 +254,9 @@ class Window(QMainWindow):
             data = json.loads(candidate.read_text(encoding="utf-8"))
             summary = review_display(data)
             self.evolution_report.setPlainText(
-                "LOCAL READ-ONLY REVIEW\\n"
-                "This display does NOT authenticate imported JSON.\\n\\n"
-                + summary + "\\n\\n"
+                "LOCAL READ-ONLY REVIEW\n"
+                "This display does NOT authenticate imported JSON.\n\n"
+                + summary + "\n\n"
                 "Promotion authority: OWNER ONLY. Live OS unchanged."
             )
         except (ValueError, OSError, UnicodeError, json.JSONDecodeError):
