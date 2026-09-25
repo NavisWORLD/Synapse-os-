@@ -266,3 +266,26 @@ def review_display(bundle: object) -> str:
     ]
     # This file is only a display: no path/command execution, no trust elevation.
     return "\n".join(f"{label}: {str(value)[:150]}" for label, value in fields)
+
+def main() -> int:
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Verify pinned model-assisted debugger source and real VM receipts for read-only owner review"
+    )
+    parser.add_argument("--artifact", required=True, type=Path)
+    parser.add_argument("--repo", required=True, type=Path)
+    parser.add_argument("--ci-run-json", required=True, type=Path)
+    parser.add_argument("--output", required=True, type=Path)
+    args = parser.parse_args()
+    result = write_review(args.artifact, args.repo, args.ci_run_json, args.output)
+    print(json.dumps({
+        "schema": result["schema"],
+        "review_status": result["review_status"],
+        "candidate_sha256": result["candidate_sha256"],
+        "production_modified": result["production_modified"],
+    }, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
