@@ -1,0 +1,149 @@
+name: Real SmolLM2-authored docstring in TWO disconnected Synapse VMs
+
+on:
+  push:
+    branches: [experiment/synapse-smol-receipt-vm-005]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  actual-model-authored-review-vms:
+    runs-on: ubuntu-latest
+    timeout-minutes: 43
+    env:
+      BASE_ISO_RUN: "36106735912"
+      MODEL_TRIAL_RUN: "36108448003"
+      ISO_SHA256: "0617ab8de7413196ccba8f87fe53ba8131b0bf0292405db90ea4a9299a5fa98a"
+      PINNED_ISO_SOURCE: "5e04386dac053065676ab26cc82dc889b5e40cb4"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Wait for independent verified Stage 2 ISO run to finish successfully
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          for _ in $(seq 1 45); do
+            STATUS="$(gh api repos/NavisWORLD/Synapse-os-/actions/runs/"$BASE_ISO_RUN" \
+              --jq '.conclusion // "IN_PROGRESS"')"
+            if [ "$STATUS" = success ]; then
+              echo 'PINNED_STAGE2_ISO_RUN_VERIFIED_SUCCESS'
+              break
+            fi
+            if [ "$STATUS" != IN_PROGRESS ]; then
+              echo "Pinned ISO run did not pass ($STATUS); refusing model experiment"
+              exit 1
+            fi
+            sleep 20
+          done
+          test "$(gh api repos/NavisWORLD/Synapse-os-/actions/runs/"$BASE_ISO_RUN" \
+            --jq '.conclusion // "IN_PROGRESS"')" = success
+
+      - name: Checkout EXACT original source commit used inside the pinned VM image
+        uses: actions/checkout@v4
+        with:
+          ref: 5e04386dac053065676ab26cc82dc889b5e40cb4
+          path: pinned-source
+          persist-credentials: false
+
+      - name: Download successful real local model artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-real-smollm2-cpu-evolution-evidence
+          path: ${{ runner.temp }}/model-artifact
+          repository: NavisWORLD/Synapse-os-
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 36108448003
+
+      - name: Download prior green full Synapse ISO without rebuilding or altering it
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-os-nebula-amd64
+          path: ${{ runner.temp }}/pinned-iso
+          repository: NavisWORLD/Synapse-os-
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: 36106735912
+
+      - name: Install strictly local VM evaluation dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 xorriso squashfs-tools
+
+      - name: Re-bind the genuine model reply to pinned ISO source and stage review-only patch
+        env:
+          PYTHONPATH: pinned-source/src
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -Eeuo pipefail
+          test "$(git -C pinned-source rev-parse HEAD)" = "$PINNED_ISO_SOURCE"
+          python3 scripts/real_smol_artifact_handoff.py \
+            --artifact "$RUNNER_TEMP/model-artifact" \
+            --repo pinned-source --output "$RUNNER_TEMP/model-handoff"
+          test -s "$RUNNER_TEMP/model-handoff/RECEIPT.json"
+          test -s "$RUNNER_TEMP/model-handoff/PATCH_REVIEW.diff"
+          python3 - <<'PY'
+          import json,os,pathlib
+          r=pathlib.Path(os.environ["RUNNER_TEMP"])/"model-handoff"/"ORIGIN_HANDOFF.json"
+          h=json.loads(r.read_text())
+          assert h["matching_source_bytes_verified"]
+          assert h["current_review_base_commit"]==os.environ["PINNED_ISO_SOURCE"]
+          assert h["production_modified"] is False
+          assert not h["model_authored_executable_code"]
+          print("MODEL_HANDOFF_ACCEPTED: actual model prose, original SHA, exact ISO source commit")
+          PY
+
+      - name: Run actual SmolLM2-derived candidate versus original in two offline Synapse VMs
+        env:
+          PYTHONPATH: pinned-source/src
+          PYTHONDONTWRITEBYTECODE: "1"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ISO="$(find "$RUNNER_TEMP/pinned-iso" -type f -name '*.iso' -print -quit)"
+          test -s "$ISO"
+          printf '%s  %s\n' "$ISO_SHA256" "$ISO" | sha256sum -c -
+          ROOT="$RUNNER_TEMP/real-smol-vm-evidence"
+          mkdir -p "$ROOT"
+          python3 pinned-source/scripts/evolution_vm_gate.py \
+            --repo pinned-source \
+            --receipt-dir "$RUNNER_TEMP/model-handoff" \
+            --iso "$ISO" --iso-sha256 "$ISO_SHA256" \
+            --output "$ROOT" --timeout 420
+          cp "$RUNNER_TEMP/model-handoff/ORIGIN_HANDOFF.json" "$ROOT/"
+          cp "$RUNNER_TEMP/model-handoff/RECEIPT.json" "$ROOT/"
+          cp "$RUNNER_TEMP/model-handoff/PATCH_REVIEW.diff" "$ROOT/"
+          cp "$RUNNER_TEMP/model-artifact/RESULT.json" "$ROOT/ORIGINAL_MODEL_RESULT.json"
+          cp "$RUNNER_TEMP/model-artifact/ACTUAL_MODEL_REPLY.txt" "$ROOT/ACTUAL_MODEL_REPLY.txt"
+          python3 - <<'PY'
+          import json,os,pathlib
+          base=pathlib.Path(os.environ["RUNNER_TEMP"])/"real-smol-vm-evidence"
+          vm=json.loads((base/"COMPARISON.json").read_text())
+          model=json.loads((base/"ORIGINAL_MODEL_RESULT.json").read_text())
+          assert model["candidate_staged"] and model["real_model_inference_completed"]
+          assert vm["base_commit"]==os.environ["PINNED_ISO_SOURCE"]
+          assert vm["iso_sha256"]==os.environ["ISO_SHA256"]
+          assert vm["candidate"]["candidate_files_applied"]
+          assert not vm["baseline"]["candidate_files_applied"]
+          assert all(vm[role]["checks"][check]["passed"]
+                     for role in ("baseline","candidate") for check in ("status","doctor"))
+          assert not vm["production_modified"] and vm["promotion"]=="OWNER_REVIEW_REQUIRED"
+          print("REAL_MODEL_PROSE_TWO_VM_PASS: actual model-authored docstring in fixed offline guest smoke trial")
+          PY
+
+      - name: Preserve actual model-origin and two-VM receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-real-smollm2-two-offline-vm-evidence
+          path: |
+            ${{ runner.temp }}/model-handoff/
+            ${{ runner.temp }}/real-smol-vm-evidence/
+          if-no-files-found: warn
+          retention-days: 14
