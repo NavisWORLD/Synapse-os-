@@ -24,6 +24,11 @@ class CosmicDesktopSourceTests(unittest.TestCase):
         self.assertNotIn("shell=True", source)
         self.assertNotIn("OPENAI_API_KEY", source)
         self.assertNotIn("HF_TOKEN", source)
+        self.assertIn('button.setShortcut(shortcut)', source)
+        self.assertIn('"Alt+B"', source)
+        self.assertIn('"Alt+S"', source)
+        self.assertIn('"Alt+F"', source)
+        self.assertIn('"Alt+T"', source)
 
     def test_first_run_is_user_owned_and_opt_in(self):
         source = WELCOME.read_text(encoding="utf-8")
