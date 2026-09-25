@@ -11,6 +11,8 @@ HOOK = ROOT / "build/hooks/010-synapse.hook.chroot"
 KDE_WELCOME = ROOT / "rootfs/etc/skel/.config/plasma-welcomerc"
 FAVORITES = ROOT / "rootfs/etc/xdg/kicker-extra-favoritesrc"
 WALLPAPER = ROOT / "rootfs/usr/share/wallpapers/SynapseOS/contents/images/3840x2160.svg"
+COLOR_SCHEME = ROOT / "rootfs/usr/share/color-schemes/SynapseNebula.colors"
+KDEGLOBALS = ROOT / "rootfs/etc/skel/.config/kdeglobals"
 
 
 class CosmicDesktopSourceTests(unittest.TestCase):
@@ -53,6 +55,10 @@ class CosmicDesktopSourceTests(unittest.TestCase):
         self.assertIn("synapse-control.desktop", favorites)
         self.assertIn("IgnoreDefaults=false", favorites)
         self.assertIn("ShouldShow=false", KDE_WELCOME.read_text(encoding="utf-8"))
+        colors = COLOR_SCHEME.read_text(encoding="utf-8")
+        self.assertIn("Name=Synapse Nebula", colors)
+        self.assertIn("DecorationFocus=98,220,255", colors)
+        self.assertIn("ColorScheme=SynapseNebula", KDEGLOBALS.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
