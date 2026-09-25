@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 
 from BEASTOS_WEB_MACHINE.bridge.kit import materialize_kit  # noqa: E402
 
-DEFAULT_MANIFEST = ROOT / "BEASTOS_WEB_MACHINE/manifests/beast-v0.6.0.json"
+DEFAULT_MANIFEST = ROOT / "BEASTOS_WEB_MACHINE/manifests/beast-v0.7.0.json"
 
 
 def main(argv: list[str] | None = None) -> int:
