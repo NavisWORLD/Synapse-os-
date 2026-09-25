@@ -193,6 +193,24 @@ if [[ -z "$built" ]]; then
   exit 3
 fi
 
+# live-build 1:20250505+deb13u1 still generates the authoritative GRUB menu
+# during binary_grub_cfg. Keep all of its rendered kernel/initrd/checksum/
+# loopback semantics, then replace only the stock human-facing menu labels.
+# This post-render step is verified from the final remastered ISO below.
+GRUB_STAGE="$WORK/.synapse-grub"
+GRUB_SOURCE="$GRUB_STAGE/live-build.grub.cfg"
+GRUB_BRANDED="$GRUB_STAGE/grub.cfg"
+rm -rf "$GRUB_STAGE"
+mkdir -p "$GRUB_STAGE"
+xorriso -osirrox on -indev "$built" -extract /boot/grub/grub.cfg "$GRUB_SOURCE"
+python3 "$REPO_ROOT/scripts/brand_live_grub.py" \
+  --input "$GRUB_SOURCE" \
+  --output "$GRUB_BRANDED"
+grep -q 'SYNAPSE OS // NEBULA // LIVE' "$GRUB_BRANDED"
+grep -q 'SYNAPSE OS // GENESIS // GATED INSTALLER' "$GRUB_BRANDED"
+grep -q 'synapse.genesis=1' "$GRUB_BRANDED"
+! grep -q 'Debian GNU/Linux' "$GRUB_BRANDED"
+
 # The live rootfs is the immutable GENESIS installation payload. Generate its
 # manifest after live-build finishes, then add that manifest to the ISO outside
 # filesystem.squashfs so the installer can verify the exact payload before arm.
@@ -220,9 +238,24 @@ xorriso \
   -outdev "$REMUSTERED_ISO" \
   -boot_image any replay \
   -map "$GENESIS_MANIFEST" /synapse-genesis/manifest.json \
+  -map "$GRUB_BRANDED" /boot/grub/grub.cfg \
+  -map "$REPO_ROOT/build/config/bootloaders/grub-pc/theme.cfg" /boot/grub/theme.cfg \
+  -map "$REPO_ROOT/build/config/bootloaders/grub-pc/live-theme/theme.txt" /boot/grub/live-theme/theme.txt \
   -commit
 
 cp "$REMUSTERED_ISO" "$ISO"
+
+# Verify the actual boot menu from the final remastered ISO. This is the same
+# filesystem GRUB loads after the EFI shim/core image finds the live medium.
+GRUB_VERIFY="$GRUB_STAGE/final.grub.cfg"
+GRUB_THEME_VERIFY="$GRUB_STAGE/final.theme.txt"
+xorriso -osirrox on -indev "$ISO" -extract /boot/grub/grub.cfg "$GRUB_VERIFY"
+xorriso -osirrox on -indev "$ISO" -extract /boot/grub/live-theme/theme.txt "$GRUB_THEME_VERIFY"
+grep -q 'SYNAPSE OS // NEBULA // LIVE' "$GRUB_VERIFY"
+grep -q 'SYNAPSE OS // GENESIS // GATED INSTALLER' "$GRUB_VERIFY"
+grep -q 'synapse.genesis=1' "$GRUB_VERIFY"
+grep -q 'COSMOS // BEAST BOX // CST' "$GRUB_THEME_VERIFY"
+! grep -q 'Debian GNU/Linux' "$GRUB_VERIFY"
 
 # Verify the manifest and rootfs from the final remastered ISO, not the staging
 # copies, so a broken remaster cannot produce a successful build artifact. The
