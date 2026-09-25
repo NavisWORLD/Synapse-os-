@@ -74,6 +74,16 @@ jobs:
             -extract /live/filesystem.squashfs /tmp/synapse-release-image/filesystem.squashfs
           xorriso -osirrox on -indev "$ISO" \
             -extract /synapse-genesis/manifest.json /tmp/synapse-release-image/genesis-manifest.json
+          mkdir -p /tmp/synapse-release-boot/live-theme
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/grub.cfg /tmp/synapse-release-boot/grub.cfg
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/theme.cfg /tmp/synapse-release-boot/theme.cfg
+          xorriso -osirrox on -indev "$ISO" -extract /boot/grub/live-theme/theme.txt /tmp/synapse-release-boot/live-theme/theme.txt
+          grep -q 'SYNAPSE OS // NEBULA // LIVE' /tmp/synapse-release-boot/grub.cfg
+          grep -q 'SYNAPSE OS // GENESIS // GATED INSTALLER' /tmp/synapse-release-boot/grub.cfg
+          grep -q 'COSMOS // BEAST BOX // CST' /tmp/synapse-release-boot/live-theme/theme.txt
+          grep -q 'synapse.genesis=1' /tmp/synapse-release-boot/grub.cfg
+          ! grep -q 'KERNEL_LIVE\|INITRD_LIVE\|APPEND_LIVE' /tmp/synapse-release-boot/grub.cfg
+          ! grep -q 'Debian GNU/Linux' /tmp/synapse-release-boot/grub.cfg
 
           unsquashfs -f -d /tmp/synapse-release-root /tmp/synapse-release-image/filesystem.squashfs \
             etc/os-release \
@@ -103,6 +113,7 @@ jobs:
             etc/skel/.config/plasma-welcomerc \
             usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html \
             usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js \
+            usr/share/synapse/beast-kit/beast-v0.7.0.json \
             usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json \
             usr/share/doc/synapse-os/LICENSE \
             usr/share/doc/synapse-os/NOTICE \
@@ -125,6 +136,8 @@ jobs:
           test -s /tmp/synapse-release-root/usr/share/synapse/BEASTOS_WEB_MACHINE/public/index.html
           grep -q '/v1/beast/chat' /tmp/synapse-release-root/usr/share/synapse/BEASTOS_WEB_MACHINE/src/beast/conversation.js
           test -s /tmp/synapse-release-root/usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json
+          grep -q 'v0.7.0' /tmp/synapse-release-root/usr/share/synapse/beast-kit/beast-v0.7.0.json
+          grep -q '9e436d7af016c4d25b0b1ba6902357e01986a48a34f3315b0003c116d6c68bbb' /tmp/synapse-release-root/usr/share/synapse/beast-kit/BEAST_KIT_RECEIPT.json
           test -s /tmp/synapse-release-root/usr/local/bin/synapse-genesis-writer
           test -s /tmp/synapse-release-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
           test -s /tmp/synapse-release-root/usr/share/synapse/GENESIS.html
