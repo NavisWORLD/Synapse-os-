@@ -5,6 +5,7 @@ chmod 0755 /usr/local/bin/synapse
 chmod 0755 /usr/local/bin/synapse-control
 chmod 0755 /usr/local/bin/synapse-welcome
 chmod 0755 /usr/local/lib/synapse/live-x11-session.py
+chmod 0755 /usr/local/lib/synapse/live-desktop-polish
 chmod 0755 /usr/local/lib/synapse/vm-smoke
 
 # /run is volatile. The tmpfiles rule recreates /run/synapse on every boot.
