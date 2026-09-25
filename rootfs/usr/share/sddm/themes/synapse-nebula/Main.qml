@@ -87,7 +87,7 @@ Rectangle {
                 }
             }
             Text { text: "SYNAPSE OS"; color: "#f6fbff"; font.pixelSize: 54; font.bold: true; letterSpacing: 6 }
-            Text { text: "NEBULA // CST"; color: "#7fdfff"; font.pixelSize: 22; letterSpacing: 4 }
+            Text { text: "COSMOS // BEAST BOX // CST"; color: "#7fdfff"; font.pixelSize: 22; letterSpacing: 4 }
             Text { text: "Welcome home."; color: "#b7c9e7"; font.pixelSize: 20 }
         }
 
