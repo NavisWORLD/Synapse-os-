@@ -1,0 +1,33 @@
+name: Synapse Evolution isolated source gates
+
+on:
+  push:
+    branches: [feature/synapse-evolution-isolated-001]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stage1-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify Stage 1 source syntax
+        run: |
+          python3 -m compileall -q src/synapse/evolution.py src/synapse/cli.py tests/test_evolution.py
+      - name: Prove static-only staging and repository protection
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python3 -m unittest discover -s tests -p test_evolution.py -v
+      - name: Inspect actual control CLI
+        env:
+          PYTHONPATH: src:.
+        run: |
+          python3 -m synapse.cli evolve --help
+          python3 -m synapse.cli evolve observe --repo .
