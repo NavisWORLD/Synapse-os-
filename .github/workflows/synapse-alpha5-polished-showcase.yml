@@ -152,49 +152,55 @@ jobs:
           key Return
           sleep 35
           capture 07-beast-box-cockpit
+          focus_vm
+          DISPLAY=:99 xdotool key --clearmodifiers ctrl+l || true
+          type_guest 'http://127.0.0.1:8790/#conversation'
+          key Return
+          sleep 18
+          capture 08-beast-continuity
 
           # Launch native apps through KDE KRunner so browser focus cannot steal
           # Synapse Welcome shortcuts.
           krun 'synapse-control'
           sleep 28
-          capture 08-synapse-control-overview
+          capture 09-synapse-control-overview
           key ctrl+Tab
           key ctrl+Tab
           sleep 5
-          capture 09-synapse-control-beast-cosmos
+          capture 10-synapse-control-beast-cosmos
 
           krun 'dolphin'
           sleep 22
-          capture 10-files
+          capture 11-files
 
           krun 'konsole'
           sleep 24
-          capture 11-terminal
+          capture 12-terminal
           type_guest 'synapse status'
           key Return
           sleep 18
-          capture 12-synapse-status
+          capture 13-synapse-status
           type_guest 'synapse doctor'
           key Return
           sleep 20
-          capture 13-synapse-doctor
+          capture 14-synapse-doctor
           type_guest '/opt/synapse/beast-runtime/bin/beastbox --help | head -n 24'
           key Return
           sleep 18
-          capture 14-beast-runtime
+          capture 15-beast-runtime
           type_guest 'printf "\\n--- SYNAPSE IDENTITY ---\\n"; cat /etc/os-release | head -n 8'
           key Return
           sleep 16
-          capture 15-os-identity
+          capture 16-os-identity
 
           krun 'systemsettings'
           sleep 28
-          capture 16-system-settings
+          capture 17-system-settings
 
           # Finish on the real cosmic desktop.
           key meta+d
           sleep 12
-          capture 17-final-cosmic-desktop
+          capture 18-final-cosmic-desktop
 
           kill "$VM_PID" 2>/dev/null || true
           wait "$VM_PID" 2>/dev/null || true
