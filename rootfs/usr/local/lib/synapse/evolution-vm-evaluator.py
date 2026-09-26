@@ -182,55 +182,62 @@ import sys
 from unittest.mock import patch
 from synapse.debugger import Debugger
 
-mode = sys.argv[1]
-assert mode in ("baseline", "candidate")
+role = sys.argv[1]
+assert role in ("baseline", "candidate")
 
 class StubVM:
     def __init__(self, module, *, capabilities, trace):
         self.trace = trace
-
     def run(self):
-        original = {"line": 7, "payload": "immutable-input"}
-        self.trace(original)
-        assert "breakpoint" not in original
+        incoming = {"line": 7, "payload": "untouched-input"}
+        self.trace(incoming)
+        assert "breakpoint" not in incoming
         return {"ok": True}
 
 with patch("synapse.debugger.VM", StubVM):
     dbg = Debugger(module=None, breakpoints={7})
-    original_events = dbg.events
+    owned = dbg.events
     first = dbg.run()
-    pass_first = (
-        len(dbg.events) == 1 and first["events"] is original_events
-        and dbg.events[0]["breakpoint"] is True
-    )
     second = dbg.run()
-    pass_default = (
-        pass_first and len(dbg.events) == 2
-        and second["events"] is original_events
-        and all(item["breakpoint"] is True for item in dbg.events)
+    default = (
+        first["events"] is owned and second["events"] is owned
+        and dbg.events is owned and len(owned) == 2
+        and all(e["breakpoint"] is True and e["line"] == 7 for e in owned)
     )
-    if mode == "candidate":
-        sig = inspect.signature(Debugger.run)
-        pass_optional = (
-            "reset_events" in sig.parameters
-            and sig.parameters["reset_events"].default is False
-        )
-        third = dbg.run(reset_events=True)
-        pass_optional = (
-            pass_optional and third["events"] is original_events
-            and dbg.events is original_events and len(dbg.events) == 1
-            and dbg.events[0]["breakpoint"] is True
-        )
+    params = inspect.signature(Debugger.run).parameters
+    if "reset_events" not in params or params["reset_events"].default is not False:
+        raise SystemExit(2)
+    third = dbg.run(reset_events=True)
+    default = (
+        default and third["events"] is owned and dbg.events is owned
+        and len(owned) == 1 and owned[0]["line"] == 7
+    )
+    if role == "baseline":
+        role_specific = not hasattr(dbg, "snapshot_events")
     else:
-        pass_optional = (
-            "reset_events" not in inspect.signature(Debugger.run).parameters
+        if not hasattr(dbg, "snapshot_events"):
+            raise SystemExit(2)
+        snapshot = dbg.snapshot_events()
+        role_specific = (
+            type(snapshot) is list and snapshot is not owned
+            and len(snapshot) == len(owned) == 1
+            and all(type(a) is dict and a == b and a is not b
+                    for a, b in zip(snapshot, owned))
         )
-    passed = pass_default and pass_optional
-    print(json.dumps({
-        "passed": passed, "default_behavior_preserved": pass_default,
-        "role_specific_expectation_met": pass_optional
-    }, sort_keys=True))
-    if not passed:
+        if role_specific:
+            snapshot[0]["line"] = 99
+            snapshot.append({"line": 100})
+            role_specific = (
+                owned[0]["line"] == 7 and len(owned) == 1
+                and dbg.events is owned
+            )
+    result = {
+        "passed": bool(default and role_specific),
+        "default_behavior_preserved": bool(default),
+        "role_specific_expectation_met": bool(role_specific),
+    }
+    print(json.dumps(result, sort_keys=True))
+    if not result["passed"]:
         raise SystemExit(2)
 """
 
@@ -275,7 +282,7 @@ def debugger_contract(work: Path, mode: str) -> dict:
         "default_behavior_preserved": True,
         "role_specific_expectation_met": True,
         "duration_ms": int((time.monotonic() - started) * 1000),
-        "test_input": "TWO_DEFAULT_RUNS_AND_ROLE_GATED_RESET",
+        "test_input": "REVIEWED_RESET_BASELINE_AND_ROLE_GATED_ISOLATED_SNAPSHOT",
     }
 
 
@@ -308,7 +315,7 @@ def main() -> None:
         "network_policy": "HOST_QEMU_NIC_DISABLED",
         "checks": results,
         "tests": (
-            "TWO_FIXED_SMOKE_CHECKS_PLUS_DEBUGGER_BEHAVIOR_CONTRACT"
+            "TWO_FIXED_SMOKE_CHECKS_PLUS_DEBUGGER_SNAPSHOT_CONTRACT"
             if selected_debugger else "TWO_FIXED_BOUNDED_SMOKE_CHECKS"
         ),
         "model_origin_attested": False,
