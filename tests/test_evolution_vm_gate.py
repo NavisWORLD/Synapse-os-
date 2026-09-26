@@ -78,16 +78,20 @@ class VMGateTests(unittest.TestCase):
             gate.validate(self.repo, self.receipt_dir)
 
     def test_protected_evolution_engine_path_rejected(self):
-        (self.receipt_dir / "RECEIPT.json").write_text(json.dumps({
-            **json.loads((self.receipt_dir / "RECEIPT.json").read_text()),
-            "changes": [{
-                "path": "src/synapse/evolution.py",
-                "before_sha256": gate.sha(self.original.encode()),
-                "after_sha256": gate.sha(self.candidate.encode()),
-            }],
-        }))
-        with self.assertRaisesRegex(ValueError, "protected"):
-            gate.validate(self.repo, self.receipt_dir)
+        original_receipt = json.loads((self.receipt_dir / "RECEIPT.json").read_text())
+        for path in ("src/synapse/evolution.py", "src/synapse/evolution_bundle.py"):
+            with self.subTest(path=path):
+                forged = {
+                    **original_receipt,
+                    "changes": [{
+                        "path": path,
+                        "before_sha256": gate.sha(self.original.encode()),
+                        "after_sha256": gate.sha(self.candidate.encode()),
+                    }],
+                }
+                (self.receipt_dir / "RECEIPT.json").write_text(json.dumps(forged))
+                with self.assertRaisesRegex(ValueError, "protected"):
+                    gate.validate(self.repo, self.receipt_dir)
 
     def test_vm_argv_disables_network_host_mappings_and_remote_control(self):
         cmd = gate.qemu_args(
