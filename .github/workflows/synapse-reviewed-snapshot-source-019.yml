@@ -46,5 +46,7 @@ jobs:
           set -Eeuo pipefail
           python3 -m unittest discover -s tests -p test_debugger_reviewed_snapshot.py -v
           python3 -m unittest discover -s tests -p test_debugger_model_assisted_reset.py -v
+          python3 -m unittest discover -s tests -p test_real_model_snapshot_trial.py -v
+          python3 -m unittest discover -s tests -p test_snapshot_independent_vm_contract.py -v
           python3 -m unittest discover -s tests -p test_evolution.py -v
           git diff --exit-code
