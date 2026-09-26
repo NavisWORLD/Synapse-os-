@@ -24,7 +24,7 @@ MOUNT = SCRATCH / "payload"
 PROTOCOL = "synapse.evolution.vm.payload.v1"
 MARKER = "SYNAPSE_EVO_RESULT:"
 ALLOWED = re.compile(r"src/synapse/[A-Za-z][A-Za-z0-9_]{0,65}\.py\Z")
-PROTECTED = {"evolution.py", "evolution_model.py", "evolution_review.py", "cli.py", "agent.py", "__init__.py"}
+PROTECTED = {"evolution.py", "evolution_model.py", "evolution_review.py", "evolution_bundle.py", "cli.py", "agent.py", "__init__.py"}
 SHA = re.compile(r"[a-f0-9]{64}\Z")
 
 

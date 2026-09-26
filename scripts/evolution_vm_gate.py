@@ -24,7 +24,7 @@ RESULT = "SYNAPSE_EVO_RESULT:"
 GUEST_SCRIPT = Path("rootfs/usr/local/lib/synapse/evolution-vm-evaluator.py")
 RECEIPT_SCHEMA = "synapse.evolution.receipt.v1"
 ALLOWED = re.compile(r"src/synapse/[A-Za-z][A-Za-z0-9_]{0,65}\.py\Z")
-PROTECTED = {"evolution.py", "evolution_model.py", "evolution_review.py", "cli.py", "agent.py", "__init__.py"}
+PROTECTED = {"evolution.py", "evolution_model.py", "evolution_review.py", "evolution_bundle.py", "cli.py", "agent.py", "__init__.py"}
 
 
 def sha(raw: bytes) -> str:

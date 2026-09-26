@@ -1,0 +1,119 @@
+name: Synapse pinned historical evidence and native import
+
+on:
+  push:
+    branches: [feature/synapse-evolution-pinned-import-014]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  pinned-evidence-native-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install real headless Qt requirements
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libopengl0 libgl1 libxkbcommon0
+          python3 -m pip install --disable-pip-version-check PyQt6==6.8.1 psutil==6.1.1
+      - name: Download exact independently verified historical review artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-evolution-owner-review-bundle
+          path: ${{ runner.temp }}/review-original
+          repository: NavisWORLD/Synapse-os-
+          run-id: 36189003354
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Package exact member bytes (transport re-ZIP allowed)
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, zipfile
+          folder=pathlib.Path(os.environ["RUNNER_TEMP"])/"review-original"
+          expected={
+            "ACTUAL_MODEL_CORRECTION.txt","COMPARISON.json","ORIGINAL_DEBUGGER_BASELINE.py.txt",
+            "ORIGIN_HANDOFF.json","REVIEW_BUNDLE.json","ROLLBACK_PREVIEW.diff",
+            "SHA256SUMS","STAGED_PATCH_RECEIPT.json","VERIFIED_CANDIDATE_CI.json"
+          }
+          assert {p.name for p in folder.iterdir()}==expected
+          dest=pathlib.Path(os.environ["RUNNER_TEMP"])/"pinned-review.zip"
+          with zipfile.ZipFile(dest,"w",zipfile.ZIP_DEFLATED) as archive:
+              for name in sorted(expected): archive.write(folder/name,name)
+          print("EXACT_HISTORICAL_ARCHIVE_MEMBER_BYTES_REPACKED")
+          PY
+      - name: Test real exact archive plus forgery, symlink and local-source rejection
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+          SYNAPSE_PINNED_REVIEW_ZIP: ${{ runner.temp }}/pinned-review.zip
+        run: |
+          set -Eeuo pipefail
+          python3 -m py_compile src/synapse/evolution_bundle.py rootfs/usr/local/bin/synapse-control
+          python3 -m unittest discover -s tests -p test_evolution_bundle.py -v
+          python3 -m unittest discover -s tests -p test_evolution_review.py -v
+          python3 -m unittest discover -s tests -p test_evolution.py -v
+          python3 -m unittest discover -s tests -p test_evolution_vm_gate.py -v
+      - name: Actually launch native Review Bay and verify pinned archive offline
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$RUNNER_TEMP/pinned-ui-evidence"
+          python3 - <<'PY'
+          import importlib.machinery, importlib.util, json, os
+          from pathlib import Path
+          from unittest import mock
+          from PyQt6.QtWidgets import QApplication, QFileDialog
+          src=Path("rootfs/usr/local/bin/synapse-control")
+          loader=importlib.machinery.SourceFileLoader("native_synapse_control",str(src))
+          spec=importlib.util.spec_from_loader(loader.name,loader)
+          native=importlib.util.module_from_spec(spec)
+          loader.exec_module(native)
+          app=QApplication([])
+          window=native.Window("evolution")
+          window.show()
+          app.processEvents()
+          assert window.tabs.tabText(window.tabs.currentIndex())=="Evolution"
+          archive=str(Path(os.environ["RUNNER_TEMP"])/"pinned-review.zip")
+          with mock.patch.object(QFileDialog,"getOpenFileName",return_value=(archive,"zip")):
+              window.load_pinned_evolution_zip()
+          app.processEvents()
+          shown=window.evolution_report.toPlainText()
+          assert "PINNED EVIDENCE VERIFIED (OFFLINE)" in shown
+          assert "OWNER APPROVAL STILL REQUIRED" in shown
+          assert "NOT a GitHub digital signature" in shown
+          dest=Path(os.environ["RUNNER_TEMP"])/"pinned-ui-evidence"
+          img=dest/"SYNAPSE_PINNED_EVIDENCE_NATIVE_QT.png"
+          assert window.grab().save(str(img),"PNG")
+          assert img.stat().st_size>10000
+          (dest/"UI_VERDICT.json").write_text(json.dumps({
+              "schema":"synapse.evolution.native_pinned_ui.v1",
+              "real_historical_member_bytes_pinned":True,
+              "exact_installed_source_match":True,
+              "native_qt_rendered":True,
+              "no_model_turn":True,
+              "no_production_mutation":True,
+              "github_cryptographic_signature_attested":False,
+              "environment":"OFFSCREEN_QT_RUNNER_NOT_VM_BOOT"
+          },indent=2)+"\n")
+          print("PINNED_NATIVE_UI_SUCCESS: actual archive validated offline, UI shows separate trust state")
+          window.close()
+          app.quit()
+          PY
+      - name: Preserve screenshot and independent UI verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-evolution-pinned-native-ui-evidence
+          path: ${{ runner.temp }}/pinned-ui-evidence/
+          if-no-files-found: error
+          retention-days: 14
