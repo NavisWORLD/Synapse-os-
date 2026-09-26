@@ -23,3 +23,7 @@ class Debugger:
             self.events.clear()
         result = VM(self.module, capabilities=self.capabilities, trace=self._trace).run()
         return {"result": result, "events": self.events}
+
+    def snapshot_events(self) -> list[dict[str, Any]]:
+        """Return independent shallow copies of trace events."""
+        return [event.copy() for event in self.events]
