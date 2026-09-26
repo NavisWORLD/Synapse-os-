@@ -101,7 +101,7 @@ def _allowed_path(raw: object) -> PurePosixPath:
             or any(p.startswith(".") for p in path.parts)):
         raise ValueError("unsafe or non-canonical change path")
     if (raw.startswith("src/synapse/") and path.suffix == ".py"
-            and len(path.parts) == 3 and path.name not in {"evolution.py", "evolution_model.py", "evolution_review.py", "cli.py", "agent.py", "__init__.py"}):
+            and len(path.parts) == 3 and path.name not in {"evolution.py", "evolution_model.py", "evolution_review.py", "evolution_bundle.py", "cli.py", "agent.py", "__init__.py"}):
         return path
     if raw.startswith("docs/") and path.suffix == ".md" and len(path.parts) == 2:
         return path
