@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: synapse-vm-${{ github.event.pull_request.number || github.ref }}
@@ -487,6 +488,78 @@ jobs:
           path: ${{ runner.temp }}/real-corrected-model-vm/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Download IMMUTABLE genuine Qwen snapshot model artifact
+        if: github.head_ref == 'experiment/synapse-snapshot-offline-vm-016'
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-real-snapshot-model-attempt-evidence
+          path: ${{ runner.temp }}/snapshot-original-model
+          repository: NavisWORLD/Synapse-os-
+          run-id: 36213993540
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prove ACTUAL model-created snapshot in two disconnected Synapse VMs
+        if: github.head_ref == 'experiment/synapse-snapshot-offline-vm-016'
+        shell: bash
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p test_snapshot_independent_vm_contract.py -v
+          python3 -m unittest discover -s tests -p test_real_model_snapshot_trial.py -v
+          python3 scripts/snapshot_exact_artifact_handoff.py \
+            --artifact "$RUNNER_TEMP/snapshot-original-model" --repo . \
+            --output "$RUNNER_TEMP/snapshot-real-rebound"
+          ISO="$(find out -maxdepth 1 -name 'SynapseOS-*-amd64.iso' -print -quit)"
+          test -s "$ISO"
+          test -s /tmp/synapse-image/filesystem.squashfs
+          ISO_SHA="$(sha256sum "$ISO" | awk '{print $1}')"
+          EVIDENCE="$RUNNER_TEMP/synapse-real-snapshot-vm"
+          mkdir -p "$EVIDENCE"
+          STAGED="$(python3 -c 'import pathlib,json,sys;print(pathlib.Path(json.load(open(sys.argv[1]))["workspace"]).parent)' "$RUNNER_TEMP/snapshot-real-rebound/RECEIPT.json")"
+          python3 scripts/evolution_vm_gate.py --repo . --receipt-dir "$STAGED" \
+            --iso "$ISO" --iso-sha256 "$ISO_SHA" --output "$EVIDENCE" \
+            --previously-verified-squashfs /tmp/synapse-image/filesystem.squashfs \
+            --timeout 480
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])
+          comparison=json.loads((root/"synapse-real-snapshot-vm"/"COMPARISON.json").read_text())
+          origin=json.loads((root/"snapshot-real-rebound"/"ORIGIN_HANDOFF.json").read_text())
+          assert origin["first_turn_rejection_reproduced"] is True
+          assert origin["only_model_authored_statement"]=="return [event.copy() for event in self.events]"
+          assert comparison["networking"]=="DISABLED_BY_QEMU_-nic_none"
+          assert comparison["candidate_executed_on_host"] is False
+          assert comparison["receipt_patch_sha256"]==origin["rebound_stage_patch_sha256"]
+          for role in ("baseline","candidate"):
+              receipt=comparison[role]
+              assert receipt["network_policy"]=="HOST_QEMU_NIC_DISABLED"
+              for name in ("status","doctor","debugger_contract"):
+                  assert receipt["checks"][name]["passed"] is True
+              assert receipt["checks"]["debugger_contract"]["default_behavior_preserved"] is True
+              assert receipt["checks"]["debugger_contract"]["role_specific_expectation_met"] is True
+          assert comparison["baseline"]["candidate_files_applied"] is False
+          assert comparison["candidate"]["candidate_files_applied"] is True
+          assert comparison["promotion"]=="OWNER_REVIEW_REQUIRED"
+          print("GENUINE_MODEL_SNAPSHOT_VM_PASS: pinned two-turn Qwen code survives independent baseline and candidate offline boots; production unchanged")
+          PY
+          cp "$RUNNER_TEMP/snapshot-real-rebound/ORIGIN_HANDOFF.json" "$EVIDENCE/"
+          cp "$RUNNER_TEMP/snapshot-real-rebound/RECEIPT.json" "$EVIDENCE/STAGED_PATCH_RECEIPT.json"
+          cp "$RUNNER_TEMP/snapshot-real-rebound/PATCH_REVIEW.diff" "$EVIDENCE/"
+          cp "$RUNNER_TEMP/snapshot-original-model/ACTUAL_MODEL_TURN_1.txt" "$EVIDENCE/"
+          cp "$RUNNER_TEMP/snapshot-original-model/ACTUAL_MODEL_TURN_2.txt" "$EVIDENCE/"
+
+      - name: Preserve genuine model and separate disconnected VM evidence
+        if: always() && github.head_ref == 'experiment/synapse-snapshot-offline-vm-016'
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-real-model-snapshot-two-vm-evidence
+          path: ${{ runner.temp }}/synapse-real-snapshot-vm/
+          if-no-files-found: warn
+          retention-days: 21
 
       - name: Install to disposable NBD disk and boot installed Synapse
         shell: bash
