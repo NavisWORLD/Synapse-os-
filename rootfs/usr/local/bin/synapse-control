@@ -13,6 +13,8 @@ import json
 if Path("/usr/lib/synapse/python/synapse/evolution_review.py").is_file():
     sys.path.insert(0, "/usr/lib/synapse/python")
 from synapse.evolution_review import review_display
+from synapse.evolution_bundle import verify_pinned_archive
+import synapse.debugger as installed_debugger
 
 import psutil
 from PyQt6.QtCore import QTimer, Qt
@@ -217,7 +219,11 @@ class Window(QMainWindow):
         intro.setObjectName("muted")
         intro.setWordWrap(True)
         layout.addWidget(intro)
-        open_review = QPushButton("Inspect local review receipt (JSON)")
+        verify_archive = QPushButton("Verify pinned historical evidence (ZIP)")
+        verify_archive.setObjectName("primary")
+        verify_archive.clicked.connect(self.load_pinned_evolution_zip)
+        layout.addWidget(verify_archive)
+        open_review = QPushButton("Inspect unverified local receipt (JSON)")
         open_review.clicked.connect(self.load_evolution_review)
         layout.addWidget(open_review)
         self.evolution_report = QPlainTextEdit()
@@ -237,6 +243,37 @@ class Window(QMainWindow):
         status.setWordWrap(True)
         layout.addWidget(status)
         return widget
+
+    def load_pinned_evolution_zip(self) -> None:
+        """Verify exact historical artifact and this installed source; never run code."""
+        file, _ = QFileDialog.getOpenFileName(
+            self, "Verify historically pinned Evolution evidence", str(Path.home()),
+            "Evolution evidence archive (*.zip)"
+        )
+        if not file:
+            return
+        try:
+            verified = verify_pinned_archive(
+                Path(file), Path(installed_debugger.__file__)
+            )
+            self.evolution_report.setPlainText(
+                "PINNED EVIDENCE VERIFIED (OFFLINE)\n"
+                "Known historical artifact contents match pinned SHA-256 hashes.\n"
+                "Installed debugger bytes match the exact reviewed candidate.\n"
+                "NOT a GitHub digital signature or new live CI run.\n\n"
+                "Model contribution: " + verified["model_authored_scope"] + "\n"
+                "Model: " + verified["model_id"] + "\n"
+                "Historical evidence run: " + str(verified["historical_artifact_run"]) + "\n"
+                "Two-VM run: " + str(verified["vm_runs"]) + "\n"
+                "Previously verified source CI run: " + str(verified["full_candidate_ci_run"]) + "\n\n"
+                "OWNER APPROVAL STILL REQUIRED. Production unchanged."
+            )
+        except (ValueError, OSError, UnicodeError, RuntimeError):
+            self.evolution_report.setPlainText(
+                "PINNED EVIDENCE REJECTED. Archive or local source did not "
+                "match exact independent historical pins.\n"
+                "No code executed, no update attempted and no authority granted."
+            )
 
     def load_evolution_review(self) -> None:
         file, _ = QFileDialog.getOpenFileName(
