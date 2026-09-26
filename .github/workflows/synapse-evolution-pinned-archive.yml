@@ -59,6 +59,8 @@ jobs:
           python3 -m py_compile src/synapse/evolution_bundle.py rootfs/usr/local/bin/synapse-control
           python3 -m unittest discover -s tests -p test_evolution_bundle.py -v
           python3 -m unittest discover -s tests -p test_evolution_review.py -v
+          python3 -m unittest discover -s tests -p test_evolution.py -v
+          python3 -m unittest discover -s tests -p test_evolution_vm_gate.py -v
       - name: Actually launch native Review Bay and verify pinned archive offline
         env:
           QT_QPA_PLATFORM: offscreen
