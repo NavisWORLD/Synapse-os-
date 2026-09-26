@@ -1,0 +1,68 @@
+name: Real bounded model snapshot self-improvement experiment
+
+on:
+  push:
+    branches: [experiment/synapse-snapshot-self-improve-015]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-model-two-turn-max:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run independent static parser and historical source security tests
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python3 -m py_compile scripts/real_model_snapshot_trial.py
+          python3 -m unittest discover -s tests -p test_real_model_snapshot_trial.py -v
+          python3 -m unittest discover -s tests -p test_debugger_model_assisted_reset.py -v
+          python3 -m unittest discover -s tests -p test_evolution.py -v
+      - name: Install public pinned model dependencies on CPU (no hosted inference)
+        run: |
+          set -Eeuo pipefail
+          python3 -m pip install --disable-pip-version-check 'torch==2.6.0+cpu' \
+            --index-url https://download.pytorch.org/whl/cpu
+          python3 -m pip install --disable-pip-version-check \
+            'transformers==4.52.4' 'huggingface_hub==0.31.4' 'safetensors==0.5.3'
+      - name: Run at most two genuine pinned Qwen turns, fail-closed stage
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+          HF_HUB_DISABLE_TELEMETRY: "1"
+          HF_HUB_DISABLE_IMPLICIT_TOKEN: "1"
+          HF_HOME: ${{ runner.temp }}/hf-snapshot-015
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/real_model_snapshot_trial.py \
+            --repo . --output "$RUNNER_TEMP/real-snapshot-model-evidence"
+          python3 - <<'PY'
+          import json,os,pathlib
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"real-snapshot-model-evidence"
+          result=json.loads((root/"TRIAL_VERDICT.json").read_text())
+          assert result["candidate_staged"] is True, "Real model did not pass statement acceptance"
+          assert result["raw_model_turns"] in (1,2)
+          assert result["model_revision"]=="ea99d3edbfc6669b8b24cbaa6a98ec0e857f0155"
+          assert result["production_modified"] is False
+          assert result["vm_result"]=="NOT_RUN"
+          assert (root/"PATCH_REVIEW.diff").stat().st_size>0
+          print("REAL_MODEL_SNAPSHOT_STAGED_REVIEW_ONLY; independent VM evaluation still required.")
+          PY
+      - name: Preserve exact model turns and model-authored scope even on rejection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-real-snapshot-model-attempt-evidence
+          path: ${{ runner.temp }}/real-snapshot-model-evidence/
+          if-no-files-found: warn
+          retention-days: 21
