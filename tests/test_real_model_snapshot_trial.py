@@ -2,6 +2,7 @@
 from __future__ import annotations
 import ast
 from pathlib import Path
+import hashlib
 import unittest
 from scripts.real_model_snapshot_trial import ALLOWED, SUFFIX, normalize, package
 
@@ -9,7 +10,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class SnapshotTrialTests(unittest.TestCase):
     def baseline(self):
-        return (ROOT / "src/synapse/debugger.py").read_text(encoding="utf-8")
+        # Reproduce the historical, independent pre-promotion input rather than
+        # assuming the current development source is missing the new method.
+        data = (ROOT / "tests/fixture_snapshot_original_debugger.py.txt").read_bytes()
+        self.assertEqual(hashlib.sha256(data).hexdigest(),
+                         "4855aa5be41c3581f4e37e22384915b736c1b7c7d15140bd66d5460c806ea8ee")
+        return data.decode("utf-8")
 
     def test_one_statement_is_exactly_model_scope(self):
         before = self.baseline()

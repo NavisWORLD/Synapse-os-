@@ -1,0 +1,52 @@
+name: Verify reviewed model-assisted snapshot source
+
+on:
+  push:
+    branches: [feature/synapse-reviewed-snapshot-source-019]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-reviewed-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Bind development source to previously VM-tested model candidate
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import ast, hashlib
+          from pathlib import Path
+          source=Path("src/synapse/debugger.py").read_bytes()
+          expected="38848291aa12bf5491dd981ff1d896c5c850ebfe0f598db3b61118b84c7e6076"
+          assert hashlib.sha256(source).hexdigest()==expected, (
+              "reviewed development source differs from exact previous VM candidate")
+          parsed=ast.parse(source, filename="src/synapse/debugger.py")
+          method=[n for node in ast.walk(parsed)
+                  if isinstance(node, ast.ClassDef) and node.name=="Debugger"
+                  for n in node.body if isinstance(n, ast.FunctionDef)
+                  and n.name=="snapshot_events"]
+          assert len(method)==1
+          assert ast.unparse(method[0].body[-1])=="return [event.copy() for event in self.events]"
+          print("EXACT_TWO_VM_REVIEWED_SOURCE_SHA_PASS: candidate source identical to prior VM trial")
+          PY
+      - name: Independent source and prior-behavior regressions
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -Eeuo pipefail
+          python3 -m unittest discover -s tests -p test_debugger_reviewed_snapshot.py -v
+          python3 -m unittest discover -s tests -p test_debugger_model_assisted_reset.py -v
+          python3 -m unittest discover -s tests -p test_real_model_snapshot_trial.py -v
+          python3 -m unittest discover -s tests -p test_snapshot_independent_vm_contract.py -v
+          python3 -m unittest discover -s tests -p test_evolution.py -v
+          git diff --exit-code
