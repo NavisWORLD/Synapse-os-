@@ -1,0 +1,64 @@
+name: Verify genuine two-turn snapshot model handoff
+
+on:
+  push:
+    branches: [experiment/synapse-snapshot-offline-vm-016]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  real-origin-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Retrieve ACTUAL immutable real-model transcript, never substitute fixture
+        uses: actions/download-artifact@v4
+        with:
+          name: synapse-real-snapshot-model-attempt-evidence
+          path: ${{ runner.temp }}/original-model
+          repository: NavisWORLD/Synapse-os-
+          run-id: 36213993540
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check exact model-origin pins and independent guest functional contracts
+        env:
+          PYTHONPATH: src:.
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -Eeuo pipefail
+          python3 -m py_compile scripts/snapshot_exact_artifact_handoff.py \
+            rootfs/usr/local/lib/synapse/evolution-vm-evaluator.py
+          python3 -m unittest discover -s tests -p test_snapshot_independent_vm_contract.py -v
+          python3 -m unittest discover -s tests -p test_real_model_snapshot_trial.py -v
+          python3 -m unittest discover -s tests -p test_evolution_vm_gate.py -v
+          python3 scripts/snapshot_exact_artifact_handoff.py \
+            --artifact "$RUNNER_TEMP/original-model" --repo . \
+            --output "$RUNNER_TEMP/snapshot-model-handoff"
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,os,subprocess
+          folder=Path(os.environ["RUNNER_TEMP"])/"snapshot-model-handoff"
+          record=json.loads((folder/"ORIGIN_HANDOFF.json").read_text())
+          assert record["first_turn_rejection_reproduced"] is True
+          assert record["only_model_authored_statement"]=="return [event.copy() for event in self.events]"
+          assert record["promotion"]=="OWNER_REVIEW_REQUIRED"
+          assert record["production_modified"] is False
+          assert record["vm_result"]=="NOT_RUN"
+          assert not subprocess.check_output(
+              ["git","status","--porcelain","--untracked-files=no"],text=True
+          ).strip()
+          print("REAL_TWO_TURN_MODEL_BYTES_REBOUND_FOR_FUTURE_QEMU_ONLY")
+          PY
+      - name: Preserve fail-closed actual handoff for owner inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-genuine-snapshot-rebound-handoff
+          path: ${{ runner.temp }}/snapshot-model-handoff/
+          if-no-files-found: warn
+          retention-days: 21
