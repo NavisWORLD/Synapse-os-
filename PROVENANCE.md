@@ -27,7 +27,7 @@ The DOI is used here to document research publication provenance. It is not, by 
 
 ## Controlling rights and permissions
 
-Current first-party Synapse OS Covered Material is governed by the root [`LICENSE`](LICENSE), the **Cory Davis / NavisWORLD Synapse Source License 1.0**, except where a file or component states otherwise.
+New revisions adopting root [Apache License 2.0](LICENSE) are open-source for original Cory-owned Synapse OS material, except separately marked terms. Earlier proprietary source-available and MIT releases retain the grants historically attached to their copies.
 
 Commercial and other additional permissions are described in [`COMMERCIAL-LICENSING.md`](COMMERCIAL-LICENSING.md). Historical software-license boundaries are recorded in [`LICENSE-HISTORY.md`](LICENSE-HISTORY.md). Third-party components remain governed by their own licenses as described in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
