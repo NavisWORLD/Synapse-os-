@@ -2,7 +2,7 @@ SYNAPSE OS / NAVISWORLD NOTICE
 
 Copyright (c) 2026 Cory Davis / NavisWORLD.
 
-Original Synapse OS material owned or controlled by Cory Davis / NavisWORLD is distributed under the Cory Davis / NavisWORLD Synapse Source License 1.0 unless a file or component states otherwise.
+New Synapse OS releases adopting the root Apache License 2.0 offer original Cory-owned software, tooling and documentation under Apache-2.0, except file-specific exceptions. Earlier MIT and source-available editions retain their historical license grants.
 
 Current license: LICENSE
 Commercial licensing: COMMERCIAL-LICENSING.md
@@ -18,4 +18,4 @@ The Zenodo DOI above is cited as foundational public research provenance for the
 
 Synapse OS images and this repository may contain or aggregate Debian packages and other third-party material. Those components remain governed by their own copyright notices and licenses. No Synapse license notice replaces or diminishes third-party license rights.
 
-No patent, trademark, endorsement, certification, or commercial-use license is implied by public access to the repository, citation of the Zenodo record, or reference to the project lineage.
+Public access or citation itself grants no additional rights beyond the applicable license. The new Apache-2.0 release permits commercial use and includes its stated express patent grant for licensed contributions; separate trademarks, endorsements, certification, third-party material, provider terms and private data remain unaffected.
