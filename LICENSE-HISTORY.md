@@ -29,3 +29,9 @@ The Zenodo deposit is recorded here as publication/provenance evidence. It is no
 ## Important distinction
 
 The current license controls the rights granted for current Covered Material. It does not create ownership of abstract ideas, systems, methods, algorithms, or discoveries that copyright law does not protect. Separate patent, trademark, contract, or other rights may apply independently where legally available.
+
+## Prospective Apache-2.0 open-source generation (2026-09-26)
+
+Original Cory Davis / NavisWORLD-owned software, build scripts, configuration and documentation newly distributed in revisions adopting the standard Apache License 2.0 root LICENSE are licensed Apache-2.0, except files/components stating a different license. This is prospective upon adoption/release, not a retroactive rewrite. Original MIT-era grants and intervening source-available-era grants continue to apply to the versions originally distributed under them.
+
+Debian, external firmware/drivers, third-party applications, fonts, model weights, datasets, other people’s contributions and private data remain governed by their distinct applicable licenses and rights. The underlying Zenodo CST DOI remains research provenance, not the Synapse OS software license or a patent grant.
