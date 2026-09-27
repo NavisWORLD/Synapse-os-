@@ -269,10 +269,6 @@ The DOI is a research publication/provenance reference. It is not represented as
 
 ## License
 
-Current Synapse-specific original material owned or controlled by Cory Davis / NavisWORLD is **source-available, not open source**, under the [`Cory Davis / NavisWORLD Synapse Source License 1.0`](LICENSE). The public grant is limited to noncommercial evaluation, research, education, security review, and private modification within the license terms.
+Original Synapse OS software, scripts, build configuration and documentation owned or controlled by Cory Davis / NavisWORLD are offered under [Apache License 2.0](LICENSE) in revisions adopting this open-source transition, unless a component specifies a different license. Apache-2.0 permits commercial and noncommercial reuse, modifications and redistribution on its terms. Cory retains copyright and may offer paid products, services or other independently licensed work, but the Apache-2.0 grants for released versions remain available to everyone.
 
-Commercial deployment, production business use, hosted services, resale, redistribution, OEM/bundling, paid client work, commercial derivative products, and AI/ML training or model-development use require a separate written commercial license. See [`COMMERCIAL-LICENSING.md`](COMMERCIAL-LICENSING.md).
-
-Historical versions previously released under MIT retain their earlier license grants for those earlier copies or versions. See [`LICENSE-HISTORY.md`](LICENSE-HISTORY.md).
-
-The generated image contains Debian and other third-party components under their own licenses. The Synapse Source License does not override those third-party rights. See [`docs/LICENSING.md`](docs/LICENSING.md) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+A Synapse OS image is an aggregate: Debian, other third-party software, firmware, fonts, models, media and datasets retain their own licenses and must not be relabeled as Cory-owned Apache-2.0 content. Hardware write safety, privacy and provider authorization remain separate from source licensing. Historical MIT and later source-available rights are preserved by [LICENSE-HISTORY.md](LICENSE-HISTORY.md). See [docs/LICENSING.md](docs/LICENSING.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [TRADEMARKS.md](TRADEMARKS.md).
