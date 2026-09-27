@@ -15,7 +15,8 @@ from typing import Any, Callable
 
 from .hardware import normalize_arch, probe_hardware
 
-EXPECTED_LICENSE = "Cory Davis / NavisWORLD Synapse Source License 1.0"
+EXPECTED_LICENSE = "Apache License 2.0"
+LEGACY_LICENSE = "Cory Davis / NavisWORLD Synapse Source License 1.0"
 EXPECTED_ZENODO_DOI = "10.5281/zenodo.17574447"
 MANIFEST_SCHEMA = "synapse-genesis-manifest/v1"
 PLAN_SCHEMA = "synapse-genesis-plan/v1"
@@ -244,7 +245,7 @@ def verify_manifest(
         raise GenesisError("IMAGE_MANIFEST_INVALID", "unsupported GENESIS manifest schema or image type")
     if normalize_arch(expected_arch) != manifest.architecture:
         raise GenesisError("ARCH_MISMATCH", f"image is {manifest.architecture}, device is {normalize_arch(expected_arch)}")
-    if manifest.license != EXPECTED_LICENSE or manifest.zenodo_doi != EXPECTED_ZENODO_DOI:
+    if manifest.license not in {EXPECTED_LICENSE, LEGACY_LICENSE} or manifest.zenodo_doi != EXPECTED_ZENODO_DOI:
         raise GenesisError("PROVENANCE_MISMATCH", "manifest license/provenance markers do not match Synapse policy")
     try:
         actual_size = image.stat().st_size
