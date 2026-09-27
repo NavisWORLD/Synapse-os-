@@ -6,13 +6,13 @@ Copyright © 2026 Cory Davis / NavisWORLD. All rights are reserved in original c
 
 ## Controlling license
 
-Current Covered Material is governed by the **Cory Davis / NavisWORLD Synapse Source License 1.0** in [`LICENSE`](LICENSE). This notice summarizes ownership and access principles but does not replace the controlling license.
+For new releases adopting the root [Apache License 2.0](LICENSE), original Cory-owned Synapse OS source and documentation are offered under Apache-2.0, except file-specific terms. This notice does not override the licensed commercial, redistribution or patent rights explicitly granted by Apache-2.0. Historical MIT and source-available revisions remain governed by their historically valid grants.
 
-Public source availability permits only the rights expressly granted by that license, the rights necessarily granted through GitHub's platform terms, and rights applicable law independently provides.
+The new Apache-2.0 license, not mere GitHub visibility, expressly permits copying, modifications, redistribution and commercial use under its terms. Any other third-party, trademark, sensitive-data or independent rights remain governed by separate law and licenses.
 
 ## Commercial and AI/ML use
 
-Commercial deployment, business production use, paid client work, hosted services, redistribution, resale, sublicensing, OEM use, commercial competing products materially derived from Covered Material, and AI/ML training or model-development uses require a separate written agreement when they are outside the public license grant.
+Commercial deployment, business production use, paid client work, hosted services, redistribution, resale, sublicensing and OEM uses of new original material covered by Apache-2.0 are permitted under Apache-2.0 without separate authorization. This notice does not relicense third-party models, data, independent patent rights or private materials.
 
 See [`COMMERCIAL-LICENSING.md`](COMMERCIAL-LICENSING.md).
 

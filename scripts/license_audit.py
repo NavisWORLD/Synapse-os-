@@ -27,17 +27,13 @@ REQUIRED_FILES = (
 )
 
 ROOT_LICENSE_MARKERS = (
-    "Cory Davis / NavisWORLD Synapse Source License 1.0",
-    "SOURCE-AVAILABLE LICENSE, NOT AN OPEN-SOURCE LICENSE",
-    "AI/ML Use",
-    "NO PATENT LICENSE",
-    "THIRD-PARTY MATERIAL",
-    "HISTORICAL VERSIONS",
+    "Apache License",
+    "Version 2.0",
+    "TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
 )
 
 README_MARKERS = (
-    "source-available, not open source",
-    "COMMERCIAL-LICENSING.md",
+    "Apache License 2.0",
     "LICENSE-HISTORY.md",
     "THIRD_PARTY_NOTICES.md",
     "PROVENANCE.md",
@@ -45,10 +41,9 @@ README_MARKERS = (
 )
 
 LICENSING_GUIDE_MARKERS = (
-    "Synapse Source License 1.0",
-    "source-available license, not an open-source license",
-    "Historical MIT versions",
-    "Third-party components",
+    "Apache License 2.0",
+    "Historic rights",
+    "third-party",
     "PROVENANCE.md",
     ZENODO_DOI,
 )
@@ -165,8 +160,8 @@ def audit() -> list[str]:
     pyproject = ROOT / "pyproject.toml"
     if pyproject.is_file():
         text = pyproject.read_text(encoding="utf-8")
-        if "Cory Davis / NavisWORLD Synapse Source License 1.0" not in text:
-            errors.append("pyproject.toml does not declare the Synapse Source License")
+        if 'license = "Apache-2.0"' not in text:
+            errors.append("pyproject.toml does not declare Apache-2.0")
 
     cargo = ROOT / "sdk/rust/Cargo.toml"
     if cargo.is_file():

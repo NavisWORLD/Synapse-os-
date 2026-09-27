@@ -7,7 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-EXPECTED_LICENSE = "Cory Davis / NavisWORLD Synapse Source License 1.0"
+EXPECTED_LICENSE = "Apache License 2.0"
+LEGACY_LICENSE = "Cory Davis / NavisWORLD Synapse Source License 1.0"
 EXPECTED_ZENODO_DOI = "10.5281/zenodo.17574447"
 SCHEMA = "synapse-genesis-manifest/v1"
 MIN_TARGET_BYTES = 8 * 1024**3
@@ -72,7 +73,7 @@ def verify_manifest_file(manifest_path: Path | str, image_path: Path | str) -> d
         raise ValueError("wrong GENESIS manifest schema")
     if payload.get("image_type") != "squashfs-rootfs":
         raise ValueError("wrong image type")
-    if payload.get("license") != EXPECTED_LICENSE or payload.get("zenodo_doi") != EXPECTED_ZENODO_DOI:
+    if payload.get("license") not in (EXPECTED_LICENSE, LEGACY_LICENSE) or payload.get("zenodo_doi") != EXPECTED_ZENODO_DOI:
         raise ValueError("license/provenance mismatch")
     if str(payload.get("image_filename")) != image.name:
         raise ValueError("image filename mismatch")

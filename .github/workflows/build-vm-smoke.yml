@@ -273,11 +273,11 @@ jobs:
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/CITATION.cff
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/TRADEMARKS.md
           test -s /tmp/synapse-root/usr/share/doc/synapse-os/THIRD_PARTY_NOTICES.md
-          grep -q 'Cory Davis / NavisWORLD Synapse Source License 1.0' /tmp/synapse-root/usr/share/doc/synapse-os/LICENSE
+          grep -q 'Version 2.0' /tmp/synapse-root/usr/share/doc/synapse-os/LICENSE
           grep -q '10.5281/zenodo.17574447' /tmp/synapse-root/usr/share/doc/synapse-os/PROVENANCE.md
           grep -q '10.5281/zenodo.17574447' /tmp/synapse-root/usr/share/doc/synapse-os/CITATION.cff
           grep -q '10.5281/zenodo.17574447' /tmp/synapse-image/genesis-manifest.json
-          grep -q 'Cory Davis / NavisWORLD Synapse Source License 1.0' /tmp/synapse-image/genesis-manifest.json
+          grep -q 'Apache License 2.0' /tmp/synapse-image/genesis-manifest.json
           grep -q 'ConditionKernelCommandLine=synapse.genesis=1' /tmp/synapse-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
           grep -q 'ConditionPathExists=/run/live/medium/synapse-genesis/manifest.json' /tmp/synapse-root/usr/lib/systemd/system/synapse-genesis-installer-api.service
           grep -q 'HOLD TO INSTALL SYNAPSE OS' /tmp/synapse-root/usr/share/synapse/GENESIS.html
