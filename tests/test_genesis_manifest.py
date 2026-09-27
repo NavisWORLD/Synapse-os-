@@ -25,7 +25,7 @@ class GenesisManifestScriptTests(unittest.TestCase):
             self.assertEqual(hashlib.sha256(image.read_bytes()).hexdigest(), first["image_sha256"])
             self.assertEqual("amd64", first["architecture"])
             self.assertEqual("abc123", first["build_commit"])
-            self.assertEqual("Cory Davis / NavisWORLD Synapse Source License 1.0", first["license"])
+            self.assertEqual("Apache License 2.0", first["license"])
             self.assertEqual("10.5281/zenodo.17574447", first["zenodo_doi"])
             self.assertGreaterEqual(first["required_target_bytes"], 8 * 1024**3)
             self.assertEqual({"scheme": "sha256", "detached_signature": None}, first["signature"])
