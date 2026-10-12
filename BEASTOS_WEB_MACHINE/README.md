@@ -59,6 +59,13 @@ beastbox runtime exchange --data-dir <owner data directory> ...
 
 Requests are bounded `beastbox-request-v1` documents. Only `chat`, `inspect`, and `init` are supported by this adapter. A runtime/provider failure is returned as unavailable; there is no silent provider fallback.
 
+The launcher now calls the existing idempotent `init` exchange before starting
+the bridge. A fresh data directory is initialized; a saved directory is opened
+and validated with its identity, memory and checkpoint preserved. No model
+request is made by initialization. A missing executable or damaged checkpoint
+stops startup with a concrete error. The pinned v0.6.0 release and OS boot
+configuration remain authoritative.
+
 The default installed demonstration provider is Beast Box's deterministic `reference` provider. It is **not a language model**. Local Ollama or a compatible provider can be selected explicitly. Non-loopback compatible providers require HTTPS and explicit remote authorization.
 
 ## Authority model
