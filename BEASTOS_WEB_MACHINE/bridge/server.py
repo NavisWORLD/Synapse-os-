@@ -550,6 +550,16 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def initialize_runtime(exchange: BeastExchangeAdapter) -> dict[str, Any]:
+    """Create a fresh store through the existing idempotent protocol, or verify its saved state.
+
+    This never sends an inference prompt, replaces a saved identity, or repairs a
+    damaged checkpoint. A failed init stops startup instead of manufacturing a
+    connected state and allowing the first inspect to fail later.
+    """
+    return exchange.init()
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.listen not in {"127.0.0.1", "::1", "localhost"}:
@@ -574,14 +584,15 @@ def main(argv: list[str] | None = None) -> int:
             allow_remote=args.beast_allow_remote,
             api_key_env=args.beast_api_key_env,
         )
+        initialize_runtime(exchange)
         state = BridgeState(
             vm_backend=backend,
             beast_endpoint=args.beast_endpoint,
             beast_provider=args.beast_provider_location,
             beast_exchange=exchange,
         )
-    except ValueError as exc:
-        print(f"beastos-web: invalid runtime configuration: {exc}")
+    except (ValueError, RuntimeError) as exc:
+        print(f"beastos-web: runtime startup failed: {exc}")
         return 2
     token = args.token or secrets.token_urlsafe(32)
     server = BeastOSServer((args.listen, args.port), state=state, web_root=args.web_root, token=token)
